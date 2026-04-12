@@ -1,0 +1,81 @@
+# =============================
+# Python
+# =============================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+.Python
+
+# =============================
+# Node / Frontend
+# =============================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp
+.pnp.js
+
+# =============================
+# IDE
+# =============================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# =============================
+# Environment & Secrets
+# =============================
+.env
+.env.local
+.env.*.local
+
+# =============================
+# Data (não versionar dados locais)
+# =============================
+data/
+*.csv
+*.xlsx
+*.json.gz
+*.parquet
+*.db
+*.sqlite3
+
+# =============================
+# Docker
+# =============================
+docker-compose.override.yml
+
+# =============================
+# Logs
+# =============================
+*.log
+logs/
+
+# =============================
+# Coverage & Testing
+# =============================
+htmlcov/
+.coverage
+.coverage.*
+.pytest_cache/
+coverage.xml
+
+# =============================
+# Build artifacts
+# =============================
+frontend/dist/
+frontend/build/
+*.map
