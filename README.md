@@ -10,7 +10,7 @@ Plataforma digital que funciona como **camada de inteligência sobre dados públ
 
 - **Cruzar dados** de múltiplas fontes (PNCP, portal de transparência, TCM-BA) em uma visão unificada
 - **Detectar inconsistências** proativamente — concentração de fornecedores, desvios orçamentários, contratos vencendo sem renovação
-- **Questionar com evidências** — assistente de IA (RAG) que responde em linguagem natural com rastreabilidade total até a fonte
+- **Questionar com evidências** — assistente de IA (RAG com Gemini) que responde em linguagem natural com rastreabilidade total até a fonte
 
 **Município-piloto:** Jequié — BA (~150 mil habitantes)
 
@@ -36,7 +36,7 @@ Plataforma digital que funciona como **camada de inteligência sobre dados públ
 ├──────────────┬──────────────┬───────────────────────┤
 │  Ingestão    │  Analítica   │    IA / RAG           │
 │  PNCP API    │  Cruzamentos │    pgvector           │
-│  Scraping    │  Indicadores │    Claude API         │
+│  Scraping    │  Indicadores │    Gemini 3.1 Pro     │
 │  Importação  │  Alertas     │    Rastreabilidade    │
 ├──────────────┴──────────────┴───────────────────────┤
 │              PostgreSQL + pgvector                   │
@@ -53,9 +53,9 @@ Para detalhes, ver [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 | **Frontend** | React, TailwindCSS, Recharts/Apache ECharts |
 | **Backend** | Python 3.12+, FastAPI, Pydantic, SQLAlchemy |
 | **Banco de Dados** | PostgreSQL 16 + pgvector |
-| **IA / RAG** | Claude API (Anthropic), pgvector, LangChain |
+|| **IA / RAG** | Gemini 3.1 Pro (Vertex AI), Gemini Embedding 2 (`gemini-embedding-2-preview`), pgvector |
 | **Ingestão** | httpx, BeautifulSoup/Scrapy, Prefect |
-| **Infra** | Docker, Docker Compose |
+|| **Infra** | Docker, Docker Compose, Google Cloud (Cloud Run, Cloud SQL) |
 
 ## Estrutura do Repositório (Lente Gestor)
 
@@ -93,7 +93,8 @@ Para detalhes, ver [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 - Python 3.12+
 - Node.js 20+ (para o frontend)
 - Docker e Docker Compose
-- Chave de API da Anthropic (para a camada RAG)
+- Projeto Google Cloud com Vertex AI habilitado (para a camada RAG)
+- `gcloud` CLI autenticado (`gcloud auth application-default login`)
 
 ## Quickstart
 
