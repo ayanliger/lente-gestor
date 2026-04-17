@@ -55,6 +55,9 @@ format: ## Formata código automaticamente
 ingest-pncp: ## Executa ingestão de dados do PNCP
 	cd backend && python -m scripts.ingest_pncp
 
+ingest-orcamento: ## Ingestão do RREO/SICONFI (uso: make ingest-orcamento ano=2024)
+	cd backend && python -m scripts.ingest_orcamento --exercicio $(ano)
+
 # ========================
 # Limpeza
 # ========================

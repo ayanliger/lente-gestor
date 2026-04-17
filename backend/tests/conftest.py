@@ -126,3 +126,33 @@ def contratacao_raw():
 @pytest.fixture
 def contrato_raw():
     return SAMPLE_CONTRATO_RAW.copy()
+
+
+# ────────────────────────────────────────
+# Fixtures: dados SICONFI simulados (RREO)
+# ────────────────────────────────────────
+
+# Payload real capturado de
+# /ords/siconfi/tt/rreo?an_exercicio=2024&nr_periodo=6&id_ente=2918001
+SAMPLE_RREO_ITEM = {
+    "exercicio": 2024,
+    "demonstrativo": "RREO",
+    "periodo": 6,
+    "periodicidade": "B",
+    "instituicao": "Prefeitura Municipal de Jequié - BA",
+    "cod_ibge": 2918001,
+    "uf": "BA",
+    "populacao": 156408,
+    "anexo": "RREO-Anexo 02",
+    "esfera": "M",
+    "rotulo": "Total das Despesas Exceto Intra-Orçamentárias",
+    "coluna": "DOTAÇÃO INICIAL",
+    "cod_conta": "RREO2TotalDespesas",
+    "conta": "Saúde",
+    "valor": 125430789.15,
+}
+
+
+@pytest.fixture
+def rreo_item():
+    return SAMPLE_RREO_ITEM.copy()
