@@ -158,3 +158,108 @@ class SICONFIClient:
             total=len(todos),
         )
         return todos
+
+    async def rgf(
+        self,
+        *,
+        an_exercicio: int,
+        nr_periodo: int,
+        co_poder: str = "E",
+        co_esfera: str = "M",
+        in_periodicidade: str = "Q",
+        no_anexo: str | None = None,
+    ) -> dict:
+        """
+        Consulta o Relatório de Gestão Fiscal.
+
+        GET /rgf. A API exige todos os parâmetros abaixo — omitir qualquer
+        um retorna `count: 0`.
+
+        Parâmetros:
+          - an_exercicio: ano (ex: 2024)
+          - nr_periodo: quadrimestre (1-3) para periodicidade `Q`
+          - co_poder: `E` (Executivo) ou `L` (Legislativo)
+          - co_esfera: esfera de governo (`M` = município)
+          - in_periodicidade: `Q` (quadrimestral)
+          - no_anexo: anexo específico; None traz todos
+        """
+        params: dict[str, Any] = {
+            "an_exercicio": an_exercicio,
+            "nr_periodo": nr_periodo,
+            "co_tipo_demonstrativo": "RGF",
+            "co_esfera": co_esfera,
+            "co_poder": co_poder,
+            "in_periodicidade": in_periodicidade,
+            "id_ente": self.id_ente,
+        }
+        if no_anexo:
+            params["no_anexo"] = no_anexo
+        logger.info(
+            "siconfi.rgf",
+            exercicio=an_exercicio,
+            periodo=nr_periodo,
+            poder=co_poder,
+            anexo=no_anexo,
+        )
+        return await self._get("/rgf", params)
+
+    async def paginar_rgf(
+        self,
+        *,
+        an_exercicio: int,
+        nr_periodo: int,
+        co_poder: str = "E",
+        co_esfera: str = "M",
+        in_periodicidade: str = "Q",
+        no_anexo: str | None = None,
+    ) -> list[dict]:
+        """
+        Consome todas as páginas do RGF para um (exercício, quadrimestre),
+        retornando a lista achatada de items.
+        """
+        todos: list[dict] = []
+        offset = 0
+
+        for iteracao in range(MAX_ITERACOES_PAGINACAO):
+            params: dict[str, Any] = {
+                "an_exercicio": an_exercicio,
+                "nr_periodo": nr_periodo,
+                "co_tipo_demonstrativo": "RGF",
+                "co_esfera": co_esfera,
+                "co_poder": co_poder,
+                "in_periodicidade": in_periodicidade,
+                "id_ente": self.id_ente,
+                "offset": offset,
+            }
+            if no_anexo:
+                params["no_anexo"] = no_anexo
+
+            resultado = await self._get("/rgf", params)
+            items = resultado.get("items", []) or []
+            if not items:
+                break
+
+            todos.extend(items)
+
+            if not resultado.get("hasMore"):
+                break
+
+            limit = resultado.get("limit") or len(items)
+            offset += limit
+
+            if iteracao == MAX_ITERACOES_PAGINACAO - 1:
+                logger.warning(
+                    "siconfi.paginacao_limite",
+                    exercicio=an_exercicio,
+                    periodo=nr_periodo,
+                    iteracoes=iteracao + 1,
+                )
+
+        logger.info(
+            "siconfi.rgf.paginacao_completa",
+            exercicio=an_exercicio,
+            periodo=nr_periodo,
+            poder=co_poder,
+            total=len(todos),
+        )
+        return todos

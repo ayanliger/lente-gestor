@@ -61,6 +61,9 @@ ingest-orcamento: ## Ingestão do RREO/SICONFI (uso: make ingest-orcamento ano=2
 ingest-ibge: ## Ingestão de dados contextuais do IBGE (população, PIB)
 	cd backend && python -m scripts.ingest_ibge
 
+ingest-rgf: ## Ingestão do RGF/SICONFI + indicadores fiscais (uso: make ingest-rgf ano=2024)
+	cd backend && python -m scripts.ingest_rgf --exercicio $(ano)
+
 # ========================
 # Limpeza
 # ========================

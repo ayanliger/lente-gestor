@@ -266,3 +266,33 @@ def ibge_pib():
     import copy
 
     return copy.deepcopy(SAMPLE_IBGE_PIB)
+
+
+# ────────────────────────────────────────
+# Fixtures: payloads RGF simulados
+# ────────────────────────────────────────
+
+# Capturado de /tt/rgf?an_exercicio=2024&nr_periodo=2&id_ente=2918001&co_tipo_demonstrativo=RGF
+#  &co_esfera=M&co_poder=E&in_periodicidade=Q (Jequié Q2/2024, Anexo 06).
+SAMPLE_RGF_ITEM = {
+    "exercicio": 2024,
+    "periodo": 2,
+    "periodicidade": "Q",
+    "instituicao": "Prefeitura Municipal de Jequié - BA",
+    "cod_ibge": 2918001,
+    "uf": "BA",
+    "co_poder": "E",
+    "populacao": 156408,
+    "anexo": "RGF-Anexo 06",
+    "esfera": "M",
+    "rotulo": "Padrão",
+    "coluna": "% SOBRE A RCL AJUSTADA",
+    "cod_conta": "DespesaTotalComPessoalDemonstrativoSimplificado",
+    "conta": "Despesa Total com Pessoal - DTP",
+    "valor": 47.28,
+}
+
+
+@pytest.fixture
+def rgf_item():
+    return SAMPLE_RGF_ITEM.copy()

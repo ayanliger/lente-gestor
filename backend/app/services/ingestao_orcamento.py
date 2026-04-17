@@ -27,6 +27,10 @@ PERIODOS_RREO_PADRAO = [1, 2, 3, 4, 5, 6]  # bimestres
 FONTE_RREO = "SICONFI_RREO"
 TIPO_RELATORIO_RREO = "RREO"
 
+QUADRIMESTRES_RGF_PADRAO = [1, 2, 3]
+FONTE_RGF = "SICONFI_RGF"
+TIPO_RELATORIO_RGF = "RGF"
+
 
 def _parse_decimal(value: object) -> Decimal | None:
     """Converte número/str para Decimal; retorna None se vazio/None/inválido."""
@@ -54,6 +58,26 @@ def _normalizar_rreo(raw: dict) -> dict:
         "valor": _parse_decimal(raw.get("valor")),
         "cod_ibge": str(cod_ibge) if cod_ibge is not None else "",
         "fonte": FONTE_RREO,
+        "dados_brutos": json.dumps(raw, ensure_ascii=False, default=str),
+    }
+
+
+def _normalizar_rgf(raw: dict) -> dict:
+    """Mapeia um item do payload RGF para campos do modelo ExecucaoOrcamentaria."""
+    cod_ibge = raw.get("cod_ibge")
+    return {
+        "exercicio": raw.get("exercicio"),
+        "periodo": raw.get("periodo"),
+        "periodicidade": raw.get("periodicidade"),
+        "tipo_relatorio": TIPO_RELATORIO_RGF,
+        "anexo": raw.get("anexo"),
+        "rotulo": raw.get("rotulo"),
+        "coluna": raw.get("coluna"),
+        "cod_conta": raw.get("cod_conta"),
+        "conta": raw.get("conta"),
+        "valor": _parse_decimal(raw.get("valor")),
+        "cod_ibge": str(cod_ibge) if cod_ibge is not None else "",
+        "fonte": FONTE_RGF,
         "dados_brutos": json.dumps(raw, ensure_ascii=False, default=str),
     }
 
@@ -209,4 +233,122 @@ async def ingerir_rreo(
             )
 
     logger.info("ingestao.orcamento.concluida", exercicio=exercicio, **stats)
+    return stats
+
+
+async def ingerir_rgf(
+    exercicio: int,
+    quadrimestres: list[int] | None = None,
+    co_poder: str = "E",
+) -> dict:
+    """
+    Ingere o RGF de um exercício para os quadrimestres informados.
+
+    Armazena células brutas em `execucao_orcamentaria` com
+    `tipo_relatorio="RGF"`. Um quadrimestre sem dados (ex: ainda não
+    homologado) é tratado como warning, não erro.
+
+    Retorna {criados, atualizados, erros, periodos_processados, periodos_vazios}.
+    """
+    quadrimestres = quadrimestres or QUADRIMESTRES_RGF_PADRAO
+    stats = {
+        "criados": 0,
+        "atualizados": 0,
+        "erros": 0,
+        "periodos_processados": 0,
+        "periodos_vazios": 0,
+    }
+
+    async with SICONFIClient() as siconfi:
+        for quadrimestre in quadrimestres:
+            try:
+                items = await siconfi.paginar_rgf(
+                    an_exercicio=exercicio,
+                    nr_periodo=quadrimestre,
+                    co_poder=co_poder,
+                )
+            except Exception as e:
+                logger.error(
+                    "ingestao.rgf.fetch_erro",
+                    exercicio=exercicio,
+                    quadrimestre=quadrimestre,
+                    erro=str(e),
+                )
+                stats["erros"] += 1
+                continue
+
+            if not items:
+                # Quadrimestre sem dados (ainda não homologado / rejeitado).
+                logger.warning(
+                    "ingestao.rgf.quadrimestre_vazio",
+                    exercicio=exercicio,
+                    quadrimestre=quadrimestre,
+                    poder=co_poder,
+                )
+                stats["periodos_vazios"] += 1
+                continue
+
+            async with async_session() as db:
+                orgao: Orgao | None = None
+
+                for raw in items:
+                    try:
+                        if orgao is None:
+                            orgao = await _upsert_orgao_from_siconfi(db, raw)
+
+                        campos = _normalizar_rgf(raw)
+
+                        if not all(
+                            [
+                                campos["exercicio"] is not None,
+                                campos["periodo"] is not None,
+                                campos["anexo"],
+                                campos["cod_conta"],
+                                campos["coluna"],
+                            ]
+                        ):
+                            logger.warning(
+                                "ingestao.rgf.item_incompleto",
+                                raw_cod_conta=raw.get("cod_conta"),
+                            )
+                            continue
+
+                        chave = _chave_unica(campos, orgao.id)
+                        result = await db.execute(
+                            select(ExecucaoOrcamentaria).filter_by(**chave)
+                        )
+                        existing = result.scalar_one_or_none()
+
+                        if existing:
+                            for k, v in campos.items():
+                                setattr(existing, k, v)
+                            existing.orgao_id = orgao.id
+                            stats["atualizados"] += 1
+                        else:
+                            registro = ExecucaoOrcamentaria(
+                                **campos, orgao_id=orgao.id
+                            )
+                            db.add(registro)
+                            stats["criados"] += 1
+
+                    except Exception as e:
+                        logger.error(
+                            "ingestao.rgf.item_erro",
+                            exercicio=exercicio,
+                            quadrimestre=quadrimestre,
+                            erro=str(e),
+                        )
+                        stats["erros"] += 1
+
+                await db.commit()
+
+            stats["periodos_processados"] += 1
+            logger.info(
+                "ingestao.rgf.periodo_concluido",
+                exercicio=exercicio,
+                quadrimestre=quadrimestre,
+                total_items=len(items),
+            )
+
+    logger.info("ingestao.rgf.concluida", exercicio=exercicio, **stats)
     return stats

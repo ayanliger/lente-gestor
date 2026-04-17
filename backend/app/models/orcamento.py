@@ -135,3 +135,63 @@ class DadosMunicipio(Base):
     __table_args__ = (
         Index("ix_dados_mun_unique", "orgao_id", "exercicio", unique=True),
     )
+
+
+class IndicadorFiscal(Base):
+    """
+    Indicador fiscal derivado do RGF/RREO com situação calculada.
+
+    Cada linha representa um indicador curado da LRF ou mínimo constitucional
+    em um exercício/período. Valores populados pelo serviço
+    `app.services.indicadores_fiscais` que lê `execucao_orcamentaria`.
+
+    Segue ADR 10.3: `situacao` é persistida, não derivada em consulta.
+    """
+
+    __tablename__ = "indicadores_fiscais"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+
+    # Período
+    exercicio: Mapped[int] = mapped_column(Integer, index=True)
+    # Quadrimestre (RGF) ou bimestre (RREO) da fonte.
+    periodo: Mapped[int | None] = mapped_column(Integer, index=True)
+
+    # Identificação do indicador
+    codigo: Mapped[str] = mapped_column(String(50), index=True)
+    descricao: Mapped[str] = mapped_column(String(255))
+    unidade: Mapped[str] = mapped_column(String(20))  # PERCENTUAL, MONETARIO
+
+    # Valores
+    valor: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))
+    limite_legal: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))
+
+    # Situação derivada (OK, ALERTA, EXCEDIDO, ABAIXO_MINIMO, SEM_DADO)
+    situacao: Mapped[str] = mapped_column(String(30), index=True)
+
+    # Rastreabilidade da fonte (liga a uma célula de `execucao_orcamentaria`).
+    fonte_relatorio: Mapped[str] = mapped_column(String(10))  # RGF, RREO
+    fonte_exercicio: Mapped[int | None] = mapped_column(Integer)
+    fonte_periodo: Mapped[int | None] = mapped_column(Integer)
+
+    orgao_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("orgaos.id"), index=True)
+    orgao: Mapped[Orgao] = relationship()
+
+    calculado_em: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        Index(
+            "ix_indic_fisc_unique",
+            "orgao_id",
+            "exercicio",
+            "periodo",
+            "codigo",
+            unique=True,
+        ),
+    )
