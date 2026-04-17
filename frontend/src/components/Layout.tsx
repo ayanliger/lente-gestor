@@ -1,53 +1,204 @@
 import { NavLink, Outlet } from "react-router-dom";
 
-const links = [
-  { to: "/", label: "Visão Geral", icon: "◉" },
-  { to: "/orcamento", label: "Orçamento", icon: "📊" },
-  { to: "/lrf", label: "Indicadores LRF", icon: "🌡" },
-  { to: "/contratacoes", label: "Contratações", icon: "📋" },
-  { to: "/contratos", label: "Contratos", icon: "📄" },
-  { to: "/fornecedores", label: "Fornecedores", icon: "🏢" },
+type NavIcon = (props: { className?: string }) => React.ReactElement;
+
+const IconOverview: NavIcon = ({ className }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.6}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden
+  >
+    <rect x="3" y="3" width="7" height="9" rx="1.5" />
+    <rect x="14" y="3" width="7" height="5" rx="1.5" />
+    <rect x="14" y="12" width="7" height="9" rx="1.5" />
+    <rect x="3" y="16" width="7" height="5" rx="1.5" />
+  </svg>
+);
+
+const IconBudget: NavIcon = ({ className }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.6}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden
+  >
+    <path d="M4 20V10" />
+    <path d="M10 20V4" />
+    <path d="M16 20v-8" />
+    <path d="M22 20H2" />
+  </svg>
+);
+
+const IconLRF: NavIcon = ({ className }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.6}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden
+  >
+    <path d="M14 14.76V4a2 2 0 1 0-4 0v10.76a5 5 0 1 0 4 0Z" />
+    <circle cx="12" cy="17" r="1.6" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+const IconProcurement: NavIcon = ({ className }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.6}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden
+  >
+    <path d="M8 3h9l3 4v13a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
+    <path d="M4 7v13a1 1 0 0 0 1 1h2" />
+    <path d="M10 11h7" />
+    <path d="M10 15h7" />
+    <path d="M10 19h4" />
+  </svg>
+);
+
+const IconContract: NavIcon = ({ className }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.6}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden
+  >
+    <path d="M7 3h7l5 5v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
+    <path d="M14 3v5h5" />
+    <path d="M9 13h6" />
+    <path d="M9 17h4" />
+  </svg>
+);
+
+const IconSupplier: NavIcon = ({ className }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.6}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden
+  >
+    <path d="M3 21V7l6-4 6 4v14" />
+    <path d="M15 10h6v11H3" />
+    <path d="M8 11h2" />
+    <path d="M8 15h2" />
+    <path d="M8 19h2" />
+    <path d="M18 14h.01" />
+    <path d="M18 18h.01" />
+  </svg>
+);
+
+const links: { to: string; label: string; Icon: NavIcon }[] = [
+  { to: "/", label: "Visão Geral", Icon: IconOverview },
+  { to: "/orcamento", label: "Orçamento", Icon: IconBudget },
+  { to: "/lrf", label: "Indicadores LRF", Icon: IconLRF },
+  { to: "/contratacoes", label: "Contratações", Icon: IconProcurement },
+  { to: "/contratos", label: "Contratos", Icon: IconContract },
+  { to: "/fornecedores", label: "Fornecedores", Icon: IconSupplier },
 ];
 
 export default function Layout() {
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-64 shrink-0 bg-lente-900 border-r border-border flex flex-col">
-        <div className="p-6 border-b border-border">
-          <h1 className="text-xl font-bold tracking-tight text-accent-400">
-            Lente
-          </h1>
-          <p className="text-xs text-text-muted mt-1">Gestor Municipal</p>
+      <aside className="w-64 shrink-0 bg-lente-900/95 border-r border-border/80 flex flex-col backdrop-blur-sm relative">
+        {/* ambient accent */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-40"
+          style={{
+            backgroundImage:
+              "radial-gradient(600px 300px at 0% 0%, rgba(230,168,23,0.10), transparent 70%)",
+          }}
+          aria-hidden
+        />
+
+        <div className="relative p-6 border-b border-border/60">
+          <div className="flex items-baseline gap-2">
+            <span className="font-display text-3xl leading-none text-accent-400">
+              Lente
+            </span>
+            <span
+              className="h-1.5 w-1.5 rounded-full bg-accent-500"
+              aria-hidden
+            />
+          </div>
+          <p className="text-[11px] text-text-muted mt-2 uppercase tracking-[0.2em] font-mono">
+            Gestor Municipal
+          </p>
         </div>
 
-        <nav className="flex-1 p-3 space-y-1">
-          {links.map(({ to, label, icon }) => (
+        <nav className="relative flex-1 p-3 space-y-0.5">
+          {links.map(({ to, label, Icon }) => (
             <NavLink
               key={to}
               to={to}
               end={to === "/"}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                `group relative flex items-center gap-3 pl-4 pr-3 py-2.5 rounded-lg text-sm transition-all ${
                   isActive
-                    ? "bg-lente-700 text-text-primary font-medium"
-                    : "text-text-secondary hover:bg-lente-800 hover:text-text-primary"
+                    ? "bg-lente-800/70 text-text-primary font-medium"
+                    : "text-text-secondary hover:bg-lente-800/40 hover:text-text-primary"
                 }`
               }
             >
-              <span className="text-base">{icon}</span>
-              {label}
+              {({ isActive }) => (
+                <>
+                  <span
+                    className={`absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full transition-all ${
+                      isActive
+                        ? "bg-accent-500 shadow-[0_0_12px_rgba(230,168,23,0.6)]"
+                        : "bg-transparent group-hover:bg-lente-500/50"
+                    }`}
+                    aria-hidden
+                  />
+                  <Icon
+                    className={`h-4 w-4 shrink-0 transition-colors ${
+                      isActive ? "text-accent-400" : "text-text-muted group-hover:text-text-secondary"
+                    }`}
+                  />
+                  <span className="truncate">{label}</span>
+                </>
+              )}
             </NavLink>
           ))}
         </nav>
 
-        <div className="p-4 border-t border-border">
-          <p className="text-xs text-text-muted">Jequié — BA</p>
+        <div className="relative p-4 border-t border-border/60 space-y-1">
+          <p className="text-[10px] text-text-muted uppercase tracking-[0.2em] font-mono">
+            Município
+          </p>
+          <p className="text-sm text-text-primary font-medium">
+            Jequié <span className="text-text-muted font-normal">· BA</span>
+          </p>
         </div>
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto bg-surface p-8">
+      <main className="flex-1 overflow-y-auto p-8 lg:p-10">
         <Outlet />
       </main>
     </div>

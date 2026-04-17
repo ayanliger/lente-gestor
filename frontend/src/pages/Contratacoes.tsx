@@ -18,9 +18,20 @@ export default function Contratacoes() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Contratações</h1>
-          <p className="text-text-secondary text-sm mt-1">
-            {data ? `${data.total} registros` : "Carregando..."}
+          <h1 className="font-display text-4xl tracking-tight text-text-primary">
+            Contratações
+          </h1>
+          <p className="text-text-secondary text-sm mt-2">
+            {data ? (
+              <>
+                <span className="font-mono tabular-nums text-text-primary">
+                  {data.total.toLocaleString("pt-BR")}
+                </span>{" "}
+                registros
+              </>
+            ) : (
+              "Carregando…"
+            )}
           </p>
         </div>
       </div>

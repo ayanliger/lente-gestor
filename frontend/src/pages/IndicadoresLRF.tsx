@@ -127,9 +127,12 @@ export default function IndicadoresLRF() {
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Indicadores LRF</h1>
-          <p className="text-text-secondary text-sm mt-1">
-            Cumprimento da Lei de Responsabilidade Fiscal e mínimos constitucionais
+          <h1 className="font-display text-4xl tracking-tight text-text-primary">
+            Indicadores LRF
+          </h1>
+          <p className="text-text-secondary text-sm mt-2 max-w-xl">
+            Cumprimento da Lei de Responsabilidade Fiscal e mínimos
+            constitucionais.
           </p>
         </div>
         <label className="flex items-center gap-2 text-sm">

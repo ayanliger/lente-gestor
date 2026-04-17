@@ -17,9 +17,20 @@ export default function Contratos() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Contratos</h1>
-        <p className="text-text-secondary text-sm mt-1">
-          {data ? `${data.total} contratos firmados` : "Carregando..."}
+        <h1 className="font-display text-4xl tracking-tight text-text-primary">
+          Contratos
+        </h1>
+        <p className="text-text-secondary text-sm mt-2">
+          {data ? (
+            <>
+              <span className="font-mono tabular-nums text-text-primary">
+                {data.total.toLocaleString("pt-BR")}
+              </span>{" "}
+              contratos firmados
+            </>
+          ) : (
+            "Carregando…"
+          )}
         </p>
       </div>
 

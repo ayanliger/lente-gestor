@@ -1,12 +1,36 @@
 import { useContratacoes, useContratos, useContratosVencendo, useFornecedores } from "@/api/hooks";
 import { formatBRL, formatDate } from "@/lib/format";
 
-function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
+function StatCard({
+  label,
+  value,
+  sub,
+  tone = "default",
+}: {
+  label: string;
+  value: string | number;
+  sub?: string;
+  tone?: "default" | "warning";
+}) {
+  const toneClasses =
+    tone === "warning"
+      ? "bg-warning-500/[0.06] border-warning-500/25 hover:border-warning-500/50"
+      : "bg-surface-raised/70 border-border hover:border-lente-500/40";
+  const valueClasses =
+    tone === "warning" ? "text-warning-500" : "text-text-primary";
   return (
-    <div className="bg-surface-raised border border-border rounded-xl p-5">
-      <p className="text-text-muted text-xs uppercase tracking-wider mb-1">{label}</p>
-      <p className="text-2xl font-bold text-text-primary">{value}</p>
-      {sub && <p className="text-xs text-text-secondary mt-1">{sub}</p>}
+    <div
+      className={`card-accent border rounded-xl p-5 backdrop-blur-sm transition-colors ${toneClasses}`}
+    >
+      <p className="text-text-muted text-[10px] uppercase tracking-[0.15em] mb-2">
+        {label}
+      </p>
+      <p
+        className={`text-3xl font-semibold font-mono tabular-nums leading-none ${valueClasses}`}
+      >
+        {value}
+      </p>
+      {sub && <p className="text-xs text-text-secondary mt-2">{sub}</p>}
     </div>
   );
 }
@@ -20,11 +44,17 @@ export default function Dashboard() {
   const isLoading = contratacoes.isLoading || contratos.isLoading;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-fade-up">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Visão Geral</h1>
-        <p className="text-text-secondary text-sm mt-1">
-          Painel de acompanhamento — Município de Jequié
+        <p className="text-[11px] font-mono uppercase tracking-[0.25em] text-accent-400/80 mb-2">
+          Painel Municipal
+        </p>
+        <h1 className="font-display text-4xl md:text-5xl tracking-tight text-text-primary leading-[1.05]">
+          Visão Geral
+        </h1>
+        <p className="text-text-secondary text-sm mt-3 max-w-2xl">
+          Acompanhamento contínuo de contratações, contratos e fornecedores do
+          município de Jequié (BA).
         </p>
       </div>
 
@@ -32,30 +62,36 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Contratações"
-          value={isLoading ? "..." : contratacoes.data?.total ?? 0}
+          value={isLoading ? "—" : contratacoes.data?.total ?? 0}
           sub="registros no PNCP"
         />
         <StatCard
           label="Contratos"
-          value={isLoading ? "..." : contratos.data?.total ?? 0}
+          value={isLoading ? "—" : contratos.data?.total ?? 0}
           sub="contratos firmados"
         />
         <StatCard
           label="Fornecedores"
-          value={isLoading ? "..." : fornecedores.data?.total ?? 0}
+          value={isLoading ? "—" : fornecedores.data?.total ?? 0}
           sub="empresas cadastradas"
         />
         <StatCard
           label="Vencendo em 90 dias"
-          value={isLoading ? "..." : vencendo.data?.total ?? 0}
+          value={isLoading ? "—" : vencendo.data?.total ?? 0}
           sub="contratos com vencimento próximo"
+          tone="warning"
         />
       </div>
 
       {/* Contratos vencendo */}
-      <div className="bg-surface-raised border border-border rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-border">
-          <h2 className="font-semibold text-sm">Contratos com Vencimento Próximo</h2>
+      <div className="bg-surface-raised/60 border border-border rounded-xl overflow-hidden backdrop-blur-sm">
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+          <h2 className="font-display text-lg text-text-primary">
+            Contratos com vencimento próximo
+          </h2>
+          <span className="text-[11px] font-mono uppercase tracking-wider text-text-muted">
+            próximos 90 dias
+          </span>
         </div>
         {vencendo.isLoading ? (
           <p className="p-5 text-text-muted text-sm">Carregando...</p>

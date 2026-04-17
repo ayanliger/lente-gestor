@@ -25,20 +25,138 @@
   --color-warning-500: #d97706;
   --color-warning-100: #fef3c7;
 
-  --color-surface: #0f172a;
-  --color-surface-raised: #1e293b;
-  --color-surface-overlay: #334155;
+  --color-surface: #0b1322;
+  --color-surface-raised: #111f38;
+  --color-surface-overlay: #1e3050;
   --color-text-primary: #f1f5f9;
-  --color-text-secondary: #94a3b8;
-  --color-text-muted: #64748b;
-  --color-border: #334155;
+  --color-text-secondary: #a8bed8;
+  --color-text-muted: #6f85a3;
+  --color-border: #1f3658;
 
   --font-sans: "DM Sans", system-ui, sans-serif;
+  --font-serif: "DM Serif Display", "Iowan Old Style", "Palatino Linotype", serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-surface text-text-primary font-sans antialiased;
+    font-feature-settings: "ss01", "cv11", "kern";
+    background-color: var(--color-surface);
+    background-image:
+      radial-gradient(
+        ellipse 900px 600px at 85% -10%,
+        rgba(230, 168, 23, 0.08),
+        transparent 60%
+      ),
+      radial-gradient(
+        ellipse 1100px 700px at -10% 110%,
+        rgba(45, 98, 163, 0.18),
+        transparent 55%
+      ),
+      linear-gradient(
+        to bottom,
+        #0b1322 0%,
+        #0c1b33 100%
+      );
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+
+  ::selection {
+    background-color: rgba(230, 168, 23, 0.35);
+    color: #fff;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1f3658;
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #2d4a73;
+    background-clip: content-box;
+    border: 2px solid transparent;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-serif);
+    font-feature-settings: "ss01", "dlig", "kern";
+    letter-spacing: -0.01em;
+  }
+
+  /* Subtle engraved-divider for sections */
+  .divider-engraved {
+    height: 1px;
+    background-image: linear-gradient(
+      to right,
+      transparent,
+      rgba(168, 190, 216, 0.15) 20%,
+      rgba(168, 190, 216, 0.15) 80%,
+      transparent
+    );
+  }
+
+  /* Grid paper texture used on hero surfaces */
+  .bg-blueprint {
+    background-image:
+      linear-gradient(rgba(168, 190, 216, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(168, 190, 216, 0.04) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  /* Card with amber top accent */
+  .card-accent {
+    position: relative;
+    overflow: hidden;
+  }
+  .card-accent::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    background: linear-gradient(
+      to right,
+      transparent 0%,
+      rgba(230, 168, 23, 0) 5%,
+      rgba(230, 168, 23, 0.8) 50%,
+      rgba(230, 168, 23, 0) 95%,
+      transparent 100%
+    );
+    opacity: 0.6;
+    transition: opacity 250ms ease;
+  }
+  .card-accent:hover::before {
+    opacity: 1;
+  }
+
+  /* Fade-up on first paint */
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-fade-up {
+    animation: fade-up 500ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 }

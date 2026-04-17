@@ -3,7 +3,6 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   Legend,
   ResponsiveContainer,
   Tooltip,
@@ -16,6 +15,15 @@ import {
   useResumoFuncao,
 } from "@/api/hooks";
 import { formatBRL } from "@/lib/format";
+
+// Chart palette — hex form (recharts v3 renders SVG <rect fill>; modern
+// space-separated rgb() syntax is not universally honored in SVG paint
+// attributes, which is why "Empenhado" previously rendered black).
+const COR_DOTACAO = "#4a7fbe"; // lente-400
+const COR_EMPENHADO = "#e6a817"; // accent-500
+const COR_EIXO = "#6f85a3";
+const COR_TICK = "#cbd5e1";
+const COR_GRID = "#1f3658";
 
 const BIMESTRES = [1, 2, 3, 4, 5, 6];
 
@@ -40,17 +48,23 @@ function KpiCard({
 }) {
   return (
     <div
-      className={`rounded-xl p-5 border ${
+      className={`card-accent rounded-xl p-5 border backdrop-blur-sm transition-colors ${
         accent
-          ? "bg-accent-500/5 border-accent-500/20"
-          : "bg-surface-raised border-border"
+          ? "bg-accent-500/[0.07] border-accent-500/30 hover:border-accent-500/50"
+          : "bg-surface-raised/70 border-border hover:border-lente-500/40"
       }`}
     >
-      <p className="text-text-muted text-xs uppercase tracking-wider mb-2">
+      <p className="text-text-muted text-[10px] uppercase tracking-[0.15em] mb-2">
         {label}
       </p>
-      <p className="text-2xl font-bold text-text-primary font-mono">{value}</p>
-      {sub && <p className="text-xs text-text-secondary mt-1">{sub}</p>}
+      <p
+        className={`text-2xl font-semibold font-mono tabular-nums ${
+          accent ? "text-accent-400" : "text-text-primary"
+        }`}
+      >
+        {value}
+      </p>
+      {sub && <p className="text-xs text-text-secondary mt-1.5">{sub}</p>}
     </div>
   );
 }
@@ -102,13 +116,15 @@ export default function Orcamento() {
   }, [indicadores.data]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-fade-up">
       {/* Header + filtros */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Orçamento</h1>
-          <p className="text-text-secondary text-sm mt-1">
-            Execução orçamentária — {dadosMun?.nome_municipio ?? "Jequié"} ({dadosMun?.uf ?? "BA"})
+          <h1 className="font-display text-4xl tracking-tight text-text-primary">
+            Orçamento
+          </h1>
+          <p className="text-text-secondary text-sm mt-2">
+            Execução orçamentária · {dadosMun?.nome_municipio ?? "Jequié"} ({dadosMun?.uf ?? "BA"})
           </p>
         </div>
 
@@ -177,15 +193,31 @@ export default function Orcamento() {
       </div>
 
       {/* Gráfico de execução por função */}
-      <section className="bg-surface-raised border border-border rounded-xl p-6">
-        <div className="flex items-start justify-between mb-4">
+      <section className="card-accent bg-surface-raised/60 border border-border rounded-xl p-6 backdrop-blur-sm">
+        <div className="flex items-start justify-between mb-6">
           <div>
-            <h2 className="font-semibold text-text-primary">
+            <h2 className="font-display text-xl text-text-primary">
               Execução por função
             </h2>
             <p className="text-xs text-text-muted mt-1">
               Top 10 por valor empenhado. Comparativo com dotação atualizada.
             </p>
+          </div>
+          <div className="hidden sm:flex items-center gap-4 text-[11px] font-mono uppercase tracking-wider text-text-muted">
+            <span className="flex items-center gap-1.5">
+              <span
+                className="inline-block h-2.5 w-2.5 rounded-sm"
+                style={{ background: COR_DOTACAO, opacity: 0.85 }}
+              />
+              Dotação
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span
+                className="inline-block h-2.5 w-2.5 rounded-sm"
+                style={{ background: COR_EMPENHADO }}
+              />
+              Empenhado
+            </span>
           </div>
         </div>
 
@@ -197,39 +229,47 @@ export default function Orcamento() {
             {periodo ? ` · B${periodo}` : ""}.
           </p>
         ) : (
-          <ResponsiveContainer width="100%" height={420}>
+          <ResponsiveContainer width="100%" height={440}>
             <BarChart
               data={top10}
               layout="vertical"
               margin={{ top: 10, right: 40, left: 100, bottom: 10 }}
+              barCategoryGap={12}
             >
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke="rgb(51 65 85 / 0.4)"
+                stroke={COR_GRID}
                 horizontal={false}
               />
               <XAxis
                 type="number"
                 tickFormatter={(v) => formatCompact(v).replace("R$ ", "")}
-                stroke="rgb(148 163 184)"
-                style={{ fontSize: 11, fontFamily: "JetBrains Mono" }}
+                stroke={COR_EIXO}
+                tick={{ fill: COR_TICK, fontSize: 11, fontFamily: "JetBrains Mono" }}
               />
               <YAxis
                 dataKey="funcao"
                 type="category"
-                stroke="rgb(148 163 184)"
-                width={120}
-                style={{ fontSize: 12 }}
+                stroke={COR_EIXO}
+                width={130}
+                tick={{ fill: COR_TICK, fontSize: 12 }}
               />
               <Tooltip
-                cursor={{ fill: "rgb(51 65 85 / 0.3)" }}
+                cursor={{ fill: "rgba(45, 98, 163, 0.12)" }}
                 contentStyle={{
-                  background: "rgb(15 23 42)",
-                  border: "1px solid rgb(51 65 85)",
-                  borderRadius: 8,
+                  background: "#0b1322",
+                  border: "1px solid #1f3658",
+                  borderRadius: 10,
                   fontSize: 12,
+                  boxShadow: "0 12px 32px rgba(0,0,0,0.45)",
+                  padding: "10px 14px",
                 }}
-                labelStyle={{ color: "rgb(241 245 249)" }}
+                labelStyle={{
+                  color: "#f1f5f9",
+                  fontWeight: 600,
+                  marginBottom: 4,
+                }}
+                itemStyle={{ color: "#cbd5e1" }}
                 formatter={(value, name) => [
                   formatBRL(typeof value === "number" ? value : Number(value)),
                   String(name),
@@ -238,13 +278,28 @@ export default function Orcamento() {
                   payload?.[0]?.payload?.funcaoCompleta ?? ""
                 }
               />
-              <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Bar dataKey="dotacao" name="Dotação atualizada" fill="rgb(45 98 163 / 0.4)" />
-              <Bar dataKey="empenhado" name="Empenhado">
-                {top10.map((_, idx) => (
-                  <Cell key={idx} fill="rgb(230 168 23)" />
-                ))}
-              </Bar>
+              <Legend
+                wrapperStyle={{
+                  fontSize: 12,
+                  color: "#cbd5e1",
+                  paddingTop: 12,
+                }}
+                iconType="square"
+                iconSize={10}
+              />
+              <Bar
+                dataKey="dotacao"
+                name="Dotação atualizada"
+                fill={COR_DOTACAO}
+                fillOpacity={0.75}
+                radius={[0, 4, 4, 0]}
+              />
+              <Bar
+                dataKey="empenhado"
+                name="Empenhado"
+                fill={COR_EMPENHADO}
+                radius={[0, 4, 4, 0]}
+              />
             </BarChart>
           </ResponsiveContainer>
         )}
@@ -252,9 +307,9 @@ export default function Orcamento() {
 
       {/* Tabela detalhada */}
       {(resumo.data ?? []).length > 0 && (
-        <section className="bg-surface-raised border border-border rounded-xl overflow-hidden">
+        <section className="bg-surface-raised/60 border border-border rounded-xl overflow-hidden backdrop-blur-sm">
           <div className="px-6 py-4 border-b border-border">
-            <h2 className="font-semibold text-text-primary text-sm">
+            <h2 className="font-display text-lg text-text-primary">
               Detalhamento por função
             </h2>
           </div>
