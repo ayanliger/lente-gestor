@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useContratacoes } from "@/api/hooks";
 import { formatBRL, formatDate } from "@/lib/format";
+import SearchInput from "@/components/SearchInput";
+import Pagination from "@/components/Pagination";
+import TableSkeleton from "@/components/TableSkeleton";
 
 export default function Contratacoes() {
   const [busca, setBusca] = useState("");
@@ -15,7 +18,7 @@ export default function Contratacoes() {
   const totalPaginas = data ? Math.ceil(data.total / 20) : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-up">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-4xl tracking-tight text-text-primary">
@@ -37,50 +40,54 @@ export default function Contratacoes() {
       </div>
 
       {/* Search */}
-      <input
-        type="text"
-        placeholder="Buscar por objeto..."
+      <SearchInput
+        placeholder="Buscar por objeto…"
         value={busca}
-        onChange={(e) => {
-          setBusca(e.target.value);
+        onChange={(v) => {
+          setBusca(v);
           setPagina(1);
         }}
-        className="w-full max-w-md bg-surface-raised border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-lente-500"
       />
 
       {/* Table */}
-      <div className="bg-surface-raised border border-border rounded-xl overflow-hidden">
+      <div className="bg-surface-raised/60 border border-border rounded-xl overflow-hidden backdrop-blur-sm">
         {isLoading ? (
-          <p className="p-5 text-text-muted text-sm">Carregando...</p>
+          <TableSkeleton columns={6} rows={6} />
         ) : (
-          <table className="w-full text-sm">
+          <table className="tbl">
             <thead>
-              <tr className="text-left text-text-muted text-xs uppercase tracking-wider border-b border-border">
-                <th className="px-5 py-3">Processo</th>
-                <th className="px-5 py-3">Modalidade</th>
-                <th className="px-5 py-3">Objeto</th>
-                <th className="px-5 py-3 text-right">Valor Est.</th>
-                <th className="px-5 py-3">Situação</th>
-                <th className="px-5 py-3 text-right">Publicação</th>
+              <tr>
+                <th>Processo</th>
+                <th>Modalidade</th>
+                <th>Objeto</th>
+                <th className="text-right">Valor est.</th>
+                <th>Situação</th>
+                <th className="text-right">Publicação</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody>
               {data?.dados.map((c) => (
-                <tr key={c.id} className="hover:bg-surface-overlay/30 transition-colors">
-                  <td className="px-5 py-3 font-mono text-xs text-text-secondary">
+                <tr key={c.id}>
+                  <td className="font-mono text-xs text-text-secondary">
                     {c.numero_processo ?? "—"}
                   </td>
-                  <td className="px-5 py-3">
-                    <span className="inline-block px-2 py-0.5 rounded text-xs bg-lente-800 text-lente-200">
-                      {c.modalidade ?? "—"}
-                    </span>
+                  <td>
+                    {c.modalidade ? (
+                      <span className="badge badge-neutral">{c.modalidade}</span>
+                    ) : (
+                      <span className="text-text-muted">—</span>
+                    )}
                   </td>
-                  <td className="px-5 py-3 max-w-sm truncate">{c.objeto}</td>
-                  <td className="px-5 py-3 text-right font-mono">
-                    {formatBRL(c.valor_estimado)}
+                  <td className="max-w-sm truncate">{c.objeto}</td>
+                  <td className="tbl-num">{formatBRL(c.valor_estimado)}</td>
+                  <td className="text-xs">
+                    {c.situacao ? (
+                      <span className="text-text-secondary">{c.situacao}</span>
+                    ) : (
+                      <span className="text-text-muted">—</span>
+                    )}
                   </td>
-                  <td className="px-5 py-3 text-xs">{c.situacao ?? "—"}</td>
-                  <td className="px-5 py-3 text-right text-text-secondary">
+                  <td className="text-right text-text-secondary font-mono tabular-nums">
                     {formatDate(c.data_publicacao)}
                   </td>
                 </tr>
@@ -90,28 +97,11 @@ export default function Contratacoes() {
         )}
       </div>
 
-      {/* Pagination */}
-      {totalPaginas > 1 && (
-        <div className="flex items-center justify-center gap-2 text-sm">
-          <button
-            onClick={() => setPagina((p) => Math.max(1, p - 1))}
-            disabled={pagina === 1}
-            className="px-3 py-1.5 rounded bg-surface-raised border border-border text-text-secondary hover:text-text-primary disabled:opacity-40"
-          >
-            Anterior
-          </button>
-          <span className="text-text-muted">
-            {pagina} / {totalPaginas}
-          </span>
-          <button
-            onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
-            disabled={pagina >= totalPaginas}
-            className="px-3 py-1.5 rounded bg-surface-raised border border-border text-text-secondary hover:text-text-primary disabled:opacity-40"
-          >
-            Próximo
-          </button>
-        </div>
-      )}
+      <Pagination
+        pagina={pagina}
+        totalPaginas={totalPaginas}
+        onChange={setPagina}
+      />
     </div>
   );
 }

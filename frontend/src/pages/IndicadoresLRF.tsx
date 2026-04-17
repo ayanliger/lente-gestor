@@ -124,7 +124,7 @@ export default function IndicadoresLRF() {
   }, [data]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-fade-up">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-4xl tracking-tight text-text-primary">
@@ -136,11 +136,13 @@ export default function IndicadoresLRF() {
           </p>
         </div>
         <label className="flex items-center gap-2 text-sm">
-          <span className="text-text-muted">Exercício</span>
+          <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
+            Exercício
+          </span>
           <select
             value={exercicio}
             onChange={(e) => setExercicio(Number(e.target.value))}
-            className="bg-surface-raised border border-border rounded-lg px-3 py-1.5 font-mono text-sm focus:border-accent-500 focus:outline-none"
+            className="field-select"
           >
             {[2024, 2023].map((ano) => (
               <option key={ano} value={ano}>
@@ -155,28 +157,41 @@ export default function IndicadoresLRF() {
       {resumoGeral && (
         <div className="flex flex-wrap gap-2">
           {resumoGeral.OK > 0 && (
-            <span className="px-3 py-1 rounded-full bg-success-500/10 text-success-500 text-xs font-medium">
-              {resumoGeral.OK} OK
+            <span className="badge badge-success">
+              <span className="font-mono tabular-nums">{resumoGeral.OK}</span>
+              · OK
             </span>
           )}
           {resumoGeral.ALERTA > 0 && (
-            <span className="px-3 py-1 rounded-full bg-warning-500/10 text-warning-500 text-xs font-medium">
-              {resumoGeral.ALERTA} em alerta
+            <span className="badge badge-warning">
+              <span className="font-mono tabular-nums">
+                {resumoGeral.ALERTA}
+              </span>
+              · em alerta
             </span>
           )}
           {resumoGeral.EXCEDIDO > 0 && (
-            <span className="px-3 py-1 rounded-full bg-danger-500/10 text-danger-500 text-xs font-medium">
-              {resumoGeral.EXCEDIDO} excedido
+            <span className="badge badge-danger">
+              <span className="font-mono tabular-nums">
+                {resumoGeral.EXCEDIDO}
+              </span>
+              · excedido
             </span>
           )}
           {resumoGeral.ABAIXO_MINIMO > 0 && (
-            <span className="px-3 py-1 rounded-full bg-danger-500/10 text-danger-500 text-xs font-medium">
-              {resumoGeral.ABAIXO_MINIMO} abaixo do mínimo
+            <span className="badge badge-danger">
+              <span className="font-mono tabular-nums">
+                {resumoGeral.ABAIXO_MINIMO}
+              </span>
+              · abaixo do mínimo
             </span>
           )}
           {resumoGeral.SEM_DADO > 0 && (
-            <span className="px-3 py-1 rounded-full bg-surface-overlay text-text-muted text-xs font-medium">
-              {resumoGeral.SEM_DADO} sem dado
+            <span className="badge badge-muted">
+              <span className="font-mono tabular-nums">
+                {resumoGeral.SEM_DADO}
+              </span>
+              · sem dado
             </span>
           )}
         </div>

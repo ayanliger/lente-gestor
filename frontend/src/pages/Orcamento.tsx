@@ -130,14 +130,16 @@ export default function Orcamento() {
 
         <div className="flex items-center gap-3">
           <label className="flex items-center gap-2 text-sm">
-            <span className="text-text-muted">Exercício</span>
+            <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
+              Exercício
+            </span>
             <select
               value={exercicio}
               onChange={(e) => {
                 setExercicio(Number(e.target.value));
                 setPeriodo(undefined);
               }}
-              className="bg-surface-raised border border-border rounded-lg px-3 py-1.5 font-mono text-sm focus:border-accent-500 focus:outline-none"
+              className="field-select"
             >
               {[2024, 2023].map((ano) => (
                 <option key={ano} value={ano}>
@@ -148,13 +150,15 @@ export default function Orcamento() {
           </label>
 
           <label className="flex items-center gap-2 text-sm">
-            <span className="text-text-muted">Bimestre</span>
+            <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
+              Bimestre
+            </span>
             <select
               value={periodo ?? ""}
               onChange={(e) =>
                 setPeriodo(e.target.value === "" ? undefined : Number(e.target.value))
               }
-              className="bg-surface-raised border border-border rounded-lg px-3 py-1.5 font-mono text-sm focus:border-accent-500 focus:outline-none"
+              className="field-select"
             >
               <option value="">Mais recente</option>
               {BIMESTRES.map((b) => (
@@ -313,44 +317,47 @@ export default function Orcamento() {
               Detalhamento por função
             </h2>
           </div>
-          <table className="w-full text-sm">
+          <table className="tbl">
             <thead>
-              <tr className="text-left text-text-muted text-xs uppercase tracking-wider border-b border-border">
-                <th className="px-6 py-3">Função</th>
-                <th className="px-6 py-3 text-right">Dotação inicial</th>
-                <th className="px-6 py-3 text-right">Dotação atualizada</th>
-                <th className="px-6 py-3 text-right">Empenhado</th>
-                <th className="px-6 py-3 text-right">Liquidado</th>
-                <th className="px-6 py-3 text-right">% Exec.</th>
+              <tr>
+                <th>Função</th>
+                <th className="text-right">Dotação inicial</th>
+                <th className="text-right">Dotação atualizada</th>
+                <th className="text-right">Empenhado</th>
+                <th className="text-right">Liquidado</th>
+                <th className="text-right">% Exec.</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border font-mono text-xs">
+            <tbody>
               {resumo.data!.map((d) => {
                 const pct =
                   d.dotacao_atualizada && d.empenhado
                     ? (d.empenhado / d.dotacao_atualizada) * 100
                     : null;
+                const pctTone =
+                  pct == null
+                    ? "text-text-muted"
+                    : pct >= 90
+                      ? "text-success-500"
+                      : pct >= 60
+                        ? "text-accent-400"
+                        : "text-text-secondary";
                 return (
-                  <tr
-                    key={d.funcao}
-                    className="hover:bg-surface-overlay/30 transition-colors"
-                  >
-                    <td className="px-6 py-3 text-text-primary font-sans">
-                      {d.funcao}
-                    </td>
-                    <td className="px-6 py-3 text-right text-text-secondary">
+                  <tr key={d.funcao}>
+                    <td className="text-text-primary">{d.funcao}</td>
+                    <td className="tbl-num text-text-secondary">
                       {formatBRL(d.dotacao_inicial)}
                     </td>
-                    <td className="px-6 py-3 text-right">
+                    <td className="tbl-num">
                       {formatBRL(d.dotacao_atualizada)}
                     </td>
-                    <td className="px-6 py-3 text-right text-accent-400">
+                    <td className="tbl-num text-accent-400">
                       {formatBRL(d.empenhado)}
                     </td>
-                    <td className="px-6 py-3 text-right text-text-secondary">
+                    <td className="tbl-num text-text-secondary">
                       {formatBRL(d.liquidado)}
                     </td>
-                    <td className="px-6 py-3 text-right">
+                    <td className={`tbl-num ${pctTone}`}>
                       {pct != null ? `${pct.toFixed(1)}%` : "—"}
                     </td>
                   </tr>

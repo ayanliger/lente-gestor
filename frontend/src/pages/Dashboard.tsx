@@ -1,6 +1,28 @@
 import { useContratacoes, useContratos, useContratosVencendo, useFornecedores } from "@/api/hooks";
 import { formatBRL, formatDate } from "@/lib/format";
 
+function EmptyState({
+  label,
+  tone = "muted",
+}: {
+  label: string;
+  tone?: "muted" | "success";
+}) {
+  const color =
+    tone === "success" ? "text-success-500" : "text-text-muted";
+  return (
+    <div className="flex items-center gap-3 px-5 py-8 text-sm">
+      <span
+        className={`h-1.5 w-1.5 rounded-full ${
+          tone === "success" ? "bg-success-500" : "bg-text-muted"
+        }`}
+        aria-hidden
+      />
+      <span className={color}>{label}</span>
+    </div>
+  );
+}
+
 function StatCard({
   label,
   value,
@@ -94,30 +116,31 @@ export default function Dashboard() {
           </span>
         </div>
         {vencendo.isLoading ? (
-          <p className="p-5 text-text-muted text-sm">Carregando...</p>
+          <EmptyState label="Carregando contratos…" />
         ) : vencendo.data?.dados.length === 0 ? (
-          <p className="p-5 text-text-muted text-sm">Nenhum contrato vencendo nos próximos 90 dias.</p>
+          <EmptyState
+            label="Nenhum contrato vence nos próximos 90 dias."
+            tone="success"
+          />
         ) : (
-          <table className="w-full text-sm">
+          <table className="tbl">
             <thead>
-              <tr className="text-left text-text-muted text-xs uppercase tracking-wider border-b border-border">
-                <th className="px-5 py-3">Contrato</th>
-                <th className="px-5 py-3">Objeto</th>
-                <th className="px-5 py-3 text-right">Valor</th>
-                <th className="px-5 py-3 text-right">Vencimento</th>
+              <tr>
+                <th>Contrato</th>
+                <th>Objeto</th>
+                <th className="text-right">Valor</th>
+                <th className="text-right">Vencimento</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody>
               {vencendo.data?.dados.slice(0, 10).map((c) => (
-                <tr key={c.id} className="hover:bg-surface-overlay/30 transition-colors">
-                  <td className="px-5 py-3 font-mono text-xs text-text-secondary">
+                <tr key={c.id}>
+                  <td className="font-mono text-xs text-text-secondary">
                     {c.numero_contrato ?? c.pncp_id?.slice(-12)}
                   </td>
-                  <td className="px-5 py-3 max-w-md truncate">{c.objeto}</td>
-                  <td className="px-5 py-3 text-right font-mono">
-                    {formatBRL(c.valor_inicial)}
-                  </td>
-                  <td className="px-5 py-3 text-right text-warning-500 font-medium">
+                  <td className="max-w-md truncate">{c.objeto}</td>
+                  <td className="tbl-num">{formatBRL(c.valor_inicial)}</td>
+                  <td className="tbl-num text-warning-500 font-medium">
                     {formatDate(c.data_fim_vigencia)}
                   </td>
                 </tr>

@@ -1,6 +1,13 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useContratos } from "@/api/hooks";
 import { formatBRL, formatDate } from "@/lib/format";
+import SearchInput from "@/components/SearchInput";
+import Pagination from "@/components/Pagination";
+import TableSkeleton from "@/components/TableSkeleton";
+
+// Threshold para destacar contratos vencendo em 90 dias. Calculado uma
+// única vez por montagem para atender a regra de pureza do React.
+const MS_90_DIAS = 90 * 86400000;
 
 export default function Contratos() {
   const [busca, setBusca] = useState("");
@@ -14,8 +21,14 @@ export default function Contratos() {
 
   const totalPaginas = data ? Math.ceil(data.total / 20) : 0;
 
+  const limiteVencendo = useMemo(
+    () => new Date(Date.now() + MS_90_DIAS),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data],
+  );
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-up">
       <div>
         <h1 className="font-display text-4xl tracking-tight text-text-primary">
           Contratos
@@ -34,60 +47,56 @@ export default function Contratos() {
         </p>
       </div>
 
-      <input
-        type="text"
-        placeholder="Buscar por objeto..."
+      <SearchInput
+        placeholder="Buscar por objeto…"
         value={busca}
-        onChange={(e) => {
-          setBusca(e.target.value);
+        onChange={(v) => {
+          setBusca(v);
           setPagina(1);
         }}
-        className="w-full max-w-md bg-surface-raised border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-lente-500"
       />
 
-      <div className="bg-surface-raised border border-border rounded-xl overflow-hidden">
+      <div className="bg-surface-raised/60 border border-border rounded-xl overflow-hidden backdrop-blur-sm">
         {isLoading ? (
-          <p className="p-5 text-text-muted text-sm">Carregando...</p>
+          <TableSkeleton columns={5} rows={6} />
         ) : (
-          <table className="w-full text-sm">
+          <table className="tbl">
             <thead>
-              <tr className="text-left text-text-muted text-xs uppercase tracking-wider border-b border-border">
-                <th className="px-5 py-3">Contrato</th>
-                <th className="px-5 py-3">Objeto</th>
-                <th className="px-5 py-3">Categoria</th>
-                <th className="px-5 py-3 text-right">Valor</th>
-                <th className="px-5 py-3 text-right">Vigência</th>
+              <tr>
+                <th>Contrato</th>
+                <th>Objeto</th>
+                <th>Categoria</th>
+                <th className="text-right">Valor</th>
+                <th className="text-right">Vigência</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody>
               {data?.dados.map((c) => {
                 const vencendo =
                   c.data_fim_vigencia &&
-                  new Date(c.data_fim_vigencia) <
-                    new Date(Date.now() + 90 * 86400000);
+                  new Date(c.data_fim_vigencia) < limiteVencendo;
 
                 return (
-                  <tr
-                    key={c.id}
-                    className="hover:bg-surface-overlay/30 transition-colors"
-                  >
-                    <td className="px-5 py-3 font-mono text-xs text-text-secondary">
+                  <tr key={c.id}>
+                    <td className="font-mono text-xs text-text-secondary">
                       {c.numero_contrato ?? c.pncp_id?.slice(-12)}
                     </td>
-                    <td className="px-5 py-3 max-w-sm truncate">{c.objeto}</td>
-                    <td className="px-5 py-3">
-                      {c.categoria && (
-                        <span className="inline-block px-2 py-0.5 rounded text-xs bg-lente-800 text-lente-200">
+                    <td className="max-w-sm truncate">{c.objeto}</td>
+                    <td>
+                      {c.categoria ? (
+                        <span className="badge badge-neutral">
                           {c.categoria}
                         </span>
+                      ) : (
+                        <span className="text-text-muted">—</span>
                       )}
                     </td>
-                    <td className="px-5 py-3 text-right font-mono">
-                      {formatBRL(c.valor_inicial)}
-                    </td>
+                    <td className="tbl-num">{formatBRL(c.valor_inicial)}</td>
                     <td
-                      className={`px-5 py-3 text-right ${
-                        vencendo ? "text-warning-500 font-medium" : "text-text-secondary"
+                      className={`text-right font-mono tabular-nums ${
+                        vencendo
+                          ? "text-warning-500 font-medium"
+                          : "text-text-secondary"
                       }`}
                     >
                       {formatDate(c.data_fim_vigencia)}
@@ -100,27 +109,11 @@ export default function Contratos() {
         )}
       </div>
 
-      {totalPaginas > 1 && (
-        <div className="flex items-center justify-center gap-2 text-sm">
-          <button
-            onClick={() => setPagina((p) => Math.max(1, p - 1))}
-            disabled={pagina === 1}
-            className="px-3 py-1.5 rounded bg-surface-raised border border-border text-text-secondary hover:text-text-primary disabled:opacity-40"
-          >
-            Anterior
-          </button>
-          <span className="text-text-muted">
-            {pagina} / {totalPaginas}
-          </span>
-          <button
-            onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
-            disabled={pagina >= totalPaginas}
-            className="px-3 py-1.5 rounded bg-surface-raised border border-border text-text-secondary hover:text-text-primary disabled:opacity-40"
-          >
-            Próximo
-          </button>
-        </div>
-      )}
+      <Pagination
+        pagina={pagina}
+        totalPaginas={totalPaginas}
+        onChange={setPagina}
+      />
     </div>
   );
 }
