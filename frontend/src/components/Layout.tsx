@@ -112,13 +112,29 @@ const IconSupplier: NavIcon = ({ className }) => (
   </svg>
 );
 
-const links: { to: string; label: string; Icon: NavIcon }[] = [
-  { to: "/", label: "Visão Geral", Icon: IconOverview },
-  { to: "/orcamento", label: "Orçamento", Icon: IconBudget },
-  { to: "/lrf", label: "Indicadores LRF", Icon: IconLRF },
-  { to: "/contratacoes", label: "Contratações", Icon: IconProcurement },
-  { to: "/contratos", label: "Contratos", Icon: IconContract },
-  { to: "/fornecedores", label: "Fornecedores", Icon: IconSupplier },
+type NavLinkDef = { to: string; label: string; Icon: NavIcon };
+
+// Navegação organizada em dois grupos: Orçamento é o foco principal da
+// ferramenta; contratos/fornecedores são dados complementares.
+const navGroups: { heading: string; tone: "primary" | "secondary"; links: NavLinkDef[] }[] = [
+  {
+    heading: "Orçamento",
+    tone: "primary",
+    links: [
+      { to: "/", label: "Visão Geral", Icon: IconOverview },
+      { to: "/orcamento", label: "Execução", Icon: IconBudget },
+      { to: "/lrf", label: "Indicadores LRF", Icon: IconLRF },
+    ],
+  },
+  {
+    heading: "Contratos & Aquisições",
+    tone: "secondary",
+    links: [
+      { to: "/contratacoes", label: "Contratações", Icon: IconProcurement },
+      { to: "/contratos", label: "Contratos", Icon: IconContract },
+      { to: "/fornecedores", label: "Fornecedores", Icon: IconSupplier },
+    ],
+  },
 ];
 
 export default function Layout() {
@@ -151,40 +167,68 @@ export default function Layout() {
           </p>
         </div>
 
-        <nav className="relative flex-1 p-3 space-y-0.5">
-          {links.map(({ to, label, Icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === "/"}
-              className={({ isActive }) =>
-                `group relative flex items-center gap-3 pl-4 pr-3 py-2.5 rounded-lg text-sm transition-all ${
-                  isActive
-                    ? "bg-lente-800/70 text-text-primary font-medium"
-                    : "text-text-secondary hover:bg-lente-800/40 hover:text-text-primary"
-                }`
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <span
-                    className={`absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full transition-all ${
-                      isActive
-                        ? "bg-accent-500 shadow-[0_0_12px_rgba(230,168,23,0.6)]"
-                        : "bg-transparent group-hover:bg-lente-500/50"
-                    }`}
-                    aria-hidden
-                  />
-                  <Icon
-                    className={`h-4 w-4 shrink-0 transition-colors ${
-                      isActive ? "text-accent-400" : "text-text-muted group-hover:text-text-secondary"
-                    }`}
-                  />
-                  <span className="truncate">{label}</span>
-                </>
-              )}
-            </NavLink>
-          ))}
+        <nav className="relative flex-1 p-3 overflow-y-auto">
+          {navGroups.map((group, groupIdx) => {
+            const isSecondary = group.tone === "secondary";
+            return (
+              <div
+                key={group.heading}
+                className={groupIdx > 0 ? "mt-6 pt-5 border-t border-border/50" : ""}
+              >
+                <p
+                  className={`px-4 mb-2 text-[10px] font-mono uppercase tracking-[0.22em] ${
+                    isSecondary ? "text-text-muted/70" : "text-accent-400/80"
+                  }`}
+                >
+                  {group.heading}
+                </p>
+                <ul className="space-y-0.5">
+                  {group.links.map(({ to, label, Icon }) => (
+                    <li key={to}>
+                      <NavLink
+                        to={to}
+                        end={to === "/"}
+                        className={({ isActive }) =>
+                          `group relative flex items-center gap-3 pl-4 pr-3 rounded-lg transition-all ${
+                            isSecondary ? "py-2 text-[13px]" : "py-2.5 text-sm"
+                          } ${
+                            isActive
+                              ? "bg-lente-800/70 text-text-primary font-medium"
+                              : "text-text-secondary hover:bg-lente-800/40 hover:text-text-primary"
+                          }`
+                        }
+                      >
+                        {({ isActive }) => (
+                          <>
+                            <span
+                              className={`absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full transition-all ${
+                                isActive
+                                  ? "bg-accent-500 shadow-[0_0_12px_rgba(230,168,23,0.6)]"
+                                  : "bg-transparent group-hover:bg-lente-500/50"
+                              }`}
+                              aria-hidden
+                            />
+                            <Icon
+                              className={`shrink-0 transition-colors ${
+                                isSecondary ? "h-3.5 w-3.5" : "h-4 w-4"
+                              } ${
+                                isActive
+                                  ? "text-accent-400"
+                                  : isSecondary
+                                    ? "text-text-muted/70 group-hover:text-text-secondary"
+                                    : "text-text-muted group-hover:text-text-secondary"
+                              }`}
+                            />
+                            <span className="truncate">{label}</span>
+                          </>
+                        )}
+                      </NavLink>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
         </nav>
 
         <div className="relative p-4 border-t border-border/60 space-y-1">
