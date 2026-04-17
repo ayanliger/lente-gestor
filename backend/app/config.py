@@ -28,8 +28,12 @@ class Settings(BaseSettings):
     pncp_base_url: str = "https://pncp.gov.br/api/consulta/v1"
     pncp_cnpj_jequie: str = "13894878000160"
 
-    # Anthropic (RAG)
-    anthropic_api_key: str = ""
+    # Google Cloud / Gemini (RAG)
+    gcp_project_id: str = ""
+    gcp_location: str = "us-central1"
+    gemini_model: str = "gemini-3.1-pro-preview"
+    gemini_embedding_model: str = "gemini-embedding-2-preview"
+    gemini_embedding_dimensions: int = 3072
 
     @property
     def is_development(self) -> bool:

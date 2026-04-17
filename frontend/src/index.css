@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+@theme {
+  /* Lente Gestor — deep blue + amber accent */
+  --color-lente-900: #0c1b33;
+  --color-lente-800: #132b4f;
+  --color-lente-700: #1a3c6b;
+  --color-lente-600: #234e87;
+  --color-lente-500: #2d62a3;
+  --color-lente-400: #4a7fbe;
+  --color-lente-300: #7ba3d4;
+  --color-lente-200: #b0c9e8;
+  --color-lente-100: #dce8f5;
+  --color-lente-50: #f0f5fb;
+
+  --color-accent-600: #c48d0e;
+  --color-accent-500: #e6a817;
+  --color-accent-400: #f0be3d;
+  --color-accent-300: #f5d26e;
+
+  --color-danger-500: #dc2626;
+  --color-danger-100: #fee2e2;
+  --color-success-500: #16a34a;
+  --color-success-100: #dcfce7;
+  --color-warning-500: #d97706;
+  --color-warning-100: #fef3c7;
+
+  --color-surface: #0f172a;
+  --color-surface-raised: #1e293b;
+  --color-surface-overlay: #334155;
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+  --color-border: #334155;
+
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+@layer base {
+  body {
+    @apply bg-surface text-text-primary font-sans antialiased;
+  }
+}

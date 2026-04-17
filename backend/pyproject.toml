@@ -24,7 +24,7 @@ dependencies = [
     "lxml>=5.3.0",
 
     # AI / RAG
-    "anthropic>=0.40.0",
+    "google-genai>=1.0.0",
 
     # Utilities
     "python-dotenv>=1.0.0",

@@ -2,10 +2,15 @@
 Conector para a API do PNCP (Portal Nacional de Contratações Públicas).
 
 API Docs: https://pncp.gov.br/api/consulta/swagger-ui/index.html
+Spec: https://pncp.gov.br/api/consulta/v3/api-docs
 Sem autenticação. REST, retorna JSON.
 
+Endpoints validados (abril 2026):
+  GET /v1/contratacoes/publicacao — requer codigoModalidadeContratacao, filtro por cnpj
+  GET /v1/contratos               — filtro por cnpjOrgao, max 365 dias
+  GET /v1/atas                    — atas de registro de preço
+
 Limitações conhecidas (Transparência Brasil, 2024):
-- Paginação limitada
 - Campos com preenchimento nulo
 - Fragmentação de dados entre endpoints
 - Impossibilidade de rastrear contratos por item individual
@@ -23,8 +28,19 @@ logger = structlog.get_logger()
 settings = get_settings()
 
 # Limites da API
+# Contratacoes requer tamanhoPagina >= 10; contratos aceita qualquer valor.
 MAX_PAGE_SIZE = 500
 DEFAULT_PAGE_SIZE = 50
+MIN_PAGE_SIZE = 10
+
+# Modalidades de contratação relevantes para municípios
+MODALIDADES = {
+    4: "Concorrência",
+    5: "Pregão Eletrônico",
+    6: "Pregão Presencial",
+    7: "Inexigibilidade",
+    8: "Dispensa",
+}
 
 
 class PNCPClient:
@@ -42,7 +58,7 @@ class PNCPClient:
     async def __aenter__(self):
         self._client = httpx.AsyncClient(
             base_url=self.base_url,
-            timeout=30.0,
+            timeout=60.0,
             headers={"Accept": "application/json"},
         )
         return self
@@ -71,25 +87,30 @@ class PNCPClient:
         self,
         data_inicial: date,
         data_final: date,
+        codigo_modalidade: int = 8,
         pagina: int = 1,
         tamanho_pagina: int = DEFAULT_PAGE_SIZE,
     ) -> dict:
         """
-        Lista contratações publicadas por período.
+        Lista contratações publicadas por período e modalidade.
 
         GET /contratacoes/publicacao
+        Parâmetro de filtro por órgão: cnpj (não cnpjOrgao).
+        codigoModalidadeContratacao é obrigatório.
         """
         params = {
             "dataInicial": data_inicial.strftime("%Y%m%d"),
             "dataFinal": data_final.strftime("%Y%m%d"),
-            "cnpjOrgao": self.cnpj,
+            "codigoModalidadeContratacao": codigo_modalidade,
+            "cnpj": self.cnpj,
             "pagina": pagina,
-            "tamanhoPagina": min(tamanho_pagina, MAX_PAGE_SIZE),
+            "tamanhoPagina": max(MIN_PAGE_SIZE, min(tamanho_pagina, MAX_PAGE_SIZE)),
         }
         logger.info(
             "pncp.contratacoes",
             data_inicial=str(data_inicial),
             data_final=str(data_final),
+            modalidade=codigo_modalidade,
             pagina=pagina,
         )
         return await self._get("/contratacoes/publicacao", params=params)
@@ -104,7 +125,8 @@ class PNCPClient:
         """
         Lista contratos publicados por período.
 
-        GET /contratos/publicacao
+        GET /contratos (não /contratos/publicacao).
+        Máximo 365 dias por requisição.
         """
         params = {
             "dataInicial": data_inicial.strftime("%Y%m%d"),
@@ -119,83 +141,39 @@ class PNCPClient:
             data_final=str(data_final),
             pagina=pagina,
         )
-        return await self._get("/contratos/publicacao", params=params)
-
-    async def listar_pca(
-        self,
-        ano_exercicio: int,
-        pagina: int = 1,
-        tamanho_pagina: int = DEFAULT_PAGE_SIZE,
-    ) -> dict:
-        """
-        Lista itens do Plano de Contratações Anual (PCA).
-
-        GET /pca/v2/itens
-        """
-        params = {
-            "cnpjOrgao": self.cnpj,
-            "anoExercicio": ano_exercicio,
-            "pagina": pagina,
-            "tamanhoPagina": min(tamanho_pagina, MAX_PAGE_SIZE),
-        }
-        logger.info("pncp.pca", ano=ano_exercicio, pagina=pagina)
-        return await self._get("/pca/v2/itens", params=params)
-
-    async def listar_atas(
-        self,
-        data_inicial: date,
-        data_final: date,
-        pagina: int = 1,
-        tamanho_pagina: int = DEFAULT_PAGE_SIZE,
-    ) -> dict:
-        """
-        Lista atas de registro de preço.
-
-        GET /atas
-        """
-        params = {
-            "dataInicial": data_inicial.strftime("%Y%m%d"),
-            "dataFinal": data_final.strftime("%Y%m%d"),
-            "cnpjOrgao": self.cnpj,
-            "pagina": pagina,
-            "tamanhoPagina": min(tamanho_pagina, MAX_PAGE_SIZE),
-        }
-        logger.info(
-            "pncp.atas",
-            data_inicial=str(data_inicial),
-            data_final=str(data_final),
-            pagina=pagina,
-        )
-        return await self._get("/atas", params=params)
+        return await self._get("/contratos", params=params)
 
     async def paginar_todos(
         self,
         metodo,
+        tamanho_pagina: int = MAX_PAGE_SIZE,
         **kwargs,
     ) -> list[dict]:
         """
         Consome todas as páginas de um endpoint, retornando a lista completa.
 
-        Trata a paginação automaticamente.
+        Resposta PNCP: {data: [...], totalRegistros, totalPaginas, numeroPagina, empty}
         """
         todos = []
         pagina = 1
-        kwargs["tamanho_pagina"] = MAX_PAGE_SIZE
+        kwargs["tamanho_pagina"] = tamanho_pagina
 
         while True:
             resultado = await metodo(pagina=pagina, **kwargs)
 
-            # A estrutura de resposta do PNCP varia por endpoint.
-            # Normalizar conforme documentação real durante implementação.
-            dados = resultado.get("data", resultado.get("items", []))
+            dados = resultado.get("data", [])
             if not dados:
                 break
 
             todos.extend(dados)
+
+            total_paginas = resultado.get("totalPaginas", 1)
+            if pagina >= total_paginas:
+                break
+
             pagina += 1
 
-            # Safety: evitar loops infinitos
-            if pagina > 100:
+            if pagina > 200:
                 logger.warning("pncp.paginacao_limite", paginas=pagina)
                 break
 

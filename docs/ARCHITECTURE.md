@@ -190,8 +190,8 @@ Pergunta do Gestor
         │
         ▼
 ┌───────────────┐
-│  Claude API   │ ◄── Prompt com contexto + instrução de rastreabilidade
-│  (geração)    │
+│ Gemini 3.1 Pro│ ◄── Prompt com contexto + instrução de rastreabilidade
+│  (Vertex AI)  │
 └───────┬───────┘
         │
         ▼
@@ -208,12 +208,15 @@ Pergunta do Gestor
 ### Estratégia de Indexação
 - Dados estruturados (contratos, contratações, PCA) são convertidos em documentos textuais com metadados
 - Cada documento inclui: fonte original, data de atualização, entidade responsável
-- Embeddings gerados via modelo de embedding (a definir — opções: Anthropic, OpenAI, ou modelo local)
+- Embeddings gerados via **Gemini Embedding 2** (`gemini-embedding-2-preview`) — até 3072 dimensões, multimodal (texto, imagens, vídeo, áudio, PDF), 100+ idiomas
 - Armazenamento em pgvector (extensão do PostgreSQL — sem infraestrutura adicional)
+- Task instructions inline no prompt: `task: search result | query: {pergunta}` para buscas, `title: {titulo} | text: {conteudo}` para documentos
 
 ### Modelo de Linguagem
-- **Claude API** (Anthropic) — recomendado pela qualidade em português e capacidade de seguir instruções complexas
+- **Gemini 3.1 Pro** (Google, via Vertex AI) — 1M tokens de contexto, forte em português, 2.5× melhor raciocínio que Gemini 3 Pro
+- Model ID: `gemini-3.1-pro-preview`
 - System prompt inclui: regras de rastreabilidade, formato de citação, comportamento "não sei" quando dados insuficientes
+- Autenticação via Application Default Credentials (ADC) — sem API key explícita
 
 ## Decisões Técnicas
 
@@ -225,7 +228,7 @@ Pergunta do Gestor
 | API Framework | FastAPI | Performance, tipagem automática, docs OpenAPI |
 | Frontend | React + TypeScript | Ecossistema maduro, componentes reutilizáveis |
 | Orquestração | Prefect (futuro) / cron (MVP) | Simplicidade no MVP, migração fácil |
-| LLM | Claude API | Qualidade em PT-BR, instruction following |
+|| LLM | Gemini 3.1 Pro (Vertex AI) | 1M contexto, forte em PT-BR, coberto por créditos GCP |
 
 ## Segurança
 
