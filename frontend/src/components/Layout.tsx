@@ -2,6 +2,8 @@ import { NavLink, Outlet } from "react-router-dom";
 
 const links = [
   { to: "/", label: "Visão Geral", icon: "◉" },
+  { to: "/orcamento", label: "Orçamento", icon: "📊" },
+  { to: "/lrf", label: "Indicadores LRF", icon: "🌡" },
   { to: "/contratacoes", label: "Contratações", icon: "📋" },
   { to: "/contratos", label: "Contratos", icon: "📄" },
   { to: "/fornecedores", label: "Fornecedores", icon: "🏢" },
