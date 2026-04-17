@@ -156,3 +156,113 @@ SAMPLE_RREO_ITEM = {
 @pytest.fixture
 def rreo_item():
     return SAMPLE_RREO_ITEM.copy()
+
+
+# ────────────────────────────────────────
+# Fixtures: payloads IBGE simulados
+# ────────────────────────────────────────
+
+# Capturado de /v1/localidades/municipios/2918001
+SAMPLE_IBGE_MUNICIPIO = {
+    "id": 2918001,
+    "nome": "Jequié",
+    "microrregiao": {
+        "id": 29024,
+        "nome": "Jequié",
+        "mesorregiao": {
+            "id": 2906,
+            "nome": "Centro Sul Baiano",
+            "UF": {
+                "id": 29,
+                "sigla": "BA",
+                "nome": "Bahia",
+                "regiao": {"id": 2, "sigla": "NE", "nome": "Nordeste"},
+            },
+        },
+    },
+    "regiao-imediata": {
+        "id": 290012,
+        "nome": "Jequié",
+        "regiao-intermediaria": {
+            "id": 2904,
+            "nome": "Vitória da Conquista",
+            "UF": {"id": 29, "sigla": "BA", "nome": "Bahia"},
+        },
+    },
+}
+
+# Payload SIDRA simplificado (estrutura real da v3, dados reais de Jequié).
+SAMPLE_IBGE_POPULACAO = [
+    {
+        "id": "9324",
+        "variavel": "População residente estimada",
+        "unidade": "Pessoas",
+        "resultados": [
+            {
+                "classificacoes": [],
+                "series": [
+                    {
+                        "localidade": {
+                            "id": "2918001",
+                            "nivel": {"id": "N6", "nome": "Município"},
+                            "nome": "Jequié (BA)",
+                        },
+                        "serie": {
+                            "2020": "156126",
+                            "2021": "156277",
+                            "2024": "168733",
+                        },
+                    }
+                ],
+            }
+        ],
+    }
+]
+
+SAMPLE_IBGE_PIB = [
+    {
+        "id": "37",
+        "variavel": "Produto Interno Bruto a preços correntes",
+        "unidade": "Mil Reais",
+        "resultados": [
+            {
+                "classificacoes": [],
+                "series": [
+                    {
+                        "localidade": {
+                            "id": "2918001",
+                            "nivel": {"id": "N6", "nome": "Município"},
+                            "nome": "Jequié (BA)",
+                        },
+                        "serie": {
+                            "2020": "2569664",
+                            "2021": "3175607",
+                            "2023": "3882707",
+                        },
+                    }
+                ],
+            }
+        ],
+    }
+]
+
+
+@pytest.fixture
+def ibge_municipio():
+    import copy
+
+    return copy.deepcopy(SAMPLE_IBGE_MUNICIPIO)
+
+
+@pytest.fixture
+def ibge_populacao():
+    import copy
+
+    return copy.deepcopy(SAMPLE_IBGE_POPULACAO)
+
+
+@pytest.fixture
+def ibge_pib():
+    import copy
+
+    return copy.deepcopy(SAMPLE_IBGE_PIB)

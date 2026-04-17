@@ -90,3 +90,48 @@ class ExecucaoOrcamentaria(Base):
         ),
         Index("ix_exec_orc_exerc_anexo", "exercicio", "anexo"),
     )
+
+
+class DadosMunicipio(Base):
+    """
+    Dados contextuais (população, PIB) do município em um exercício.
+
+    Fonte principal: IBGE (SIDRA) + metadados de `/v1/localidades/municipios`.
+    Uma linha por (orgao, exercício) — permite séries históricas e
+    cálculos per capita cruzando com `execucao_orcamentaria`.
+    """
+
+    __tablename__ = "dados_municipio"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+
+    orgao_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("orgaos.id"), index=True)
+    orgao: Mapped[Orgao] = relationship()
+    codigo_ibge: Mapped[str] = mapped_column(String(7), index=True)
+
+    exercicio: Mapped[int] = mapped_column(Integer, index=True)
+
+    # Metadados do município
+    nome_municipio: Mapped[str | None] = mapped_column(String(255))
+    uf: Mapped[str | None] = mapped_column(String(2))
+
+    # Dados socioeconômicos
+    populacao: Mapped[int | None] = mapped_column(Integer)
+    pib_corrente: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
+    pib_per_capita: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
+
+    # Rastreabilidade
+    fonte: Mapped[str] = mapped_column(String(20))  # IBGE
+    dados_brutos: Mapped[str | None] = mapped_column(Text)
+    ingerido_em: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        Index("ix_dados_mun_unique", "orgao_id", "exercicio", unique=True),
+    )
