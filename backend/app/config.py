@@ -28,6 +28,13 @@ class Settings(BaseSettings):
     pncp_base_url: str = "https://pncp.gov.br/api/consulta/v1"
     pncp_cnpj_jequie: str = "13894878000160"
 
+    # SICONFI (Tesouro Nacional)
+    siconfi_base_url: str = "https://apidatalake.tesouro.gov.br/ords/siconfi/tt"
+    siconfi_id_ente_jequie: str = "2918001"  # código IBGE de Jequié - BA
+
+    # IBGE
+    ibge_base_url: str = "https://servicodados.ibge.gov.br/api"
+
     # Google Cloud / Gemini (RAG)
     gcp_project_id: str = ""
     gcp_location: str = "us-central1"

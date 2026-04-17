@@ -4,6 +4,8 @@ import Dashboard from "@/pages/Dashboard";
 import Contratacoes from "@/pages/Contratacoes";
 import Contratos from "@/pages/Contratos";
 import Fornecedores from "@/pages/Fornecedores";
+import IndicadoresLRF from "@/pages/IndicadoresLRF";
+import Orcamento from "@/pages/Orcamento";
 
 export default function App() {
   return (
@@ -11,6 +13,8 @@ export default function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<Dashboard />} />
+          <Route path="orcamento" element={<Orcamento />} />
+          <Route path="lrf" element={<IndicadoresLRF />} />
           <Route path="contratacoes" element={<Contratacoes />} />
           <Route path="contratos" element={<Contratos />} />
           <Route path="fornecedores" element={<Fornecedores />} />

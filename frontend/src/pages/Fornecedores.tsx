@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { useFornecedores } from "@/api/hooks";
+import SearchInput from "@/components/SearchInput";
+import Pagination from "@/components/Pagination";
+import TableSkeleton from "@/components/TableSkeleton";
 
 export default function Fornecedores() {
   const [busca, setBusca] = useState("");
@@ -14,51 +17,60 @@ export default function Fornecedores() {
   const totalPaginas = data ? Math.ceil(data.total / 20) : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-up">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Fornecedores</h1>
-        <p className="text-text-secondary text-sm mt-1">
-          {data ? `${data.total} empresas cadastradas` : "Carregando..."}
+        <h1 className="font-display text-4xl tracking-tight text-text-primary">
+          Fornecedores
+        </h1>
+        <p className="text-text-secondary text-sm mt-2">
+          {data ? (
+            <>
+              <span className="font-mono tabular-nums text-text-primary">
+                {data.total.toLocaleString("pt-BR")}
+              </span>{" "}
+              empresas cadastradas
+            </>
+          ) : (
+            "Carregando…"
+          )}
         </p>
       </div>
 
-      <input
-        type="text"
-        placeholder="Buscar por nome ou CNPJ..."
+      <SearchInput
+        placeholder="Buscar por nome ou CNPJ…"
         value={busca}
-        onChange={(e) => {
-          setBusca(e.target.value);
+        onChange={(v) => {
+          setBusca(v);
           setPagina(1);
         }}
-        className="w-full max-w-md bg-surface-raised border border-border rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-lente-500"
       />
 
-      <div className="bg-surface-raised border border-border rounded-xl overflow-hidden">
+      <div className="bg-surface-raised/60 border border-border rounded-xl overflow-hidden backdrop-blur-sm">
         {isLoading ? (
-          <p className="p-5 text-text-muted text-sm">Carregando...</p>
+          <TableSkeleton columns={3} rows={6} />
         ) : (
-          <table className="w-full text-sm">
+          <table className="tbl">
             <thead>
-              <tr className="text-left text-text-muted text-xs uppercase tracking-wider border-b border-border">
-                <th className="px-5 py-3">CNPJ / CPF</th>
-                <th className="px-5 py-3">Nome</th>
-                <th className="px-5 py-3">Tipo</th>
+              <tr>
+                <th>CNPJ / CPF</th>
+                <th>Nome</th>
+                <th>Tipo</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody>
               {data?.dados.map((f) => (
-                <tr key={f.id} className="hover:bg-surface-overlay/30 transition-colors">
-                  <td className="px-5 py-3 font-mono text-xs text-text-secondary">
+                <tr key={f.id}>
+                  <td className="font-mono text-xs text-text-secondary">
                     {f.cpf_cnpj}
                   </td>
-                  <td className="px-5 py-3">{f.nome}</td>
-                  <td className="px-5 py-3">
+                  <td>{f.nome}</td>
+                  <td>
                     {f.tipo && (
-                      <span className={`inline-block px-2 py-0.5 rounded text-xs ${
-                        f.tipo === "PJ"
-                          ? "bg-lente-800 text-lente-200"
-                          : "bg-accent-500/20 text-accent-400"
-                      }`}>
+                      <span
+                        className={`badge ${
+                          f.tipo === "PJ" ? "badge-neutral" : "badge-accent"
+                        }`}
+                      >
                         {f.tipo}
                       </span>
                     )}
@@ -70,27 +82,11 @@ export default function Fornecedores() {
         )}
       </div>
 
-      {totalPaginas > 1 && (
-        <div className="flex items-center justify-center gap-2 text-sm">
-          <button
-            onClick={() => setPagina((p) => Math.max(1, p - 1))}
-            disabled={pagina === 1}
-            className="px-3 py-1.5 rounded bg-surface-raised border border-border text-text-secondary hover:text-text-primary disabled:opacity-40"
-          >
-            Anterior
-          </button>
-          <span className="text-text-muted">
-            {pagina} / {totalPaginas}
-          </span>
-          <button
-            onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
-            disabled={pagina >= totalPaginas}
-            className="px-3 py-1.5 rounded bg-surface-raised border border-border text-text-secondary hover:text-text-primary disabled:opacity-40"
-          >
-            Próximo
-          </button>
-        </div>
-      )}
+      <Pagination
+        pagina={pagina}
+        totalPaginas={totalPaginas}
+        onChange={setPagina}
+      />
     </div>
   );
 }

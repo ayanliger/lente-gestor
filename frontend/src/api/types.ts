@@ -37,6 +37,69 @@ export interface Contratacao {
   created_at: string;
 }
 
+export interface ExecucaoOrcamentaria {
+  id: string;
+  exercicio: number;
+  periodo: number | null;
+  periodicidade: string | null;
+  tipo_relatorio: string;
+  anexo: string;
+  rotulo: string | null;
+  coluna: string;
+  cod_conta: string;
+  conta: string;
+  valor: number | null;
+  orgao_id: string;
+  cod_ibge: string;
+  fonte: string;
+  ingerido_em: string;
+}
+
+export interface ResumoFuncao {
+  funcao: string;
+  dotacao_inicial: number | null;
+  dotacao_atualizada: number | null;
+  empenhado: number | null;
+  liquidado: number | null;
+  saldo: number | null;
+}
+
+export type SituacaoIndicador =
+  | "OK"
+  | "ALERTA"
+  | "EXCEDIDO"
+  | "ABAIXO_MINIMO"
+  | "SEM_DADO";
+
+export interface IndicadorFiscal {
+  id: string;
+  exercicio: number;
+  periodo: number | null;
+  codigo: string;
+  descricao: string;
+  unidade: string;
+  valor: number | null;
+  limite_legal: number | null;
+  situacao: SituacaoIndicador;
+  fonte_relatorio: string;
+  fonte_exercicio: number | null;
+  fonte_periodo: number | null;
+  calculado_em: string;
+}
+
+export interface DadosMunicipio {
+  id: string;
+  codigo_ibge: string;
+  exercicio: number;
+  nome_municipio: string | null;
+  uf: string | null;
+  populacao: number | null;
+  pib_corrente: number | null;
+  pib_per_capita: number | null;
+  fonte: string;
+  ingerido_em: string;
+}
+
 export interface Contrato {
   id: string;
   pncp_id: string | null;

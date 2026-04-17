@@ -152,3 +152,78 @@ class ItemPCAOut(BaseModel):
 
 # Resolver forward reference
 ContratacaoDetail.model_rebuild()
+
+
+# ────────────────────────────────────────
+# Orçamento (RREO/RGF) — Fase 4
+# ────────────────────────────────────────
+
+
+class ExecucaoOrcamentariaOut(BaseModel):
+    """Uma célula do RREO/RGF em formato longo."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    exercicio: int
+    periodo: int | None = None
+    periodicidade: str | None = None
+    tipo_relatorio: str
+    anexo: str
+    rotulo: str | None = None
+    coluna: str
+    cod_conta: str
+    conta: str
+    valor: float | None = None
+    orgao_id: uuid.UUID
+    cod_ibge: str
+    fonte: str
+    ingerido_em: datetime
+
+
+class ResumoFuncaoOut(BaseModel):
+    """Resumo de execução por função (agregado a partir do RREO-Anexo 02)."""
+
+    funcao: str
+    dotacao_inicial: float | None = None
+    dotacao_atualizada: float | None = None
+    empenhado: float | None = None
+    liquidado: float | None = None
+    saldo: float | None = None
+
+
+class IndicadorFiscalOut(BaseModel):
+    """Indicador fiscal derivado (LRF ou mínimo constitucional)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    exercicio: int
+    periodo: int | None = None
+    codigo: str
+    descricao: str
+    unidade: str
+    valor: float | None = None
+    limite_legal: float | None = None
+    situacao: str
+    fonte_relatorio: str
+    fonte_exercicio: int | None = None
+    fonte_periodo: int | None = None
+    calculado_em: datetime
+
+
+class DadosMunicipioOut(BaseModel):
+    """Dados contextuais do município em um exercício."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    codigo_ibge: str
+    exercicio: int
+    nome_municipio: str | None = None
+    uf: str | None = None
+    populacao: int | None = None
+    pib_corrente: float | None = None
+    pib_per_capita: float | None = None
+    fonte: str
+    ingerido_em: datetime
