@@ -25,10 +25,14 @@ Plataforma digital que funciona como **camada de inteligência sobre dados públ
 | Schema do banco + migrações Alembic | ✅ Implementado |
 | API REST (FastAPI) | ✅ Implementado |
 | Pipeline de ingestão PNCP | ✅ Implementado |
-| Frontend React (dashboards base) | ✅ Implementado |
-| Testes automatizados (backend) | ✅ 36 testes passando |
-| Camada RAG (Gemini + pgvector) | 🔧 Em desenvolvimento |
-| Conectores Portal Transparência + TCM-BA | 📋 Próximo |
+| Conector SICONFI (RREO/RGF/DCA) | ✅ Implementado |
+| Conector IBGE (população + PIB municipal) | ✅ Implementado |
+| Indicadores LRF + mínimos constitucionais | ✅ Implementado |
+| Frontend React (painel orçamento-first + LRF) | ✅ Implementado |
+| Testes automatizados (backend) | ✅ 83 testes passando |
+| Deploy em Google Cloud (Cloud Run + Cloud SQL) | 🔧 Próximo |
+| Camada RAG (Gemini + pgvector) | 🔧 Próximo |
+| Conectores Portal Transparência + TCM-BA | 📋 Roadmap |
 
 ## Arquitetura da Lente
 
@@ -61,7 +65,7 @@ Para detalhes, ver [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 | **Banco de Dados** | PostgreSQL 16 + pgvector |
 | **IA / RAG** | Gemini 3.1 Pro (Vertex AI), Gemini Embedding 2 (`gemini-embedding-2-preview`), pgvector |
 | **Ingestão** | httpx (async), tenacity (retry), structlog, BeautifulSoup/lxml |
-| **Testes** | pytest + pytest-asyncio, 36 testes cobrindo ingestão e rotas |
+| **Testes** | pytest + pytest-asyncio, 83 testes cobrindo conectores, ingestão e rotas |
 | **Infra** | Docker, Docker Compose, Google Cloud (Cloud Run, Cloud SQL) |
 
 ## Estrutura do Repositório
@@ -71,35 +75,47 @@ Para detalhes, ver [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 ├── backend/
 │   ├── app/
 │   │   ├── api/
-│   │   │   ├── routes/           # contratacoes, contratos, fornecedores, orgaos, pca
+│   │   │   ├── routes/           # contratacoes, contratos, fornecedores, orgaos,
+│   │   │   │                     # itens_pca, orcamento, municipio
 │   │   │   ├── deps.py           # Dependências (DB session, etc.)
 │   │   │   └── schemas.py        # Schemas Pydantic
 │   │   ├── connectors/
-│   │   │   └── pncp.py           # Cliente async da API do PNCP
+│   │   │   ├── pncp.py           # Cliente async PNCP
+│   │   │   ├── siconfi.py        # Cliente async SICONFI (RREO/RGF/DCA)
+│   │   │   └── ibge.py           # Cliente async IBGE (SIDRA + localidades)
 │   │   ├── db/
 │   │   │   ├── migrations/       # Migrações Alembic
 │   │   │   └── session.py        # Engine e sessão SQLAlchemy async
 │   │   ├── models/
-│   │   │   └── contratacoes.py   # Orgao, Fornecedor, Contratacao, Contrato, ItemPCA
+│   │   │   ├── contratacoes.py   # Orgao, Fornecedor, Contratacao, Contrato, ItemPCA
+│   │   │   └── orcamento.py      # ExecucaoOrcamentaria, IndicadorFiscal, DadosMunicipio
 │   │   ├── services/
-│   │   │   └── ingestao_pncp.py  # Pipeline de ingestão (normalização + upsert)
+│   │   │   ├── ingestao_pncp.py       # Normalização + upsert PNCP
+│   │   │   ├── ingestao_orcamento.py  # RREO → ExecucaoOrcamentaria
+│   │   │   ├── ingestao_ibge.py       # População + PIB → DadosMunicipio
+│   │   │   └── indicadores_fiscais.py # RGF → IndicadorFiscal (LRF + mínimos)
 │   │   ├── config.py
 │   │   └── main.py
 │   ├── scripts/
-│   │   └── ingest_pncp.py        # CLI para ingestão (make ingest-pncp)
-│   ├── tests/                    # 36 testes (ingestão + rotas)
+│   │   ├── ingest_pncp.py        # make ingest-pncp
+│   │   ├── ingest_orcamento.py   # make ingest-orcamento ano=YYYY
+│   │   ├── ingest_ibge.py        # make ingest-ibge
+│   │   └── ingest_rgf.py         # make ingest-rgf ano=YYYY
+│   ├── tests/                    # 83 testes (conectores, ingestão, rotas)
 │   ├── alembic.ini
 │   ├── pyproject.toml
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/
 │   │   ├── api/                  # Cliente Axios, tipos, hooks React Query
-│   │   ├── components/           # Layout com sidebar
-│   │   ├── pages/                # Dashboard, Contratações, Contratos, Fornecedores
+│   │   ├── components/           # Layout (nav agrupada), ComposicaoBar,
+│   │   │                         # Termometro, Pagination, SearchInput, TableSkeleton
+│   │   ├── pages/                # Dashboard (orçamento-first), Orcamento,
+│   │   │                         # IndicadoresLRF, Contratacoes, Contratos, Fornecedores
 │   │   ├── lib/                  # Utilitários (format BRL, datas)
 │   │   ├── App.tsx               # Rotas
 │   │   ├── main.tsx              # Entry (React Query + Router)
-│   │   └── index.css             # TailwindCSS + design tokens
+│   │   └── index.css             # TailwindCSS + design tokens lente
 │   ├── vite.config.ts            # Proxy /api → backend
 │   └── package.json
 ├── scripts/
@@ -108,9 +124,10 @@ Para detalhes, ver [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── DATA_SOURCES.md
-│   └── DEVELOPMENT.md
+│   ├── DEVELOPMENT.md
+│   └── EXTENSAO_ORCAMENTO.md     # Plano da camada orçamentária (Fases 1-5)
 ├── docker-compose.yml            # PostgreSQL + pgvector
-├── Makefile                      # make dev, db, migrate, test, ingest-pncp, ...
+├── Makefile                      # make dev, db, migrate, test, ingest-*, ...
 ├── .env.example
 └── README.md
 ```
@@ -147,8 +164,11 @@ pip install -e ".[dev]"
 # 5. Execute as migrações
 PYTHONPATH=. alembic upgrade head
 
-# 6. (Opcional) Ingira dados reais do PNCP para Jequié
+# 6. (Opcional) Ingestão de dados reais de Jequié
 PYTHONPATH=. python -m scripts.ingest_pncp --desde 2025-01-01 --ate 2025-06-01
+PYTHONPATH=. python -m scripts.ingest_orcamento --exercicio 2024
+PYTHONPATH=. python -m scripts.ingest_rgf --exercicio 2024
+PYTHONPATH=. python -m scripts.ingest_ibge
 
 # 7. Inicie o servidor de desenvolvimento
 PYTHONPATH=. uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
@@ -166,7 +186,9 @@ npm run dev
 
 ### Backend (FastAPI)
 
-API REST sob `/api/v1` com paginação, busca e filtros:
+API REST sob `/api/v1` com paginação, busca e filtros.
+
+**Contratos e aquisições (PNCP)**
 
 | Endpoint | Descrição |
 |----------|----------|
@@ -179,45 +201,109 @@ API REST sob `/api/v1` com paginação, busca e filtros:
 | `GET /contratos/{id}` | Detalhe com fornecedor e contratação |
 | `GET /pca/` | Itens do Plano de Contratações Anual |
 
+**Orçamento e indicadores fiscais (SICONFI + IBGE)**
+
+| Endpoint | Descrição |
+|----------|----------|
+| `GET /orcamento/execucao` | Células brutas do RREO/RGF com filtros (exercício, período, anexo, conta) |
+| `GET /orcamento/resumo-por-funcao` | Execução por função pivoteada: dotação inicial/atualizada, empenhado, liquidado, saldo |
+| `GET /orcamento/indicadores` | Indicadores LRF + mínimos constitucionais com situação derivada e limite legal |
+| `GET /municipio/dados` | Dados contextuais do IBGE (população, PIB, PIB per capita) — série histórica ou por exercício |
+
 ### Pipeline de Ingestão
 
-Cliente async do PNCP com retry exponencial, paginação automática e normalização:
+Quatro pipelines assíncronos com retry exponencial, paginação automática e preservação do JSON bruto para auditoria:
 
-- Busca contratações por modalidade (Concorrência, Pregão, Inexigibilidade, Dispensa)
-- Busca contratos firmados no período (respeita limite de 365 dias da API)
-- Upsert de órgãos e fornecedores por CNPJ
-- Vincula contratos à contratação de origem via `numeroControlePncpCompra`
-- Preserva JSON bruto do PNCP para auditoria
+- **PNCP** — contratações, contratos e PCA; upsert de órgãos e fornecedores por CNPJ; vinculação contratação ↔ contrato via `numeroControlePncpCompra`
+- **SICONFI RREO** — ingestão bimestral da execução orçamentária em `ExecucaoOrcamentaria` (formato longo espelhando 1:1 a API do Tesouro, conforme ADR em `docs/EXTENSAO_ORCAMENTO.md`)
+- **SICONFI RGF** — derivação dos 7 indicadores principais da LRF + mínimos de saúde/educação; cálculo de situação (`OK`/`ALERTA`/`EXCEDIDO`/`ABAIXO_MINIMO`) ainda na ingestão
+- **IBGE** — metadados do município, série de população estimada (SIDRA 6579) e PIB municipal (SIDRA 5938)
 
 ### Frontend (React)
 
-- **Dashboard**: KPIs (contratações, contratos, fornecedores, contratos vencendo) + tabela de contratos com vencimento próximo
-- **Contratações**: tabela paginada com busca por objeto, badges de modalidade
-- **Contratos**: tabela paginada com destaque visual para vencimentos próximos
-- **Fornecedores**: busca por nome/CNPJ, badges PF/PJ
+Layout com navegação agrupada: **Orçamento** como seção primária (heading em âmbar) e **Contratos & Aquisições** como grupo secundário (tipografia menor, após divisor).
+
+- **Visão Geral** — painel orçamento-first com seletor de exercício/bimestre, hero com dotação/empenhado/% execução (tom da cor acompanha a situação), composição da despesa por função em barras gradiente, resumo da situação fiscal (cards LRF), painel consolidado de alertas (EXCEDIDO / ABAIXO_MINIMO / ALERTA + contratos vencendo) e faixa secundária de contratos
+- **Execução** — execução detalhada por função de governo (RREO-Anexo 02): gráfico comparativo dotação × empenhado e tabela com % de execução por função
+- **Indicadores LRF** — cards por indicador com termômetro animado, marcador de alerta a 90%, faixa de excesso listrada e referência legal (LRF / CF)
+- **Contratações** — tabela paginada com busca por objeto e badges de modalidade
+- **Contratos** — tabela paginada com destaque visual para vencimentos em 90 dias
+- **Fornecedores** — busca por nome/CNPJ, badges PF/PJ
 
 ## Comandos Úteis
 
 ```bash
-make db              # Sobe PostgreSQL + pgvector
-make dev             # Servidor backend em modo reload
-make migrate         # Aplica migrações pendentes
-make migrate-new msg="..."  # Nova migração a partir dos modelos
-make ingest-pncp     # Ingestão de dados do PNCP
-make test            # Executa testes (36 testes)
-make lint            # ruff check
-make format          # ruff format
+make db                        # Sobe PostgreSQL + pgvector
+make dev                       # Servidor backend em modo reload
+make migrate                   # Aplica migrações pendentes
+make migrate-new msg="..."     # Nova migração a partir dos modelos
+make ingest-pncp               # Ingestão de dados do PNCP
+make ingest-orcamento ano=AAAA # RREO/SICONFI — execução orçamentária
+make ingest-rgf ano=AAAA       # RGF/SICONFI + indicadores fiscais (LRF)
+make ingest-ibge               # Dados contextuais do IBGE
+make test                      # Executa testes (83 testes)
+make lint                      # ruff check
+make format                    # ruff format
 ```
 
 ## Fontes de Dados
 
-| Fonte | Método | Prioridade |
-|-------|--------|------------|
-| **PNCP** — Contratações, contratos, PCA, atas, NF-e | API REST pública | Máxima |
-| **Portal Transparência Local** — Despesas, receitas, folha | Scraping / acesso direto | Alta |
-| **TCM-BA** — Obras, publicidade, pessoal, educação/saúde | Portal público | Média |
+| Fonte | Método | Status |
+|-------|--------|--------|
+| **PNCP** — Contratações, contratos, PCA, atas, NF-e | API REST pública | ✅ Ingerido |
+| **SICONFI** — RREO, RGF, DCA (Tesouro Nacional) | API REST pública (ORDS) | ✅ Ingerido |
+| **IBGE** — População, PIB, metadados municipais | APIs SIDRA + localidades | ✅ Ingerido |
+| **Portal Transparência Jequié** — Empenhos detalhados, folha | Scraping / acesso direto | 📋 Roadmap |
+| **TCM-BA** — Obras, publicidade, SICOB, SIES | Portal público | 📋 Roadmap |
 
-Detalhes em [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md).
+Detalhes em [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md). Para a camada orçamentária ver [`docs/EXTENSAO_ORCAMENTO.md`](docs/EXTENSAO_ORCAMENTO.md).
+
+## Roadmap
+
+Com as camadas de dados (PNCP + SICONFI + IBGE) ingeridas e o painel orçamentário no frontend, as próximas frentes são **deploy gerenciado** e a **camada de IA/RAG** prometida pela Lente.
+
+### Deploy em Google Cloud
+
+| Componente | Serviço | Observações |
+|------------|---------|-------------|
+| Backend FastAPI | **Cloud Run** | Container stateless, escala a zero; build via Cloud Build a partir de `backend/Dockerfile` |
+| Frontend React | **Cloud Run** (nginx servindo `dist/`) ou **Cloud Storage + CDN** | A decidir — depende da necessidade de SSR, hoje inexistente |
+| Banco de dados | **Cloud SQL for PostgreSQL 16** | `pgvector` habilitado; conexão privada via VPC + Serverless VPC Access |
+| Ingestão agendada | **Cloud Scheduler → Cloud Run Jobs** | Um job por fonte (`ingest_pncp`, `ingest_orcamento`, `ingest_rgf`, `ingest_ibge`) |
+| Segredos | **Secret Manager** | `DATABASE_URL`, credenciais Vertex AI, tokens de terceiros |
+| Infra como código | **Terraform** | Módulos separados para rede, banco, Cloud Run services e jobs |
+| Observabilidade | **Cloud Logging + Cloud Monitoring** | `structlog` já emite JSON; alertas sobre falhas de ingestão |
+
+Entregas previstas:
+
+- `backend/Dockerfile` multi-stage (uv/pip + uvicorn) e `frontend/Dockerfile` (build Vite + nginx)
+- Módulos Terraform em `infra/` + esteira de CI (GitHub Actions) com `plan`/`apply` separados por ambiente (dev, staging, prod)
+- Cloud Run Jobs por ingestão, agendados via Cloud Scheduler com cron por fonte (PNCP diário; SICONFI bimestral/quadrimestral; IBGE anual)
+- Migração Alembic rodando como Cloud Run Job pré-deploy
+- Dashboards de SLO (disponibilidade da API, sucesso de ingestão) e alertas no Cloud Monitoring
+
+### Camada RAG (Gemini + pgvector)
+
+O diferencial estratégico da Lente: responder perguntas em linguagem natural com **rastreabilidade total até a fonte**. A infraestrutura já prevê `pgvector` (`scripts/init-db.sql`) e `gemini-embedding-2-preview` com `gemini-3.1-pro-preview` (`backend/app/config.py`).
+
+Plano de implementação:
+
+1. **Modelagem de documentos** — tabela `documentos_rag` com `conteudo_texto`, `embedding vector(3072)`, `fonte`, `referencia_id` e `metadados JSONB`. Um documento = um registro navegável (contrato, linha de RREO, indicador fiscal, etc.)
+2. **Pipeline de indexação** — serviço `services/rag/indexador.py` que gera chunks + embeddings (Vertex AI) e faz upsert com `ON CONFLICT DO UPDATE` por `(fonte, referencia_id)`. Executado como Cloud Run Job após cada ingestão
+3. **Recuperação híbrida** — `services/rag/recuperacao.py` combinando similaridade vetorial (`<=>` do pgvector) com filtro BM25/ILIKE por metadados. Top-K configurável com score mínimo
+4. **Geração com citação** — `services/rag/gerador.py` usando Gemini 3.1 Pro via Vertex AI; prompt força citação explícita por afirmação (`[fonte:id]`) e recusa quando o contexto recuperado for insuficiente
+5. **API conversacional** — `POST /api/v1/chat` com histórico em sessão e resposta acompanhada de `fontes_citadas[]` (cada uma com link direto para o registro de origem)
+6. **Frontend** — componente de chat com citações clicáveis que abrem o registro de origem (contrato, célula orçamentária, indicador) em drawer lateral
+7. **Avaliação** — conjunto dourado de perguntas do gestor com respostas esperadas; métricas de recall, precisão de citação e taxa de recusa apropriada
+
+Princípio estrutural: **sem fonte, sem resposta**. O modelo é instruído a recusar quando os documentos recuperados não respaldam a afirmação, preservando accountability como valor central do produto.
+
+### Conectores adicionais
+
+Após GCP + RAG estabilizados, a cobertura de dados é estendida com:
+
+- **Portal de Transparência de Jequié** — empenhos individuais, folha detalhada; complementa o SICONFI com granularidade por liquidação
+- **TCM-BA** — SICOB (obras), SIP (publicidade), SAPPE (pessoal), SIES (educação/saúde)
 
 ## Modelo de Entrada no Mercado
 
