@@ -1,6 +1,38 @@
 import { NavLink, Outlet } from "react-router-dom";
+import { useTheme } from "@/lib/theme";
 
 type NavIcon = (props: { className?: string }) => React.ReactElement;
+
+const IconSun: NavIcon = ({ className }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.6}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden
+  >
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+  </svg>
+);
+
+const IconMoon: NavIcon = ({ className }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.6}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden
+  >
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
+  </svg>
+);
 
 const IconChat: NavIcon = ({ className }) => (
   <svg
@@ -155,23 +187,26 @@ const navGroups: { heading: string; tone: "primary" | "secondary"; links: NavLin
 ];
 
 export default function Layout() {
+  const { theme, toggle } = useTheme();
+  const isDark = theme === "dark";
+
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-64 shrink-0 bg-lente-900/95 border-r border-border/80 flex flex-col backdrop-blur-sm relative">
-        {/* ambient accent */}
+      <aside className="w-64 shrink-0 bg-surface-raised border-r border-border flex flex-col relative">
+        {/* acento ambiente — aura âmbar muito sutil no canto superior */}
         <div
-          className="pointer-events-none absolute inset-0 opacity-40"
+          className="pointer-events-none absolute inset-0 opacity-60"
           style={{
             backgroundImage:
-              "radial-gradient(600px 300px at 0% 0%, rgba(230,168,23,0.10), transparent 70%)",
+              "radial-gradient(540px 260px at 0% 0%, rgba(230,168,23,0.08), transparent 70%)",
           }}
           aria-hidden
         />
 
-        <div className="relative p-6 border-b border-border/60">
+        <div className="relative p-6 border-b border-border">
           <div className="flex items-baseline gap-2">
-            <span className="font-display text-3xl leading-none text-accent-400">
+            <span className="font-display text-3xl leading-none text-accent-ink">
               Lente
             </span>
             <span
@@ -190,11 +225,11 @@ export default function Layout() {
             return (
               <div
                 key={group.heading}
-                className={groupIdx > 0 ? "mt-6 pt-5 border-t border-border/50" : ""}
+                className={groupIdx > 0 ? "mt-6 pt-5 border-t border-border" : ""}
               >
                 <p
                   className={`px-4 mb-2 text-[10px] font-mono uppercase tracking-[0.22em] ${
-                    isSecondary ? "text-text-muted/70" : "text-accent-400/80"
+                    isSecondary ? "text-text-muted" : "text-accent-ink"
                   }`}
                 >
                   {group.heading}
@@ -206,22 +241,22 @@ export default function Layout() {
                         to={to}
                         end={to === "/"}
                         className={({ isActive }) =>
-                          `group relative flex items-center gap-3 pl-4 pr-3 rounded-lg transition-all ${
+                          `group relative flex items-center gap-3 pl-4 pr-3 rounded-lg transition-colors ${
                             isSecondary ? "py-2 text-[13px]" : "py-2.5 text-sm"
                           } ${
                             isActive
-                              ? "bg-lente-800/70 text-text-primary font-medium"
-                              : "text-text-secondary hover:bg-lente-800/40 hover:text-text-primary"
+                              ? "bg-surface-overlay text-text-primary font-medium"
+                              : "text-text-secondary hover:bg-surface-overlay hover:text-text-primary"
                           }`
                         }
                       >
                         {({ isActive }) => (
                           <>
                             <span
-                              className={`absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full transition-all ${
+                              className={`absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full transition-colors ${
                                 isActive
-                                  ? "bg-accent-500 shadow-[0_0_12px_rgba(230,168,23,0.6)]"
-                                  : "bg-transparent group-hover:bg-lente-500/50"
+                                  ? "bg-accent-500 shadow-[0_0_10px_rgba(230,168,23,0.45)]"
+                                  : "bg-transparent group-hover:bg-accent-500/50"
                               }`}
                               aria-hidden
                             />
@@ -230,10 +265,8 @@ export default function Layout() {
                                 isSecondary ? "h-3.5 w-3.5" : "h-4 w-4"
                               } ${
                                 isActive
-                                  ? "text-accent-400"
-                                  : isSecondary
-                                    ? "text-text-muted/70 group-hover:text-text-secondary"
-                                    : "text-text-muted group-hover:text-text-secondary"
+                                  ? "text-accent-500"
+                                  : "text-text-muted group-hover:text-text-secondary"
                               }`}
                             />
                             <span className="truncate">{label}</span>
@@ -248,13 +281,37 @@ export default function Layout() {
           })}
         </nav>
 
-        <div className="relative p-4 border-t border-border/60 space-y-1">
-          <p className="text-[10px] text-text-muted uppercase tracking-[0.2em] font-mono">
-            Município
-          </p>
-          <p className="text-sm text-text-primary font-medium">
-            Jequié <span className="text-text-muted font-normal">· BA</span>
-          </p>
+        <div className="relative p-4 border-t border-border space-y-3">
+          <div>
+            <p className="text-[10px] text-text-muted uppercase tracking-[0.2em] font-mono">
+              Município
+            </p>
+            <p className="text-sm text-text-primary font-medium">
+              Jequié <span className="text-text-muted font-normal">· BA</span>
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label={isDark ? "Mudar para tema claro" : "Mudar para tema escuro"}
+            aria-pressed={isDark}
+            className="group w-full flex items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-[11px] font-mono uppercase tracking-[0.18em] text-text-muted transition-colors hover:border-accent-500/40 hover:text-text-primary"
+          >
+            <span className="flex items-center gap-2">
+              {isDark ? (
+                <IconMoon className="h-3.5 w-3.5 text-accent-500" />
+              ) : (
+                <IconSun className="h-3.5 w-3.5 text-accent-500" />
+              )}
+              <span>{isDark ? "escuro" : "claro"}</span>
+            </span>
+            <span
+              className="text-text-muted group-hover:text-accent-ink transition-colors"
+              aria-hidden
+            >
+              {isDark ? "→ claro" : "→ escuro"}
+            </span>
+          </button>
         </div>
       </aside>
 

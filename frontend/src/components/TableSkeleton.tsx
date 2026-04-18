@@ -26,7 +26,7 @@ export default function TableSkeleton({
   return (
     <div aria-busy aria-live="polite" aria-label="Carregando">
       {/* Header shimmer */}
-      <div className="flex gap-6 border-b border-border bg-surface-overlay/20 px-5 py-3">
+      <div className="flex gap-6 border-b border-border bg-surface-overlay/60 px-5 py-3">
         {columnWidths.map((w, i) => (
           <div key={i} className={`skeleton h-2.5 ${w}`} />
         ))}

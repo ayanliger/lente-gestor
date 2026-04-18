@@ -84,18 +84,18 @@ function FonteDrawer({
   return (
     <div className="fixed inset-0 z-50 flex">
       <div
-        className="flex-1 bg-surface/70 backdrop-blur-sm"
+        className="flex-1 bg-surface/80 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden
       />
       <aside
-        className="w-full max-w-md overflow-y-auto bg-surface-raised border-l border-border p-6 animate-fade-up"
+        className="w-full max-w-md overflow-y-auto bg-surface-raised border-l border-border p-6 animate-fade-up shadow-2xl"
         role="dialog"
         aria-label="Detalhes da fonte"
       >
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-accent-400/80">
+            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-accent-ink">
               Fonte [{fonte.indice}] · {rotuloFonte(fonte.fonte)}
             </p>
             <h3 className="font-display text-lg text-text-primary mt-1 leading-tight">
@@ -139,7 +139,7 @@ function FonteDrawer({
           {linkOrigem && (
             <a
               href={linkOrigem}
-              className="inline-flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-accent-400 hover:text-accent-300 transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-accent-ink hover:text-accent-500 transition-colors"
             >
               abrir página de origem →
             </a>
@@ -161,7 +161,7 @@ function Chip({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center justify-center h-5 min-w-[22px] px-1.5 mx-0.5 rounded-md bg-accent-500/20 border border-accent-500/40 text-[11px] font-mono text-accent-300 hover:bg-accent-500/30 hover:text-accent-200 transition-colors align-baseline"
+      className="inline-flex items-center justify-center h-5 min-w-[22px] px-1.5 mx-0.5 rounded-md bg-accent-500/15 border border-accent-500/45 text-[11px] font-mono text-accent-ink hover:bg-accent-500/25 hover:text-accent-500 transition-colors align-baseline"
       title={fonte.titulo}
     >
       {fonte.indice}
@@ -178,7 +178,7 @@ function MensagemUsuario({
 }) {
   return (
     <div className="flex flex-col items-end gap-1">
-      <div className="max-w-[80%] bg-lente-700/70 border border-lente-500/40 rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm text-text-primary whitespace-pre-wrap">
+      <div className="max-w-[80%] bg-accent-500/12 border border-accent-500/40 rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm text-text-primary whitespace-pre-wrap">
         {texto}
       </div>
       <span className="text-[10px] font-mono text-text-muted mr-2">
@@ -224,7 +224,7 @@ function MensagemAssistente({
 
   return (
     <div className="flex flex-col items-start gap-1">
-      <div className="max-w-[85%] bg-surface-raised/70 border border-border rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-text-primary leading-relaxed">
+      <div className="max-w-[85%] bg-surface-raised border border-border rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-text-primary leading-relaxed">
         <p className="whitespace-pre-wrap">
           {segmentos.map((s, i) =>
             s.tipo === "texto" ? (
@@ -246,9 +246,9 @@ function MensagemAssistente({
         </p>
 
         {mensagem.fontes && mensagem.fontes.length > 0 && (
-          <div className="mt-4 pt-3 border-t border-border/60">
+          <div className="mt-4 pt-3 border-t border-border">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-mono uppercase tracking-[0.22em] text-accent-400/80">
+              <span className="text-[10px] font-mono uppercase tracking-[0.22em] text-accent-ink">
                 Fontes citadas
               </span>
               <span className="text-[10px] font-mono text-text-muted">
@@ -262,13 +262,13 @@ function MensagemAssistente({
                   <button
                     type="button"
                     onClick={() => onAbrirFonte(f)}
-                    className="group w-full flex items-start gap-2.5 rounded-lg border border-border/60 bg-surface-overlay/20 px-3 py-2 text-left transition-all hover:border-accent-500/40 hover:bg-lente-800/30"
+                    className="group w-full flex items-start gap-2.5 rounded-lg border border-border bg-surface-overlay/50 px-3 py-2 text-left transition-colors hover:border-accent-500/45 hover:bg-surface-overlay"
                   >
-                    <span className="mt-0.5 shrink-0 inline-flex items-center justify-center h-5 min-w-[22px] px-1.5 rounded-md bg-accent-500/20 border border-accent-500/40 text-[10.5px] font-mono text-accent-300">
+                    <span className="mt-0.5 shrink-0 inline-flex items-center justify-center h-5 min-w-[22px] px-1.5 rounded-md bg-accent-500/15 border border-accent-500/45 text-[10.5px] font-mono text-accent-ink">
                       {f.indice}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[12.5px] text-text-primary group-hover:text-accent-300 transition-colors leading-snug">
+                      <span className="block text-[12.5px] text-text-primary group-hover:text-accent-ink transition-colors leading-snug">
                         {f.titulo}
                       </span>
                       <span className="block text-[10.5px] font-mono text-text-muted mt-0.5">
@@ -276,7 +276,7 @@ function MensagemAssistente({
                       </span>
                     </span>
                     <span
-                      className="shrink-0 self-center text-text-muted group-hover:text-accent-400 group-hover:translate-x-0.5 transition-all"
+                      className="shrink-0 self-center text-text-muted group-hover:text-accent-ink group-hover:translate-x-0.5 transition-all"
                       aria-hidden
                     >
                       →
@@ -375,8 +375,8 @@ export default function Assistente() {
 
   return (
     <div className="h-full flex flex-col animate-fade-up">
-      <header className="pb-6 border-b border-border/60">
-        <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-accent-400/80 mb-2">
+      <header className="pb-6 border-b border-border">
+        <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-accent-ink mb-2">
           Assistente
         </p>
         <h1 className="font-display text-3xl md:text-4xl tracking-tight text-text-primary leading-[1.05]">
@@ -403,7 +403,7 @@ export default function Assistente() {
                   key={s}
                   type="button"
                   onClick={() => setEntrada(s)}
-                  className="text-left text-sm text-text-secondary bg-surface-raised/40 border border-border hover:border-lente-500/40 hover:bg-lente-800/20 hover:text-text-primary transition-all rounded-lg px-4 py-2.5"
+                  className="text-left text-sm text-text-secondary bg-surface-raised border border-border hover:border-accent-500/45 hover:bg-surface-overlay hover:text-text-primary transition-colors rounded-lg px-4 py-2.5"
                 >
                   {s}
                 </button>
@@ -430,7 +430,7 @@ export default function Assistente() {
 
         {chat.isPending && (
           <div className="flex justify-start">
-            <div className="bg-surface-raised/60 border border-border rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-text-muted flex items-center gap-2">
+            <div className="bg-surface-raised border border-border rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-text-muted flex items-center gap-2">
               <span className="h-1.5 w-1.5 rounded-full bg-accent-500 animate-pulse" />
               pensando…
             </div>
@@ -439,7 +439,7 @@ export default function Assistente() {
       </div>
 
       {/* Input fixo embaixo */}
-      <div className="pt-4 border-t border-border/60">
+      <div className="pt-4 border-t border-border">
         <div className="flex items-stretch gap-3">
           <textarea
             value={entrada}
@@ -458,7 +458,7 @@ export default function Assistente() {
             type="button"
             onClick={enviar}
             disabled={desabilitado}
-            className="shrink-0 w-28 rounded-lg bg-accent-500 text-surface font-semibold text-sm tracking-wide hover:bg-accent-400 disabled:bg-surface-overlay disabled:text-text-muted disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1.5"
+            className="shrink-0 w-28 rounded-lg bg-accent-500 text-lente-900 font-semibold text-sm tracking-wide hover:bg-accent-400 disabled:bg-surface-overlay disabled:text-text-muted disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1.5"
           >
             <span>Enviar</span>
             <span aria-hidden>→</span>

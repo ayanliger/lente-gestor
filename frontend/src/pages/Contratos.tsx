@@ -56,7 +56,7 @@ export default function Contratos() {
         }}
       />
 
-      <div className="bg-surface-raised/60 border border-border rounded-xl overflow-hidden backdrop-blur-sm">
+      <div className="bg-surface-raised border border-border rounded-xl overflow-hidden">
         {isLoading ? (
           <TableSkeleton columns={5} rows={6} />
         ) : (
@@ -98,6 +98,7 @@ export default function Contratos() {
                           ? "text-warning-500 font-medium"
                           : "text-text-secondary"
                       }`}
+                      title={vencendo ? "Vencendo em até 90 dias" : undefined}
                     >
                       {formatDate(c.data_fim_vigencia)}
                     </td>

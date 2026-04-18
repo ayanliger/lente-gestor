@@ -11,19 +11,21 @@ import {
 import type { IndicadorFiscal } from "@/api/types";
 import ComposicaoBar from "@/components/ComposicaoBar";
 import { formatBRL } from "@/lib/format";
+import { useChartTokens, type ChartTokens } from "@/lib/theme";
 
-// Paleta curada para a composição de despesa — cores distintas por linha,
-// mas dentro de uma família harmônica com o tema lente (frios + âmbar +
-// verde e laranja como pólo de ancoragem).
-const PALETA_DESPESA = [
-  "#e6a817", // accent-500 — destaque #1
-  "#4a7fbe", // lente-400
-  "#16a34a", // success-500
-  "#7ba3d4", // lente-300
-  "#d97706", // warning-500
-  "#b0c9e8", // lente-200
-];
-const COR_OUTROS = "#6f85a3"; // text-muted
+// Paleta para a composição de despesa — derivada dos tokens do tema:
+// âmbar (acento), neutro escuro, semânticos e variações neutras. Todas
+// trocam automaticamente entre light/dark via `useChartTokens`.
+function paletaDespesa(t: ChartTokens): string[] {
+  return [
+    t.accent, // destaque #1 — âmbar
+    t.neutral, // neutro de alto contraste
+    t.success, // verde semântico
+    t.warning, // laranja semântico
+    t.textSecondary, // cinza médio
+    t.textMuted, // cinza suave
+  ];
+}
 
 const BIMESTRES = [1, 2, 3, 4, 5, 6];
 
@@ -50,7 +52,7 @@ function HeroKpi({
 }) {
   return (
     <div
-      className="relative rounded-xl p-6 border bg-surface-raised/70 border-border backdrop-blur-sm overflow-hidden transition-colors hover:border-lente-500/40"
+      className="relative rounded-xl p-6 border bg-surface-raised border-border overflow-hidden transition-colors hover:border-accent-500/40"
     >
       {/* barra superior colorida identificando a métrica */}
       <span
@@ -176,7 +178,7 @@ function StatTileLink({
   return (
     <Link
       to={to}
-      className="group flex flex-col justify-between gap-3 rounded-lg border border-border/80 bg-surface-raised/40 px-4 py-4 transition-all hover:border-lente-500/40 hover:bg-lente-800/20"
+      className="group flex flex-col justify-between gap-3 rounded-lg border border-border bg-surface-raised px-4 py-4 transition-colors hover:border-accent-500/40 hover:bg-surface-overlay"
     >
       <div>
         <p className="text-text-muted text-[10px] uppercase tracking-[0.18em]">
@@ -213,6 +215,9 @@ export default function Dashboard() {
   const fornecedores = useFornecedores({ tamanho_pagina: 1 });
   const vencendo = useContratosVencendo(90);
 
+  const tokens = useChartTokens();
+  const paleta = useMemo(() => paletaDespesa(tokens), [tokens]);
+
   const { totais, composicao } = useMemo(() => {
     const dados = resumo.data ?? [];
     const totalDotacao = dados.reduce(
@@ -242,13 +247,13 @@ export default function Dashboard() {
     const composicao = top.map((d, i) => ({
       label: d.funcao,
       valor: d.empenhado ?? 0,
-      color: PALETA_DESPESA[i % PALETA_DESPESA.length],
+      color: paleta[i % paleta.length],
     }));
     if (totalOutros > 0) {
       composicao.push({
         label: `Outros (${outros.length})`,
         valor: totalOutros,
-        color: COR_OUTROS,
+        color: tokens.textMuted,
       });
     }
 
@@ -262,7 +267,7 @@ export default function Dashboard() {
       },
       composicao,
     };
-  }, [resumo.data]);
+  }, [resumo.data, paleta, tokens]);
 
   const alertas = useMemo(
     () => derivarAlertas(indicadores.data, vencendo.data?.total ?? 0),
@@ -278,7 +283,7 @@ export default function Dashboard() {
           ? "text-warning-500"
           : totais.pctExecucao >= 60
             ? "text-success-500"
-            : "text-accent-400";
+            : "text-accent-ink";
 
   const totalComposicao = composicao.reduce((a, b) => a + b.valor, 0);
   const loadingOrcamento = resumo.isLoading;
@@ -295,7 +300,7 @@ export default function Dashboard() {
       {/* Header + filtros */}
       <header className="flex flex-wrap items-end justify-between gap-6">
         <div>
-          <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-accent-400/80 mb-2">
+          <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-accent-ink mb-2">
             Painel Municipal
           </p>
           <h1 className="font-display text-4xl md:text-5xl tracking-tight text-text-primary leading-[1.05]">
@@ -367,7 +372,7 @@ export default function Dashboard() {
           label="Dotação atualizada"
           value={loadingOrcamento ? "—" : formatCompactBRL(totais.dotacao)}
           sub="Orçamento aprovado até o bimestre"
-          accentColor="#4a7fbe"
+          accentColor={tokens.neutral}
         />
         <HeroKpi
           label="Empenhado"
@@ -377,8 +382,8 @@ export default function Dashboard() {
               ? "—"
               : `Liquidado: ${formatCompactBRL(totais.liquidado)}`
           }
-          accentColor="#e6a817"
-          valueTone="text-accent-400"
+          accentColor={tokens.accent}
+          valueTone="text-accent-ink"
         />
         <HeroKpi
           label="Execução orçamentária"
@@ -392,7 +397,7 @@ export default function Dashboard() {
               ? "—"
               : `Saldo a executar: ${formatCompactBRL(totais.saldo)}`
           }
-          accentColor="#16a34a"
+          accentColor={tokens.success}
           valueTone={execTone}
         />
       </section>
@@ -400,7 +405,7 @@ export default function Dashboard() {
       {/* Composição da Despesa + LRF strip em duas colunas no desktop */}
       <section className="grid grid-cols-1 xl:grid-cols-[1.6fr_1fr] gap-5">
         {/* Composição da despesa por função */}
-        <div className="card-accent bg-surface-raised/60 border border-border rounded-xl p-6 backdrop-blur-sm">
+        <div className="card-accent bg-surface-raised border border-border rounded-xl p-6">
           <div className="flex items-baseline justify-between mb-4">
             <div>
               <h2 className="font-display text-xl text-text-primary leading-none">
@@ -412,7 +417,7 @@ export default function Dashboard() {
             </div>
             <Link
               to="/orcamento"
-              className="text-[11px] font-mono uppercase tracking-wider text-text-secondary hover:text-accent-400 transition-colors"
+              className="text-[11px] font-mono uppercase tracking-wider text-text-secondary hover:text-accent-ink transition-colors"
             >
               ver detalhado →
             </Link>
@@ -449,7 +454,7 @@ export default function Dashboard() {
         </div>
 
         {/* Indicadores LRF resumidos */}
-        <div className="card-accent bg-surface-raised/60 border border-border rounded-xl p-6 backdrop-blur-sm">
+        <div className="card-accent bg-surface-raised border border-border rounded-xl p-6">
           <div className="flex items-baseline justify-between mb-4">
             <div>
               <h2 className="font-display text-xl text-text-primary leading-none">
@@ -461,7 +466,7 @@ export default function Dashboard() {
             </div>
             <Link
               to="/lrf"
-              className="text-[11px] font-mono uppercase tracking-wider text-text-secondary hover:text-accent-400 transition-colors"
+              className="text-[11px] font-mono uppercase tracking-wider text-text-secondary hover:text-accent-ink transition-colors"
             >
               abrir →
             </Link>
@@ -483,7 +488,7 @@ export default function Dashboard() {
                       ? { bg: "bg-warning-500/10", border: "border-warning-500/30", text: "text-warning-500" }
                       : ind.situacao === "EXCEDIDO" || ind.situacao === "ABAIXO_MINIMO"
                         ? { bg: "bg-danger-500/10", border: "border-danger-500/30", text: "text-danger-500" }
-                        : { bg: "bg-surface-overlay/30", border: "border-border", text: "text-text-muted" };
+                        : { bg: "bg-surface-overlay", border: "border-border", text: "text-text-muted" };
                 const pctLimite =
                   ind.valor != null && ind.limite_legal && ind.limite_legal > 0
                     ? (ind.valor / ind.limite_legal) * 100
@@ -521,7 +526,7 @@ export default function Dashboard() {
 
       {/* Alertas */}
       {alertas.length > 0 && (
-        <section className="rounded-xl border border-danger-500/25 bg-danger-500/[0.04] p-6 backdrop-blur-sm">
+        <section className="rounded-xl border border-danger-500/25 bg-danger-500/[0.05] p-6">
           <div className="flex items-baseline justify-between mb-4">
             <h2 className="font-display text-xl text-text-primary leading-none flex items-center gap-3">
               <span

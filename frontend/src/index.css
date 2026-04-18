@@ -1,78 +1,130 @@
 @import "tailwindcss";
 
-@theme {
-  /* Lente Gestor — deep blue + amber accent */
-  --color-lente-900: #0c1b33;
-  --color-lente-800: #132b4f;
-  --color-lente-700: #1a3c6b;
-  --color-lente-600: #234e87;
-  --color-lente-500: #2d62a3;
-  --color-lente-400: #4a7fbe;
-  --color-lente-300: #7ba3d4;
-  --color-lente-200: #b0c9e8;
-  --color-lente-100: #dce8f5;
-  --color-lente-50: #f0f5fb;
+/*
+  Lente Gestor — Editorial B/W
+  -------------------------------------------------------------------------
+  Light é o default (branco/creme quente, tinta preta). Dark é opt-in via
+  [data-theme="dark"] no <html>. Somente os tokens semânticos (surface,
+  texto, borda, ink do acento) trocam entre temas; as escalas cromáticas
+  (lente-*, accent-*, success, warning, danger) são estáticas para que as
+  classes do Tailwind continuem funcionando sem alterações.
+*/
 
-  --color-accent-600: #c48d0e;
+@theme {
+  /* Tom de fonte pura — usados diretamente (ex. bg-lente-900) e em alphas
+     baixas como overlays sutis. Família quente (coloração levemente
+     amarelada) para casar com o âmbar sem competir. */
+  --color-lente-900: #0a0a08;
+  --color-lente-800: #1d1a16;
+  --color-lente-700: #3a3630;
+  --color-lente-600: #5c564d;
+  --color-lente-500: #7a7468;
+  --color-lente-400: #9a9386;
+  --color-lente-300: #b8b1a3;
+  --color-lente-200: #d4cec0;
+  --color-lente-100: #e8e2d4;
+  --color-lente-50: #f5f0e3;
+
+  /* Acento âmbar — único vetor cromático. Mantido para continuidade visual
+     (logotipo, CTA, indicador ativo, chips de fonte, realce em gráficos). */
+  --color-accent-700: #8a5f08;
+  --color-accent-600: #b37a0a;
   --color-accent-500: #e6a817;
   --color-accent-400: #f0be3d;
   --color-accent-300: #f5d26e;
+  --color-accent-200: #fae5a8;
 
-  --color-danger-500: #dc2626;
-  --color-danger-100: #fee2e2;
-  --color-success-500: #16a34a;
-  --color-success-100: #dcfce7;
-  --color-warning-500: #d97706;
-  --color-warning-100: #fef3c7;
+  /* Semânticos — preservados para status funcional em ambos os temas. */
+  --color-danger-500: #c12a2a;
+  --color-danger-100: #fbe4e4;
+  --color-success-500: #167a3c;
+  --color-success-100: #dcf0e2;
+  --color-warning-500: #a86a13;
+  --color-warning-100: #fcebc9;
 
-  --color-surface: #0b1322;
-  --color-surface-raised: #111f38;
-  --color-surface-overlay: #1e3050;
-  --color-text-primary: #f1f5f9;
-  --color-text-secondary: #a8bed8;
-  --color-text-muted: #6f85a3;
-  --color-border: #1f3658;
+  /* ---------------------------------------------------------------------
+     Semânticos adaptativos — default = LIGHT. São sobrescritos abaixo em
+     [data-theme="dark"]. Qualquer classe Tailwind (bg-surface, text-text-
+     primary, border-border, text-accent-ink) resolve o valor correto por
+     tema sem precisar de prefixo `dark:`.
+  --------------------------------------------------------------------- */
+  --color-surface: #faf8f2;
+  --color-surface-raised: #ffffff;
+  --color-surface-overlay: #efeadb;
+  --color-text-primary: #0a0a08;
+  --color-text-secondary: #3a3630;
+  --color-text-muted: #7a7468;
+  --color-border: #e0d9c8;
+  --color-accent-ink: #8a5f08; /* âmbar escuro para texto sobre claro */
+  --color-chart-neutral: #3a3630; /* série "neutra" em gráficos */
 
   --font-sans: "DM Sans", system-ui, sans-serif;
   --font-serif: "DM Serif Display", "Iowan Old Style", "Palatino Linotype", serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
+/* Dark mode — sobrescreve apenas os tokens semânticos. */
+:root[data-theme="dark"] {
+  --color-surface: #0a0a08;
+  --color-surface-raised: #141210;
+  --color-surface-overlay: #1f1c18;
+  --color-text-primary: #f5f0e3;
+  --color-text-secondary: #c4beb0;
+  --color-text-muted: #857f73;
+  --color-border: #2b2722;
+  --color-accent-ink: #f5d26e;
+  --color-chart-neutral: #d4cec0;
+
+  /* Semânticos ganham luminosidade para manter contraste em superfície
+     quase-preta. */
+  --color-success-500: #38a55c;
+  --color-warning-500: #e6a817;
+  --color-danger-500: #e04545;
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;
+    color-scheme: light;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
   }
 
   body {
     @apply bg-surface text-text-primary font-sans antialiased;
     font-feature-settings: "ss01", "cv11", "kern";
     background-color: var(--color-surface);
-    background-image:
-      radial-gradient(
-        ellipse 900px 600px at 85% -10%,
-        rgba(230, 168, 23, 0.08),
-        transparent 60%
-      ),
-      radial-gradient(
-        ellipse 1100px 700px at -10% 110%,
-        rgba(45, 98, 163, 0.18),
-        transparent 55%
-      ),
-      linear-gradient(
-        to bottom,
-        #0b1322 0%,
-        #0c1b33 100%
-      );
+    /* Fundo editorial: glow quente discreto no canto; sem gradientes
+       competindo com o conteúdo. */
+    background-image: radial-gradient(
+      ellipse 1100px 520px at 95% -8%,
+      rgba(230, 168, 23, 0.06),
+      transparent 60%
+    );
     background-attachment: fixed;
     min-height: 100vh;
   }
 
-  ::selection {
-    background-color: rgba(230, 168, 23, 0.35);
-    color: #fff;
+  :root[data-theme="dark"] body {
+    background-image:
+      radial-gradient(
+        ellipse 900px 600px at 85% -10%,
+        rgba(230, 168, 23, 0.10),
+        transparent 60%
+      ),
+      radial-gradient(
+        ellipse 1100px 700px at -10% 110%,
+        rgba(255, 255, 255, 0.015),
+        transparent 55%
+      );
   }
 
-  /* Scrollbar */
+  ::selection {
+    background-color: rgba(230, 168, 23, 0.35);
+    color: inherit;
+  }
+
   ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
@@ -81,13 +133,13 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #1f3658;
+    background: var(--color-border);
     border-radius: 999px;
     border: 2px solid transparent;
     background-clip: content-box;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #2d4a73;
+    background: var(--color-text-muted);
     background-clip: content-box;
     border: 2px solid transparent;
   }
@@ -100,27 +152,28 @@
     letter-spacing: -0.01em;
   }
 
-  /* Subtle engraved-divider for sections */
+  /* Divisor "gravado" — linha muito sutil com fade nas pontas. */
   .divider-engraved {
     height: 1px;
     background-image: linear-gradient(
       to right,
       transparent,
-      rgba(168, 190, 216, 0.15) 20%,
-      rgba(168, 190, 216, 0.15) 80%,
+      var(--color-border) 20%,
+      var(--color-border) 80%,
       transparent
     );
   }
 
-  /* Grid paper texture used on hero surfaces */
+  /* Malha tipo papel-milimetrado — opcional em heros. */
   .bg-blueprint {
     background-image:
-      linear-gradient(rgba(168, 190, 216, 0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(168, 190, 216, 0.04) 1px, transparent 1px);
+      linear-gradient(var(--color-border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--color-border) 1px, transparent 1px);
     background-size: 32px 32px;
+    opacity: 0.6;
   }
 
-  /* Card with amber top accent */
+  /* Card com fio âmbar no topo. */
   .card-accent {
     position: relative;
     overflow: hidden;
@@ -134,18 +187,17 @@
       to right,
       transparent 0%,
       rgba(230, 168, 23, 0) 5%,
-      rgba(230, 168, 23, 0.8) 50%,
+      rgba(230, 168, 23, 0.85) 50%,
       rgba(230, 168, 23, 0) 95%,
       transparent 100%
     );
-    opacity: 0.6;
+    opacity: 0.55;
     transition: opacity 250ms ease;
   }
   .card-accent:hover::before {
     opacity: 1;
   }
 
-  /* Fade-up on first paint */
   @keyframes fade-up {
     from {
       opacity: 0;
@@ -180,79 +232,82 @@
 }
 
 @layer components {
-  /* Input / search field */
+  /* Campo de entrada / busca */
   .field-input {
-    @apply w-full bg-surface-raised/70 border border-border rounded-lg
+    @apply w-full bg-surface-raised border border-border rounded-lg
            px-4 py-2.5 text-sm text-text-primary placeholder:text-text-muted
            transition-colors focus:outline-none focus:border-accent-500/60
            focus:ring-2 focus:ring-accent-500/20;
   }
 
-  /* Select with custom chevron */
+  /* Select com chevron próprio; cor do chevron muda por tema. */
   .field-select {
-    @apply bg-surface-raised/70 border border-border rounded-lg
+    @apply bg-surface-raised border border-border rounded-lg
            pl-3 pr-9 py-1.5 font-mono text-sm text-text-primary
            transition-colors focus:outline-none focus:border-accent-500/60
            focus:ring-2 focus:ring-accent-500/20;
     appearance: none;
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23a8bed8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%237a7468' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 0.6rem center;
     background-size: 14px 14px;
   }
+  :root[data-theme="dark"] .field-select {
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23857f73' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+  }
 
-  /* Unified pill/badge system */
+  /* Sistema de badges */
   .badge {
     @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full
            text-[10.5px] font-medium tracking-wide uppercase
            border;
   }
   .badge-neutral {
-    @apply bg-lente-800/50 border-lente-700/60 text-lente-200;
+    @apply bg-surface-overlay border-border text-text-secondary;
   }
   .badge-accent {
-    @apply bg-accent-500/10 border-accent-500/30 text-accent-300;
+    @apply bg-accent-500/12 border-accent-500/35 text-accent-ink;
   }
   .badge-success {
-    @apply bg-success-500/10 border-success-500/30 text-success-500;
+    @apply bg-success-500/12 border-success-500/30 text-success-500;
   }
   .badge-warning {
-    @apply bg-warning-500/10 border-warning-500/30 text-warning-500;
+    @apply bg-warning-500/12 border-warning-500/30 text-warning-500;
   }
   .badge-danger {
-    @apply bg-danger-500/10 border-danger-500/30 text-danger-500;
+    @apply bg-danger-500/12 border-danger-500/30 text-danger-500;
   }
   .badge-muted {
-    @apply bg-surface-overlay/40 border-border text-text-muted;
+    @apply bg-surface-overlay border-border text-text-muted;
   }
 
-  /* Pagination button */
+  /* Botão de paginação */
   .btn-paginate {
     @apply inline-flex items-center justify-center gap-1.5 px-3 py-1.5
-           rounded-lg bg-surface-raised/60 border border-border
+           rounded-lg bg-surface-raised border border-border
            text-sm text-text-secondary transition-all
-           hover:text-text-primary hover:border-lente-500/50
-           hover:bg-lente-800/30
+           hover:text-text-primary hover:border-accent-500/40
+           hover:bg-surface-overlay
            disabled:opacity-40 disabled:cursor-not-allowed
-           disabled:hover:border-border disabled:hover:bg-surface-raised/60
+           disabled:hover:border-border disabled:hover:bg-surface-raised
            disabled:hover:text-text-secondary;
   }
 
-  /* Table */
+  /* Tabelas */
   .tbl {
     @apply w-full text-sm;
   }
   .tbl thead tr {
     @apply text-left text-text-muted text-[10.5px] uppercase
            tracking-[0.15em] border-b border-border
-           bg-surface-overlay/20;
+           bg-surface-overlay/60;
   }
   .tbl thead th {
     @apply px-5 py-3 font-medium;
   }
   .tbl tbody tr {
-    @apply border-b border-border/50 last:border-b-0
-           transition-colors hover:bg-lente-800/25;
+    @apply border-b border-border/70 last:border-b-0
+           transition-colors hover:bg-surface-overlay/80;
   }
   .tbl tbody td {
     @apply px-5 py-3 align-middle;
@@ -261,16 +316,21 @@
     @apply font-mono tabular-nums text-right;
   }
 
-  /* Skeleton shimmer */
+  /* Skeleton shimmer — derivado de text-muted para adaptar por tema. */
   .skeleton {
     @apply rounded;
     background: linear-gradient(
       90deg,
-      rgba(168, 190, 216, 0.04) 0%,
-      rgba(168, 190, 216, 0.12) 50%,
-      rgba(168, 190, 216, 0.04) 100%
+      color-mix(in oklab, var(--color-text-muted) 8%, transparent) 0%,
+      color-mix(in oklab, var(--color-text-muted) 22%, transparent) 50%,
+      color-mix(in oklab, var(--color-text-muted) 8%, transparent) 100%
     );
     background-size: 800px 100%;
     animation: shimmer 1.6s ease-in-out infinite;
+  }
+
+  /* Utilitário de hover sutil — substitui bg-lente-800/XX antigo. */
+  .hover-surface {
+    @apply transition-colors hover:bg-surface-overlay;
   }
 }
