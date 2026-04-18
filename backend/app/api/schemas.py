@@ -4,7 +4,7 @@ import uuid
 from datetime import date, datetime
 from typing import Generic, TypeVar
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 T = TypeVar("T")
 
@@ -227,3 +227,42 @@ class DadosMunicipioOut(BaseModel):
     pib_per_capita: float | None = None
     fonte: str
     ingerido_em: datetime
+
+
+# ────────────────────────────────────────
+# Chat / RAG
+# ────────────────────────────────────────
+
+
+class ChatRequest(BaseModel):
+    """Pergunta enviada ao assistente RAG."""
+
+    pergunta: str = Field(
+        ...,
+        min_length=3,
+        max_length=500,
+        description="Pergunta do gestor em linguagem natural.",
+    )
+
+
+class FonteCitadaOut(BaseModel):
+    """Documento citado na resposta, com referência navegável."""
+
+    indice: int
+    doc_id: uuid.UUID
+    fonte: str
+    referencia_tipo: str
+    referencia_id: uuid.UUID | None = None
+    chave_unica: str
+    titulo: str
+    metadados: dict = {}
+    score: float
+
+
+class ChatResponse(BaseModel):
+    """Resposta do assistente RAG com citações."""
+
+    texto: str
+    fontes: list[FonteCitadaOut]
+    recusou: bool
+    latencia_ms: int

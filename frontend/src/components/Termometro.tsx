@@ -112,7 +112,7 @@ export default function Termometro({
 
       {/* Barra */}
       <div
-        className="relative h-2.5 w-full overflow-hidden rounded-full bg-lente-900/60 border border-border/60"
+        className="relative h-2.5 w-full overflow-hidden rounded-full bg-surface-overlay border border-border"
         role="meter"
         aria-valuenow={valor ?? undefined}
         aria-valuemin={0}

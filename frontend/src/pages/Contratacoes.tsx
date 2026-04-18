@@ -50,7 +50,7 @@ export default function Contratacoes() {
       />
 
       {/* Table */}
-      <div className="bg-surface-raised/60 border border-border rounded-xl overflow-hidden backdrop-blur-sm">
+      <div className="bg-surface-raised border border-border rounded-xl overflow-hidden">
         {isLoading ? (
           <TableSkeleton columns={6} rows={6} />
         ) : (

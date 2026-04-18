@@ -15,15 +15,12 @@ import {
   useResumoFuncao,
 } from "@/api/hooks";
 import { formatBRL } from "@/lib/format";
+import { useChartTokens } from "@/lib/theme";
 
-// Chart palette — hex form (recharts v3 renders SVG <rect fill>; modern
-// space-separated rgb() syntax is not universally honored in SVG paint
-// attributes, which is why "Empenhado" previously rendered black).
-const COR_DOTACAO = "#4a7fbe"; // lente-400
-const COR_EMPENHADO = "#e6a817"; // accent-500
-const COR_EIXO = "#6f85a3";
-const COR_TICK = "#cbd5e1";
-const COR_GRID = "#1f3658";
+// As cores do gráfico vêm de `useChartTokens` para trocar automaticamente
+// entre light/dark. Recharts v3 renderiza SVG <rect fill>, que só aceita
+// notação hex tradicional — por isso lemos os hexes finais já resolvidos
+// a partir das variáveis CSS.
 
 const BIMESTRES = [1, 2, 3, 4, 5, 6];
 
@@ -48,10 +45,10 @@ function KpiCard({
 }) {
   return (
     <div
-      className={`card-accent rounded-xl p-5 border backdrop-blur-sm transition-colors ${
+      className={`card-accent rounded-xl p-5 border transition-colors ${
         accent
-          ? "bg-accent-500/[0.07] border-accent-500/30 hover:border-accent-500/50"
-          : "bg-surface-raised/70 border-border hover:border-lente-500/40"
+          ? "bg-accent-500/[0.08] border-accent-500/30 hover:border-accent-500/55"
+          : "bg-surface-raised border-border hover:border-accent-500/30"
       }`}
     >
       <p className="text-text-muted text-[10px] uppercase tracking-[0.15em] mb-2">
@@ -59,7 +56,7 @@ function KpiCard({
       </p>
       <p
         className={`text-2xl font-semibold font-mono tabular-nums ${
-          accent ? "text-accent-400" : "text-text-primary"
+          accent ? "text-accent-ink" : "text-text-primary"
         }`}
       >
         {value}
@@ -76,6 +73,8 @@ export default function Orcamento() {
   const resumo = useResumoFuncao(exercicio, periodo);
   const municipio = useDadosMunicipio(exercicio);
   const indicadores = useIndicadoresFiscais({ exercicio });
+
+  const tokens = useChartTokens();
 
   // RCL vem dos indicadores (fonte RGF): não há indicador próprio de RCL,
   // mas inferimos usando o valor absoluto quando disponível em DESPESA_PESSOAL.
@@ -197,7 +196,7 @@ export default function Orcamento() {
       </div>
 
       {/* Gráfico de execução por função */}
-      <section className="card-accent bg-surface-raised/60 border border-border rounded-xl p-6 backdrop-blur-sm">
+      <section className="card-accent bg-surface-raised border border-border rounded-xl p-6">
         <div className="flex items-start justify-between mb-6">
           <div>
             <h2 className="font-display text-xl text-text-primary">
@@ -211,14 +210,14 @@ export default function Orcamento() {
             <span className="flex items-center gap-1.5">
               <span
                 className="inline-block h-2.5 w-2.5 rounded-sm"
-                style={{ background: COR_DOTACAO, opacity: 0.85 }}
+                style={{ background: tokens.neutral, opacity: 0.85 }}
               />
               Dotação
             </span>
             <span className="flex items-center gap-1.5">
               <span
                 className="inline-block h-2.5 w-2.5 rounded-sm"
-                style={{ background: COR_EMPENHADO }}
+                style={{ background: tokens.accent }}
               />
               Empenhado
             </span>
@@ -242,38 +241,42 @@ export default function Orcamento() {
             >
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke={COR_GRID}
+                stroke={tokens.grid}
                 horizontal={false}
               />
               <XAxis
                 type="number"
                 tickFormatter={(v) => formatCompact(v).replace("R$ ", "")}
-                stroke={COR_EIXO}
-                tick={{ fill: COR_TICK, fontSize: 11, fontFamily: "JetBrains Mono" }}
+                stroke={tokens.axis}
+                tick={{
+                  fill: tokens.tick,
+                  fontSize: 11,
+                  fontFamily: "JetBrains Mono",
+                }}
               />
               <YAxis
                 dataKey="funcao"
                 type="category"
-                stroke={COR_EIXO}
+                stroke={tokens.axis}
                 width={130}
-                tick={{ fill: COR_TICK, fontSize: 12 }}
+                tick={{ fill: tokens.tick, fontSize: 12 }}
               />
               <Tooltip
-                cursor={{ fill: "rgba(45, 98, 163, 0.12)" }}
+                cursor={{ fill: `${tokens.accent}1f` }}
                 contentStyle={{
-                  background: "#0b1322",
-                  border: "1px solid #1f3658",
+                  background: tokens.surfaceRaised,
+                  border: `1px solid ${tokens.grid}`,
                   borderRadius: 10,
                   fontSize: 12,
-                  boxShadow: "0 12px 32px rgba(0,0,0,0.45)",
+                  boxShadow: "0 12px 32px rgba(0,0,0,0.12)",
                   padding: "10px 14px",
                 }}
                 labelStyle={{
-                  color: "#f1f5f9",
+                  color: tokens.textPrimary,
                   fontWeight: 600,
                   marginBottom: 4,
                 }}
-                itemStyle={{ color: "#cbd5e1" }}
+                itemStyle={{ color: tokens.textSecondary }}
                 formatter={(value, name) => [
                   formatBRL(typeof value === "number" ? value : Number(value)),
                   String(name),
@@ -285,7 +288,7 @@ export default function Orcamento() {
               <Legend
                 wrapperStyle={{
                   fontSize: 12,
-                  color: "#cbd5e1",
+                  color: tokens.textSecondary,
                   paddingTop: 12,
                 }}
                 iconType="square"
@@ -294,14 +297,14 @@ export default function Orcamento() {
               <Bar
                 dataKey="dotacao"
                 name="Dotação atualizada"
-                fill={COR_DOTACAO}
+                fill={tokens.neutral}
                 fillOpacity={0.75}
                 radius={[0, 4, 4, 0]}
               />
               <Bar
                 dataKey="empenhado"
                 name="Empenhado"
-                fill={COR_EMPENHADO}
+                fill={tokens.accent}
                 radius={[0, 4, 4, 0]}
               />
             </BarChart>
@@ -311,7 +314,7 @@ export default function Orcamento() {
 
       {/* Tabela detalhada */}
       {(resumo.data ?? []).length > 0 && (
-        <section className="bg-surface-raised/60 border border-border rounded-xl overflow-hidden backdrop-blur-sm">
+        <section className="bg-surface-raised border border-border rounded-xl overflow-hidden">
           <div className="px-6 py-4 border-b border-border">
             <h2 className="font-display text-lg text-text-primary">
               Detalhamento por função
@@ -340,7 +343,7 @@ export default function Orcamento() {
                     : pct >= 90
                       ? "text-success-500"
                       : pct >= 60
-                        ? "text-accent-400"
+                        ? "text-accent-ink"
                         : "text-text-secondary";
                 return (
                   <tr key={d.funcao}>
@@ -351,7 +354,7 @@ export default function Orcamento() {
                     <td className="tbl-num">
                       {formatBRL(d.dotacao_atualizada)}
                     </td>
-                    <td className="tbl-num text-accent-400">
+                    <td className="tbl-num text-accent-ink">
                       {formatBRL(d.empenhado)}
                     </td>
                     <td className="tbl-num text-text-secondary">

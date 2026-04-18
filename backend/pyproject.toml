@@ -26,10 +26,14 @@ dependencies = [
     # AI / RAG
     "google-genai>=1.0.0",
 
+    # API hardening
+    "slowapi>=0.1.9",
+
     # Utilities
     "python-dotenv>=1.0.0",
     "structlog>=24.4.0",
     "tenacity>=9.0.0",
+    "PyYAML>=6.0.2",
 ]
 
 [project.optional-dependencies]
@@ -56,6 +60,9 @@ select = ["E", "F", "I", "N", "W", "UP"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+    "integration: exige GCP + Vertex AI configurados (consome créditos)",
+]
 
 [tool.mypy]
 python_version = "3.12"

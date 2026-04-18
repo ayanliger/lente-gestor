@@ -13,6 +13,18 @@ Plataforma digital que funciona como **camada de inteligência sobre dados públ
 - **Questionar com evidências** — assistente de IA (RAG com Gemini) que responde em linguagem natural com rastreabilidade total até a fonte
 
 **Município-piloto:** Jequié — BA (~150 mil habitantes)
+## Deploy Público (Protótipo)
+| Componente | URL |
+|------------|-----|
+| **Frontend** | https://lente-gestor.web.app |
+| **API** | https://lente-api-tguspcnbeq-uc.a.run.app |
+| **Swagger** | https://lente-api-tguspcnbeq-uc.a.run.app/docs |
+O frontend público usa `rewrites` do Firebase Hosting para proxy transparente
+de `/api/**` → Cloud Run. Infraestrutura completa documentada em [`infra/README.md`](infra/README.md).
+- **Projeto GCP:** `lente-gestor` (us-central1)
+- **Cloud SQL:** `lente-db` (PostgreSQL 16 + pgvector)
+- **Cloud Run service:** `lente-api` (público, escala a zero)
+- **Cloud Run Jobs:** `migrate-db`, `ingest-pncp`, `ingest-orcamento`, `ingest-rgf`, `ingest-ibge`, `ingest-rag`
 
 ## Status do Projeto
 
@@ -30,8 +42,8 @@ Plataforma digital que funciona como **camada de inteligência sobre dados públ
 | Indicadores LRF + mínimos constitucionais | ✅ Implementado |
 | Frontend React (painel orçamento-first + LRF) | ✅ Implementado |
 | Testes automatizados (backend) | ✅ 83 testes passando |
-| Deploy em Google Cloud (Cloud Run + Cloud SQL) | 🔧 Próximo |
-| Camada RAG (Gemini + pgvector) | 🔧 Próximo |
+| Deploy em Google Cloud (Cloud Run + Cloud SQL) | ✅ No ar |
+| Camada RAG (Gemini + pgvector) | 🟡 Fase 1 implementada |
 | Conectores Portal Transparência + TCM-BA | 📋 Roadmap |
 
 ## Arquitetura da Lente
@@ -210,6 +222,12 @@ API REST sob `/api/v1` com paginação, busca e filtros.
 | `GET /orcamento/indicadores` | Indicadores LRF + mínimos constitucionais com situação derivada e limite legal |
 | `GET /municipio/dados` | Dados contextuais do IBGE (população, PIB, PIB per capita) — série histórica ou por exercício |
 
+**Assistente conversacional (RAG — Fase 1)**
+
+| Endpoint | Descrição |
+|----------|----------|
+| `POST /chat/` | Pergunta em linguagem natural sobre orçamento, LRF, PCA e contratos. Resposta com citações obrigatórias por índice `[n]` e recusa explícita (`recusou=true`) quando o corpus não respalda a resposta. Rate limit de cortesia: 20 req/min por IP (`slowapi`). |
+
 ### Pipeline de Ingestão
 
 Quatro pipelines assíncronos com retry exponencial, paginação automática e preservação do JSON bruto para auditoria:
@@ -226,6 +244,7 @@ Layout com navegação agrupada: **Orçamento** como seção primária (heading 
 - **Visão Geral** — painel orçamento-first com seletor de exercício/bimestre, hero com dotação/empenhado/% execução (tom da cor acompanha a situação), composição da despesa por função em barras gradiente, resumo da situação fiscal (cards LRF), painel consolidado de alertas (EXCEDIDO / ABAIXO_MINIMO / ALERTA + contratos vencendo) e faixa secundária de contratos
 - **Execução** — execução detalhada por função de governo (RREO-Anexo 02): gráfico comparativo dotação × empenhado e tabela com % de execução por função
 - **Indicadores LRF** — cards por indicador com termômetro animado, marcador de alerta a 90%, faixa de excesso listrada e referência legal (LRF / CF)
+- **Assistente** — chat com citações clicáveis que abrem drawer lateral com metadados e link para a página de origem do documento; recusa em vez de alucinar quando o dado não está indexado
 - **Contratações** — tabela paginada com busca por objeto e badges de modalidade
 - **Contratos** — tabela paginada com destaque visual para vencimentos em 90 dias
 - **Fornecedores** — busca por nome/CNPJ, badges PF/PJ
@@ -237,11 +256,13 @@ make db                        # Sobe PostgreSQL + pgvector
 make dev                       # Servidor backend em modo reload
 make migrate                   # Aplica migrações pendentes
 make migrate-new msg="..."     # Nova migração a partir dos modelos
-make ingest-pncp               # Ingestão de dados do PNCP
-make ingest-orcamento ano=AAAA # RREO/SICONFI — execução orçamentária
-make ingest-rgf ano=AAAA       # RGF/SICONFI + indicadores fiscais (LRF)
+make ingest-pncp               # Ingestão PNCP + auto-reindex RAG (CONTRATO, RESUMO_PCA)
+make ingest-orcamento ano=AAAA # RREO/SICONFI + auto-reindex (RESUMO_FUNCAO)
+make ingest-rgf ano=AAAA       # RGF/SICONFI + indicadores + auto-reindex (INDICADOR_FISCAL)
 make ingest-ibge               # Dados contextuais do IBGE
-make test                      # Executa testes (83 testes)
+make ingest-rag                # Reindexação RAG completa (rebuild manual)
+make test                      # Testes unitários (sem rede)
+make test-integration          # Testes contra Vertex AI (consome créditos GCP)
 make lint                      # ruff check
 make format                    # ruff format
 ```

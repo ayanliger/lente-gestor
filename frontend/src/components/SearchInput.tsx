@@ -36,7 +36,7 @@ export default function SearchInput({
           type="button"
           onClick={() => onChange("")}
           aria-label="Limpar busca"
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 h-6 w-6 grid place-items-center rounded-md text-text-muted hover:text-text-primary hover:bg-lente-800/50 transition-colors"
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 h-6 w-6 grid place-items-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-overlay transition-colors"
         >
           <svg
             viewBox="0 0 16 16"

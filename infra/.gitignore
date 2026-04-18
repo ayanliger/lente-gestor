@@ -1,0 +1,12 @@
+# Terraform local state (use GCS backend para colaboração)
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+crash.log
+crash.*.log
+
+# Variáveis sensíveis
+terraform.tfvars
+*.auto.tfvars

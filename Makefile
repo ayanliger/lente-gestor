@@ -39,7 +39,13 @@ migrate-new: ## Cria nova migração (uso: make migrate-new msg="descricao")
 # Qualidade
 # ========================
 
-test: ## Executa testes
+test: ## Executa testes unitários (sem integração com Vertex AI)
+	cd backend && pytest -v -m "not integration"
+
+test-integration: ## Executa testes com marker integration (consome créditos GCP)
+	cd backend && pytest -v -m integration
+
+test-all: ## Executa todos os testes (unitários + integração)
 	cd backend && pytest -v
 
 lint: ## Verifica estilo de código
@@ -63,6 +69,9 @@ ingest-ibge: ## Ingestão de dados contextuais do IBGE (população, PIB)
 
 ingest-rgf: ## Ingestão do RGF/SICONFI + indicadores fiscais (uso: make ingest-rgf ano=2024)
 	cd backend && python -m scripts.ingest_rgf --exercicio $(ano)
+
+ingest-rag: ## Reindexação completa da base RAG (supõe ingestões de negócio já feitas)
+	cd backend && python -m scripts.ingest_rag
 
 # ========================
 # Limpeza
