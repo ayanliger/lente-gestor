@@ -9,10 +9,16 @@ interface Mensagem {
   id: string;
   autor: "usuario" | "assistente";
   texto: string;
+  criadaEm: Date;
   fontes?: FonteCitada[];
   recusou?: boolean;
   latenciaMs?: number;
 }
+
+const formatadorHora = new Intl.DateTimeFormat("pt-BR", {
+  hour: "2-digit",
+  minute: "2-digit",
+});
 
 /**
  * Divide o texto da resposta em segmentos: trechos de texto puro e
@@ -40,6 +46,17 @@ function segmentar(texto: string): Array<
     segmentos.push({ tipo: "texto", valor: texto.slice(ultimo) });
   }
   return segmentos;
+}
+
+const ROTULO_FONTE: Record<string, string> = {
+  CONTRATO: "Contrato",
+  INDICADOR_FISCAL: "Indicador fiscal",
+  RESUMO_FUNCAO: "Execução por função",
+  RESUMO_PCA: "PCA por função",
+};
+
+function rotuloFonte(fonte: string): string {
+  return ROTULO_FONTE[fonte] ?? fonte;
 }
 
 function FonteDrawer({
@@ -79,13 +96,13 @@ function FonteDrawer({
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-accent-400/80">
-              Fonte [{fonte.indice}]
+              Fonte [{fonte.indice}] · {rotuloFonte(fonte.fonte)}
             </p>
             <h3 className="font-display text-lg text-text-primary mt-1 leading-tight">
               {fonte.titulo}
             </h3>
             <p className="font-mono text-[11px] text-text-muted mt-1">
-              {fonte.fonte} · score {(fonte.score * 100).toFixed(1)}%
+              relevância {(fonte.score * 100).toFixed(1)}%
             </p>
           </div>
           <button
@@ -152,12 +169,21 @@ function Chip({
   );
 }
 
-function MensagemUsuario({ texto }: { texto: string }) {
+function MensagemUsuario({
+  texto,
+  criadaEm,
+}: {
+  texto: string;
+  criadaEm: Date;
+}) {
   return (
-    <div className="flex justify-end">
+    <div className="flex flex-col items-end gap-1">
       <div className="max-w-[80%] bg-lente-700/70 border border-lente-500/40 rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm text-text-primary whitespace-pre-wrap">
         {texto}
       </div>
+      <span className="text-[10px] font-mono text-text-muted mr-2">
+        {formatadorHora.format(criadaEm)}
+      </span>
     </div>
   );
 }
@@ -171,14 +197,22 @@ function MensagemAssistente({
 }) {
   if (mensagem.recusou) {
     return (
-      <div className="flex justify-start">
+      <div className="flex flex-col items-start gap-1">
         <div className="max-w-[80%] bg-warning-500/[0.06] border border-warning-500/30 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-warning-500">
-          <p className="font-medium">Não tenho dados suficientes para responder com confiança.</p>
+          <p className="font-medium">
+            Não tenho dados suficientes para responder com confiança.
+          </p>
           <p className="text-xs text-text-secondary mt-1">
             Experimente reformular a pergunta, ou verifique se os dados
             correspondentes foram ingeridos.
           </p>
         </div>
+        <span className="text-[10px] font-mono text-text-muted ml-2">
+          {formatadorHora.format(mensagem.criadaEm)}
+          {mensagem.latenciaMs != null
+            ? ` · ${(mensagem.latenciaMs / 1000).toFixed(1)}s`
+            : ""}
+        </span>
       </div>
     );
   }
@@ -189,7 +223,7 @@ function MensagemAssistente({
   const segmentos = segmentar(mensagem.texto);
 
   return (
-    <div className="flex justify-start">
+    <div className="flex flex-col items-start gap-1">
       <div className="max-w-[85%] bg-surface-raised/70 border border-border rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-text-primary leading-relaxed">
         <p className="whitespace-pre-wrap">
           {segmentos.map((s, i) =>
@@ -198,7 +232,6 @@ function MensagemAssistente({
             ) : (() => {
               const fonte = fontesPorIndice.get(s.indice);
               if (!fonte) {
-                // Índice que não veio no array de fontes — renderiza como texto plano
                 return <span key={i}>[{s.indice}]</span>;
               }
               return (
@@ -211,29 +244,57 @@ function MensagemAssistente({
             })(),
           )}
         </p>
+
         {mensagem.fontes && mensagem.fontes.length > 0 && (
-          <div className="mt-3 pt-2 border-t border-border/60 flex items-center gap-2 flex-wrap">
-            <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
-              fontes:
-            </span>
-            {mensagem.fontes.map((f) => (
-              <button
-                key={f.indice}
-                type="button"
-                onClick={() => onAbrirFonte(f)}
-                className="text-[11px] font-mono text-text-secondary hover:text-accent-400 transition-colors"
-              >
-                [{f.indice}] {f.titulo.length > 42 ? f.titulo.slice(0, 40) + "…" : f.titulo}
-              </button>
-            ))}
+          <div className="mt-4 pt-3 border-t border-border/60">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-mono uppercase tracking-[0.22em] text-accent-400/80">
+                Fontes citadas
+              </span>
+              <span className="text-[10px] font-mono text-text-muted">
+                {mensagem.fontes.length}{" "}
+                {mensagem.fontes.length === 1 ? "documento" : "documentos"}
+              </span>
+            </div>
+            <ul className="space-y-1.5">
+              {mensagem.fontes.map((f) => (
+                <li key={f.indice}>
+                  <button
+                    type="button"
+                    onClick={() => onAbrirFonte(f)}
+                    className="group w-full flex items-start gap-2.5 rounded-lg border border-border/60 bg-surface-overlay/20 px-3 py-2 text-left transition-all hover:border-accent-500/40 hover:bg-lente-800/30"
+                  >
+                    <span className="mt-0.5 shrink-0 inline-flex items-center justify-center h-5 min-w-[22px] px-1.5 rounded-md bg-accent-500/20 border border-accent-500/40 text-[10.5px] font-mono text-accent-300">
+                      {f.indice}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[12.5px] text-text-primary group-hover:text-accent-300 transition-colors leading-snug">
+                        {f.titulo}
+                      </span>
+                      <span className="block text-[10.5px] font-mono text-text-muted mt-0.5">
+                        {rotuloFonte(f.fonte)} · {(f.score * 100).toFixed(0)}% relevância
+                      </span>
+                    </span>
+                    <span
+                      className="shrink-0 self-center text-text-muted group-hover:text-accent-400 group-hover:translate-x-0.5 transition-all"
+                      aria-hidden
+                    >
+                      →
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
-        {mensagem.latenciaMs != null && (
-          <p className="mt-2 text-[10px] font-mono text-text-muted">
-            {(mensagem.latenciaMs / 1000).toFixed(1)}s
-          </p>
-        )}
       </div>
+
+      <span className="text-[10px] font-mono text-text-muted ml-2">
+        {formatadorHora.format(mensagem.criadaEm)}
+        {mensagem.latenciaMs != null
+          ? ` · ${(mensagem.latenciaMs / 1000).toFixed(1)}s`
+          : ""}
+      </span>
     </div>
   );
 }
@@ -257,7 +318,12 @@ export default function Assistente() {
 
     setMensagens((prev) => [
       ...prev,
-      { id: idUsuario, autor: "usuario", texto: pergunta },
+      {
+        id: idUsuario,
+        autor: "usuario",
+        texto: pergunta,
+        criadaEm: new Date(),
+      },
     ]);
     setEntrada("");
 
@@ -269,6 +335,7 @@ export default function Assistente() {
             id: idAssistente,
             autor: "assistente",
             texto: resp.texto,
+            criadaEm: new Date(),
             fontes: resp.fontes,
             recusou: resp.recusou,
             latenciaMs: resp.latencia_ms,
@@ -288,6 +355,7 @@ export default function Assistente() {
             id: idAssistente,
             autor: "assistente",
             texto: `Erro ao consultar o assistente: ${err.message}`,
+            criadaEm: new Date(),
             recusou: false,
             fontes: [],
           },
@@ -346,7 +414,11 @@ export default function Assistente() {
 
         {mensagens.map((m) =>
           m.autor === "usuario" ? (
-            <MensagemUsuario key={m.id} texto={m.texto} />
+            <MensagemUsuario
+              key={m.id}
+              texto={m.texto}
+              criadaEm={m.criadaEm}
+            />
           ) : (
             <MensagemAssistente
               key={m.id}
@@ -368,7 +440,7 @@ export default function Assistente() {
 
       {/* Input fixo embaixo */}
       <div className="pt-4 border-t border-border/60">
-        <div className="relative">
+        <div className="flex items-stretch gap-3">
           <textarea
             value={entrada}
             onChange={(e) => setEntrada(e.target.value)}
@@ -380,19 +452,20 @@ export default function Assistente() {
             }}
             placeholder="Faça uma pergunta sobre orçamento, LRF, PCA ou contratos…"
             rows={2}
-            className="field-input resize-none pr-24"
+            className="field-input resize-none flex-1"
           />
           <button
             type="button"
             onClick={enviar}
             disabled={desabilitado}
-            className="absolute right-2 bottom-2 px-4 py-1.5 rounded-md bg-accent-500 text-surface font-medium text-sm hover:bg-accent-400 disabled:bg-surface-overlay disabled:text-text-muted disabled:cursor-not-allowed transition-colors"
+            className="shrink-0 w-28 rounded-lg bg-accent-500 text-surface font-semibold text-sm tracking-wide hover:bg-accent-400 disabled:bg-surface-overlay disabled:text-text-muted disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1.5"
           >
-            Enviar
+            <span>Enviar</span>
+            <span aria-hidden>→</span>
           </button>
         </div>
         <p className="mt-2 text-[10px] font-mono uppercase tracking-wider text-text-muted">
-          Gemini 3.1 Pro + pgvector · respostas com citação obrigatória · 20 req/min
+          Gemini 3.1 Flash Lite + pgvector · citação obrigatória · Enter envia, Shift+Enter quebra linha · 20 req/min
         </p>
       </div>
 

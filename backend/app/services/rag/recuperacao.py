@@ -48,26 +48,39 @@ async def buscar(
     k: int = 6,
     fontes: Iterable[FonteDocumento] | None = None,
     limiar: float | None = None,
+    fallback_minimo: int | None = None,
 ) -> list[DocumentoRelevante]:
     """Busca top-K documentos mais similares à pergunta.
 
+    Política de limiar:
+    - Documentos com `score >= limiar` entram naturalmente.
+    - Se menos de `fallback_minimo` docs passarem, completa com os
+      melhores disponíveis (mesmo abaixo do limiar). Isso evita mandar
+      prompt vazio em perguntas muito amplas, onde scores tendem a ser
+      baixos. O modelo decide se usa, ignora ou recusa — não o pre-filtro.
+
     Args:
-        pergunta: texto da pergunta em linguagem natural.
-        db: sessão ativa (a rota já tem uma via DI).
-        cliente: GeminiClient para gerar o embedding da pergunta.
-        k: top-K candidatos a trazer antes do filtro de limiar.
+        pergunta: texto em linguagem natural.
+        db, cliente: sessão + client Gemini injetados pela rota.
+        k: total de candidatos a trazer do banco antes do filtro.
         fontes: filtro opcional por tipo de documento.
-        limiar: similaridade mínima ∈ [0,1]. `None` → usa
-            `settings.rag_limiar_similaridade`. Documentos com score menor
-            são descartados para reduzir ruído no prompt.
+        limiar: similaridade mínima ∈ [0,1]. `None` = usa settings.
+        fallback_minimo: mínimo de docs a retornar mesmo sob limiar.
+            `None` = usa settings.
     """
     settings = get_settings()
-    limiar_efetivo = settings.rag_limiar_similaridade if limiar is None else limiar
+    limiar_efetivo = (
+        settings.rag_limiar_similaridade if limiar is None else limiar
+    )
+    fallback = (
+        settings.rag_fallback_minimo
+        if fallback_minimo is None
+        else fallback_minimo
+    )
 
     vetor = await cliente.embed_text(pergunta, task_type="RETRIEVAL_QUERY")
 
-    # `<=>` devolve distância cosseno ∈ [0,2]; para similaridade usamos 1-dist
-    # (clampeada depois). Selecionamos também a distância para logging.
+    # `<=>` devolve distância cosseno ∈ [0,2]; similaridade = 1 - distance.
     dist_expr = DocumentoRag.embedding.cosine_distance(vetor).label("distancia")
 
     query = select(DocumentoRag, dist_expr).order_by(dist_expr.asc()).limit(k)
@@ -78,12 +91,11 @@ async def buscar(
     result = await db.execute(query)
     rows = result.all()
 
-    relevantes: list[DocumentoRelevante] = []
+    # Converte todas as linhas em DocumentoRelevante, ordenadas por score desc.
+    todos: list[DocumentoRelevante] = []
     for doc, distancia in rows:
         score = max(0.0, 1.0 - float(distancia))
-        if score < limiar_efetivo:
-            continue
-        relevantes.append(
+        todos.append(
             DocumentoRelevante(
                 doc_id=doc.id,
                 fonte=doc.fonte,
@@ -97,12 +109,22 @@ async def buscar(
             )
         )
 
+    acima_do_limiar = [d for d in todos if d.score >= limiar_efetivo]
+    if len(acima_do_limiar) >= fallback:
+        relevantes = acima_do_limiar
+    else:
+        # Garante o piso mínimo usando os melhores disponíveis no total.
+        relevantes = todos[:fallback]
+
     logger.info(
         "rag.recuperacao",
         k=k,
-        qtd_total=len(rows),
-        qtd_apos_limiar=len(relevantes),
+        qtd_total=len(todos),
+        qtd_acima_limiar=len(acima_do_limiar),
+        qtd_retornados=len(relevantes),
         limiar=limiar_efetivo,
+        fallback_minimo=fallback,
+        usou_fallback=len(acima_do_limiar) < fallback and len(todos) > 0,
     )
     return relevantes
 

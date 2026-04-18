@@ -58,9 +58,13 @@ class Settings(BaseSettings):
     gemini_embedding_dimensions: int = 1536
 
     # RAG
-    # Limiar de similaridade cosseno mínimo para incluir documento no prompt
-    # (0 = equivalente, 1 = ortogonal). Com <=>, similaridade = 1 - distance.
-    rag_limiar_similaridade: float = 0.5
+    # Limiar de similaridade cosseno: docs acima entram no prompt "sem reservas".
+    # Não é barreira de acesso — se nenhum doc passar, o retrieval ainda
+    # garante `rag_fallback_minimo` documentos (os top-K por score). Ideia:
+    # nunca mandar prompt vazio; deixar o modelo decidir quando recusar.
+    rag_limiar_similaridade: float = 0.3
+    # Quantos docs passar pro prompt mesmo quando todos estão abaixo do limiar.
+    rag_fallback_minimo: int = 3
     # Rate limit do endpoint /chat (formato slowapi, ex: "20/minute").
     rate_limit_chat: str = "20/minute"
 
