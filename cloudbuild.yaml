@@ -1,0 +1,86 @@
+# Build + push + deploy da imagem do backend.
+# Uso: gcloud builds submit --config cloudbuild.yaml
+#
+# Requer que o Terraform tenha criado antes:
+#   - Artifact Registry (us-central1/lente)
+#   - Cloud Run service (lente-api)
+#   - Cloud Run jobs (migrate-db, ingest-*)
+
+substitutions:
+  _REGION: us-central1
+  _REPOSITORY: lente
+  _IMAGE_NAME: api
+  _SERVICE: lente-api
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_HIGHCPU_8
+
+steps:
+  # ── Build
+  - id: build
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$BUILD_ID
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:latest
+      - backend
+
+  # ── Push
+  - id: push
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - --all-tags
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}
+    waitFor: ["build"]
+
+  # ── Deploy do service (API)
+  - id: deploy-service
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - services
+      - update
+      - ${_SERVICE}
+      - --region=${_REGION}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$BUILD_ID
+    waitFor: ["push"]
+
+  # ── Atualizar imagem dos jobs (não executa — só atualiza a imagem)
+  - id: update-jobs
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -e
+        for job in migrate-db ingest-pncp ingest-orcamento ingest-rgf ingest-ibge ingest-rag; do
+          echo "→ Atualizando imagem do job $job"
+          gcloud run jobs update "$job" \
+            --region=${_REGION} \
+            --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$BUILD_ID
+        done
+    waitFor: ["push"]
+
+  # ── Executar migração (obrigatório antes da API atender requests)
+  - id: migrate
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - jobs
+      - execute
+      - migrate-db
+      - --region=${_REGION}
+      - --wait
+    waitFor: ["update-jobs"]
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:$BUILD_ID
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE_NAME}:latest
+
+timeout: 1800s

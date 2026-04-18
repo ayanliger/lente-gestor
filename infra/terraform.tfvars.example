@@ -1,0 +1,12 @@
+project_id       = "lente-gestor"
+region           = "us-central1"
+zone             = "us-central1-a"
+exercicio_fiscal = 2024
+
+# No primeiro apply, deixe api_image como está (placeholder).
+# Após o build em Cloud Build, atualize a tag e rode `terraform apply` novamente,
+# OU use `gcloud run services update` diretamente.
+# api_image = "us-central1-docker.pkg.dev/lente-gestor/lente/api:latest"
+
+# Preencha depois que o Firebase Hosting publicar o site.
+# cors_origins = "https://lente-gestor.web.app,https://lente-gestor.firebaseapp.com"

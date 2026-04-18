@@ -13,6 +13,18 @@ Plataforma digital que funciona como **camada de inteligência sobre dados públ
 - **Questionar com evidências** — assistente de IA (RAG com Gemini) que responde em linguagem natural com rastreabilidade total até a fonte
 
 **Município-piloto:** Jequié — BA (~150 mil habitantes)
+## Deploy Público (Protótipo)
+| Componente | URL |
+|------------|-----|
+| **Frontend** | https://lente-gestor.web.app |
+| **API** | https://lente-api-tguspcnbeq-uc.a.run.app |
+| **Swagger** | https://lente-api-tguspcnbeq-uc.a.run.app/docs |
+O frontend público usa `rewrites` do Firebase Hosting para proxy transparente
+de `/api/**` → Cloud Run. Infraestrutura completa documentada em [`infra/README.md`](infra/README.md).
+- **Projeto GCP:** `lente-gestor` (us-central1)
+- **Cloud SQL:** `lente-db` (PostgreSQL 16 + pgvector)
+- **Cloud Run service:** `lente-api` (público, escala a zero)
+- **Cloud Run Jobs:** `migrate-db`, `ingest-pncp`, `ingest-orcamento`, `ingest-rgf`, `ingest-ibge`, `ingest-rag`
 
 ## Status do Projeto
 
@@ -30,7 +42,7 @@ Plataforma digital que funciona como **camada de inteligência sobre dados públ
 | Indicadores LRF + mínimos constitucionais | ✅ Implementado |
 | Frontend React (painel orçamento-first + LRF) | ✅ Implementado |
 | Testes automatizados (backend) | ✅ 83 testes passando |
-| Deploy em Google Cloud (Cloud Run + Cloud SQL) | 🔧 Próximo |
+| Deploy em Google Cloud (Cloud Run + Cloud SQL) | ✅ No ar |
 | Camada RAG (Gemini + pgvector) | 🟡 Fase 1 implementada |
 | Conectores Portal Transparência + TCM-BA | 📋 Roadmap |
 

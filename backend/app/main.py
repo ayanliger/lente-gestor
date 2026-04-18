@@ -32,10 +32,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — liberar frontend em desenvolvimento
+# CORS — origens configuráveis via env var (CORS_ORIGINS).
+# Em dev: localhost defaults. Em produção: URL do Firebase Hosting.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

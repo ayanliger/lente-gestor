@@ -1,8 +1,10 @@
 """Configuração da aplicação via variáveis de ambiente."""
 
 from functools import lru_cache
+from typing import Annotated
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -27,6 +29,14 @@ class Settings(BaseSettings):
     app_secret_key: str = "change-me-in-production"
     app_host: str = "0.0.0.0"
     app_port: int = 8000
+    # Origens CORS permitidas. Em produção vem da URL do Firebase Hosting.
+    # Aceita CSV (default) ou JSON list. `NoDecode` pula o decode automático
+    # do pydantic-settings (que tentaria JSON em tipo complexo) para que o
+    # nosso `_parse_cors_origins` consiga processar o formato CSV simples.
+    cors_origins: Annotated[list[str], NoDecode] = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+    ]
 
     # Banco de dados
     database_url: str = "postgresql+asyncpg://lente:lente_dev@localhost:5432/lente"
@@ -67,6 +77,20 @@ class Settings(BaseSettings):
     rag_fallback_minimo: int = 3
     # Rate limit do endpoint /chat (formato slowapi, ex: "20/minute").
     rate_limit_chat: str = "20/minute"
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def _parse_cors_origins(cls, value: object) -> object:
+        """Aceita CSV (conveniente em env var do Cloud Run) ou lista JSON."""
+        if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped:
+                return []
+            # Se vier como JSON list, deixa o pydantic parsear normalmente
+            if stripped.startswith("["):
+                return value
+            return [origin.strip() for origin in stripped.split(",") if origin.strip()]
+        return value
 
     @property
     def is_development(self) -> bool:
