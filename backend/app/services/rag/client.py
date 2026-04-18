@@ -54,23 +54,38 @@ class RespostaGerador:
 
 
 class GeminiClient:
-    """Wrapper fino sobre `google.genai.Client` configurado para Vertex AI."""
+    """Wrapper fino sobre `google.genai.Client` configurado para Vertex AI.
+
+    Usa dois clientes internos em regiões diferentes:
+    - `_embed_client` (regional, ex: us-central1) para `gemini-embedding-*`
+    - `_gen_client` (global) para a família Gemini 3.1 preview, que
+      é servida exclusivamente pelo endpoint global
+    Se as duas regiões forem iguais, as instâncias separadas ainda funcionam
+    (custo zero, só pra manter o código uniforme).
+    """
 
     def __init__(
         self,
         *,
         project: str,
-        location: str,
+        location_embed: str,
+        location_generate: str,
         model_generate: str,
         model_embed: str,
         embedding_dims: int,
     ) -> None:
         self._project = project
-        self._location = location
+        self._location_embed = location_embed
+        self._location_generate = location_generate
         self._model_generate = model_generate
         self._model_embed = model_embed
         self._embedding_dims = embedding_dims
-        self._client = genai.Client(vertexai=True, project=project, location=location)
+        self._embed_client = genai.Client(
+            vertexai=True, project=project, location=location_embed
+        )
+        self._gen_client = genai.Client(
+            vertexai=True, project=project, location=location_generate
+        )
 
     # ──────────────────────────────────────
     # Embeddings
@@ -79,7 +94,7 @@ class GeminiClient:
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
     async def embed_text(self, texto: str, *, task_type: TaskType) -> list[float]:
         """Gera embedding para um único texto."""
-        resp = await self._client.aio.models.embed_content(
+        resp = await self._embed_client.aio.models.embed_content(
             model=self._model_embed,
             contents=[texto],
             config=types.EmbedContentConfig(
@@ -89,22 +104,28 @@ class GeminiClient:
         )
         return list(resp.embeddings[0].values)
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
     async def embed_batch(
         self, textos: list[str], *, task_type: TaskType
     ) -> list[list[float]]:
-        """Gera embeddings em lote, preservando ordem de entrada."""
+        """Gera embeddings em paralelo, preservando ordem de entrada.
+
+        O endpoint Gemini via Vertex AI processa um texto por chamada —
+        passar uma lista em `contents` será tratado como input único. Usamos
+        `asyncio.gather` para rodar N chamadas concorrentes; cada uma já
+        tem retry exponencial via `embed_text`. O `Semaphore` limita a
+        concorrência para respeitar quotas da API.
+        """
+        import asyncio
+
         if not textos:
             return []
-        resp = await self._client.aio.models.embed_content(
-            model=self._model_embed,
-            contents=textos,
-            config=types.EmbedContentConfig(
-                task_type=task_type,
-                output_dimensionality=self._embedding_dims,
-            ),
-        )
-        return [list(e.values) for e in resp.embeddings]
+        sem = asyncio.Semaphore(8)  # 8 chamadas concorrentes é conservador
+
+        async def _um(t: str) -> list[float]:
+            async with sem:
+                return await self.embed_text(t, task_type=task_type)
+
+        return await asyncio.gather(*(_um(t) for t in textos))
 
     # ──────────────────────────────────────
     # Geração com thinking
@@ -134,7 +155,7 @@ class GeminiClient:
             ),
         )
 
-        resp = await self._client.aio.models.generate_content(
+        resp = await self._gen_client.aio.models.generate_content(
             model=self._model_generate,
             contents=prompt,
             config=config,
@@ -180,7 +201,8 @@ def get_gemini_client() -> GeminiClient:
         )
     return GeminiClient(
         project=settings.gcp_project_id,
-        location=settings.gcp_location,
+        location_embed=settings.gcp_location,
+        location_generate=settings.gcp_location_generate,
         model_generate=settings.gemini_model,
         model_embed=settings.gemini_embedding_model,
         embedding_dims=settings.gemini_embedding_dimensions,

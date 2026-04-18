@@ -38,22 +38,26 @@ def main():
     )
     args = parser.parse_args()
 
-    resultado = asyncio.run(ingerir_tudo(data_inicial=args.desde, data_final=args.ate))
+    async def _run() -> None:
+        resultado = await ingerir_tudo(
+            data_inicial=args.desde, data_final=args.ate
+        )
+        print("\n=== Resultado da Ingestão ===")
+        for categoria, stats in resultado.items():
+            print(f"\n{categoria.upper()}:")
+            for k, v in stats.items():
+                print(f"  {k}: {v}")
 
-    print("\n=== Resultado da Ingestão ===")
-    for categoria, stats in resultado.items():
-        print(f"\n{categoria.upper()}:")
-        for k, v in stats.items():
-            print(f"  {k}: {v}")
+        rag_stats = await reindex_apos_ingestao(
+            FONTES_POR_SCRIPT["pncp"],
+            sem_reindex=args.sem_reindex,
+        )
+        if rag_stats is not None:
+            print("\n=== Reindexação RAG (CONTRATO, RESUMO_PCA) ===")
+            for k, v in rag_stats.items():
+                print(f"  {k}: {v}")
 
-    rag_stats = reindex_apos_ingestao(
-        FONTES_POR_SCRIPT["pncp"],
-        sem_reindex=args.sem_reindex,
-    )
-    if rag_stats is not None:
-        print("\n=== Reindexação RAG (CONTRATO, RESUMO_PCA) ===")
-        for k, v in rag_stats.items():
-            print(f"  {k}: {v}")
+    asyncio.run(_run())
 
 
 if __name__ == "__main__":

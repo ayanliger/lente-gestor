@@ -65,30 +65,33 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    stats_rgf, stats_indicadores = asyncio.run(_executar(args))
+    async def _run() -> None:
+        stats_rgf, stats_indicadores = await _executar(args)
 
-    print("\n=== Resultado da Ingestão (RGF) ===")
-    print(f"exercicio: {args.exercicio}")
-    print(f"co_poder:  {args.co_poder}")
-    for k, v in stats_rgf.items():
-        print(f"  {k}: {v}")
-
-    if stats_indicadores is not None:
-        print("\n=== Indicadores Fiscais Derivados ===")
-        for k, v in stats_indicadores.items():
+        print("\n=== Resultado da Ingestão (RGF) ===")
+        print(f"exercicio: {args.exercicio}")
+        print(f"co_poder:  {args.co_poder}")
+        for k, v in stats_rgf.items():
             print(f"  {k}: {v}")
 
-    # Reindex só faz sentido se os indicadores foram derivados (são a fonte
-    # dos documentos INDICADOR_FISCAL). Respeita --no-derivar.
-    if stats_indicadores is not None:
-        rag_stats = reindex_apos_ingestao(
-            FONTES_POR_SCRIPT["rgf"],
-            sem_reindex=args.sem_reindex,
-        )
-        if rag_stats is not None:
-            print("\n=== Reindexação RAG (INDICADOR_FISCAL) ===")
-            for k, v in rag_stats.items():
+        if stats_indicadores is not None:
+            print("\n=== Indicadores Fiscais Derivados ===")
+            for k, v in stats_indicadores.items():
                 print(f"  {k}: {v}")
+
+        # Reindex só faz sentido se os indicadores foram derivados (são a
+        # fonte dos documentos INDICADOR_FISCAL). Respeita --no-derivar.
+        if stats_indicadores is not None:
+            rag_stats = await reindex_apos_ingestao(
+                FONTES_POR_SCRIPT["rgf"],
+                sem_reindex=args.sem_reindex,
+            )
+            if rag_stats is not None:
+                print("\n=== Reindexação RAG (INDICADOR_FISCAL) ===")
+                for k, v in rag_stats.items():
+                    print(f"  {k}: {v}")
+
+    asyncio.run(_run())
 
 
 if __name__ == "__main__":

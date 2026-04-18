@@ -37,23 +37,25 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    stats = asyncio.run(
-        ingerir_rreo(exercicio=args.exercicio, periodos=args.periodos)
-    )
-
-    print("\n=== Resultado da Ingestão (RREO) ===")
-    print(f"exercicio: {args.exercicio}")
-    for k, v in stats.items():
-        print(f"  {k}: {v}")
-
-    rag_stats = reindex_apos_ingestao(
-        FONTES_POR_SCRIPT["orcamento"],
-        sem_reindex=args.sem_reindex,
-    )
-    if rag_stats is not None:
-        print("\n=== Reindexação RAG (RESUMO_FUNCAO) ===")
-        for k, v in rag_stats.items():
+    async def _run() -> None:
+        stats = await ingerir_rreo(
+            exercicio=args.exercicio, periodos=args.periodos
+        )
+        print("\n=== Resultado da Ingestão (RREO) ===")
+        print(f"exercicio: {args.exercicio}")
+        for k, v in stats.items():
             print(f"  {k}: {v}")
+
+        rag_stats = await reindex_apos_ingestao(
+            FONTES_POR_SCRIPT["orcamento"],
+            sem_reindex=args.sem_reindex,
+        )
+        if rag_stats is not None:
+            print("\n=== Reindexação RAG (RESUMO_FUNCAO) ===")
+            for k, v in rag_stats.items():
+                print(f"  {k}: {v}")
+
+    asyncio.run(_run())
 
 
 if __name__ == "__main__":

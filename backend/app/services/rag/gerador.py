@@ -23,7 +23,11 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.rag.client import GeminiClient, UsoTokens
-from app.services.rag.prompts import MARCADOR_RECUSA, SYSTEM_PROMPT, montar_prompt_usuario
+from app.services.rag.prompts import (
+    MARCADOR_RECUSA,
+    build_system_prompt,
+    montar_prompt_usuario,
+)
 from app.services.rag.recuperacao import DocumentoRelevante, buscar
 
 logger = structlog.get_logger()
@@ -124,7 +128,7 @@ async def responder(
     # ── Geração ──
     prompt_usuario = montar_prompt_usuario(pergunta, docs)
     t_gen_inicio = time.perf_counter()
-    resp = await cliente.generate_answer(prompt_usuario, system=SYSTEM_PROMPT)
+    resp = await cliente.generate_answer(prompt_usuario, system=build_system_prompt())
     t_gen_fim = time.perf_counter()
     latencia_gen_ms = int((t_gen_fim - t_gen_inicio) * 1000)
 

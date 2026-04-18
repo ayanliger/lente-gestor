@@ -8,11 +8,17 @@ não respaldam a afirmação que ele precisaria fazer.
 
 from __future__ import annotations
 
+from datetime import date
+
 from app.services.rag.recuperacao import DocumentoRelevante
 
 MARCADOR_RECUSA = "NAO_SEI"
 
 
+# Base estática do system prompt. Para uso em runtime, prefira
+# `build_system_prompt()` que injeta a data atual como contexto temporal
+# (permite responder a perguntas com referências relativas tipo "próximos
+# 90 dias" ou "ano passado" sem virar recusa falsa).
 SYSTEM_PROMPT = f"""Você é um assistente especializado em gestão pública municipal brasileira, \
 trabalhando com dados de Jequié (BA). Sua única fonte de verdade são os \
 documentos fornecidos no contexto pelo usuário.
@@ -44,6 +50,26 @@ deixe explícito e cite ambos.
 você é uma IA. Fale como um analista técnico respondendo ao gestor."""
 
 
+def build_system_prompt(data_referencia: date | None = None) -> str:
+    """Gera o system prompt com a data atual como contexto temporal.
+
+    Sem isso, perguntas com termos relativos ("próximos 90 dias", "ano
+    passado") caem em recusa por falta de âncora temporal. Passando a data
+    explicitamente no system prompt, o modelo interpreta relativos sem
+    perder a ancoragem factual nos documentos.
+    """
+    if data_referencia is None:
+        data_referencia = date.today()
+    cabecalho = (
+        f"Contexto temporal: hoje é {data_referencia.isoformat()}. "
+        "Use essa data como referência para interpretar expressões "
+        'relativas (ex: "próximos 90 dias", "ano passado", '
+        '"exercício atual"). Não é fonte factual — apenas âncora '
+        "temporal."
+    )
+    return f"{cabecalho}\n\n{SYSTEM_PROMPT}"
+
+
 def montar_prompt_usuario(pergunta: str, docs: list[DocumentoRelevante]) -> str:
     """Monta o prompt do turno do usuário: pergunta + lista numerada de docs."""
     if not docs:
@@ -63,4 +89,9 @@ def montar_prompt_usuario(pergunta: str, docs: list[DocumentoRelevante]) -> str:
     )
 
 
-__all__ = ["SYSTEM_PROMPT", "MARCADOR_RECUSA", "montar_prompt_usuario"]
+__all__ = [
+    "SYSTEM_PROMPT",
+    "MARCADOR_RECUSA",
+    "build_system_prompt",
+    "montar_prompt_usuario",
+]

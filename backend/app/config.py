@@ -8,10 +8,17 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Configurações carregadas do .env ou variáveis de ambiente."""
 
+    # Procura o `.env` em dois lugares:
+    # 1. CWD (quando rodam direto, ex: `cd backend && python -m ...`)
+    # 2. Raiz do repo (um nível acima, layout padrão do monorepo)
+    # O primeiro que existir ganha; `.env` no CWD sobrescreve o da raiz.
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=("../.env", ".env"),
         env_file_encoding="utf-8",
         case_sensitive=False,
+        # O .env tem vars usadas por docker-compose (POSTGRES_*) e pelo
+        # frontend (VITE_*) que não são do escopo do Settings — ignora.
+        extra="ignore",
     )
 
     # Aplicação
@@ -37,8 +44,14 @@ class Settings(BaseSettings):
 
     # Google Cloud / Gemini (RAG)
     gcp_project_id: str = ""
+    # Região do endpoint de embeddings. `gemini-embedding-2-preview` é servido
+    # em endpoints regionais (ex: us-central1).
     gcp_location: str = "us-central1"
-    gemini_model: str = "gemini-3.1-pro-preview"
+    # Região do endpoint de geração. Modelos Gemini 3.1 em preview são
+    # servidos **apenas** via `global`; a 2.5 pro/flash funciona em ambos.
+    # Mantemos como config separada pra permitir flexibilidade.
+    gcp_location_generate: str = "global"
+    gemini_model: str = "gemini-3.1-flash-lite-preview"
     gemini_embedding_model: str = "gemini-embedding-2-preview"
     # Dimensão Matryoshka-truncada: permite HNSW no pgvector (limite de 2000 dims
     # em `vector`). Se mudar, rodar migração nova para ajustar a coluna/índice.
