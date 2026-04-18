@@ -11,8 +11,9 @@ from app.config import get_settings
 from app.db.session import Base
 
 # Importar todos os modelos para que Alembic os detecte
-from app.models.contratacoes import Orgao, Fornecedor, Contratacao, Contrato, ItemPCA  # noqa: F401
+from app.models.contratacoes import Contratacao, Contrato, Fornecedor, ItemPCA, Orgao  # noqa: F401
 from app.models.orcamento import DadosMunicipio, ExecucaoOrcamentaria, IndicadorFiscal  # noqa: F401
+from app.models.rag import DocumentoRag  # noqa: F401
 
 config = context.config
 settings = get_settings()

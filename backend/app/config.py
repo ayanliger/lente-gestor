@@ -40,7 +40,16 @@ class Settings(BaseSettings):
     gcp_location: str = "us-central1"
     gemini_model: str = "gemini-3.1-pro-preview"
     gemini_embedding_model: str = "gemini-embedding-2-preview"
-    gemini_embedding_dimensions: int = 3072
+    # Dimensão Matryoshka-truncada: permite HNSW no pgvector (limite de 2000 dims
+    # em `vector`). Se mudar, rodar migração nova para ajustar a coluna/índice.
+    gemini_embedding_dimensions: int = 1536
+
+    # RAG
+    # Limiar de similaridade cosseno mínimo para incluir documento no prompt
+    # (0 = equivalente, 1 = ortogonal). Com <=>, similaridade = 1 - distance.
+    rag_limiar_similaridade: float = 0.5
+    # Rate limit do endpoint /chat (formato slowapi, ex: "20/minute").
+    rate_limit_chat: str = "20/minute"
 
     @property
     def is_development(self) -> bool:

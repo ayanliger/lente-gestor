@@ -1,0 +1,103 @@
+# Golden set de 10 perguntas — base do eval evolutivo do RAG.
+#
+# Distribuição deliberada:
+#   3 × PCA × execução         (cruzamento flagship do produto)
+#   2 × LRF puras              (limites constitucionais)
+#   2 × contratos específicos
+#   2 × cruzamento LRF × contratos (thinking)
+#   1 × recusa esperada         (valida NAO_SEI)
+#
+# Cada entrada traz:
+#   id                      identificador estável (golden-XXX)
+#   pergunta                texto em português, como o gestor falaria
+#   intencao                categoria para agregação de métricas
+#   chaves_esperadas_top6   lista de globs `chave_unica` que precisam aparecer
+#                           entre os 6 primeiros recuperados. `*` é wildcard
+#                           simples de um segmento (match por startswith+endswith).
+#   deve_citar              True = resposta deve conter ≥1 citação [n];
+#                           False = resposta deve ser NAO_SEI
+#   motivo_inclusao         por que esta pergunta vale estar no golden set
+
+- id: golden-001
+  pergunta: "Por que Saúde está acima do orçamento previsto no PCA em 2024?"
+  intencao: pca_vs_execucao
+  chaves_esperadas_top6:
+    - "resumo_pca:2024:Saúde"
+    - "resumo_funcao:2024:*:Saúde"
+  deve_citar: true
+  motivo_inclusao: "Pergunta-vitrine do documento estratégico; exige cruzamento PCA × execução."
+
+- id: golden-002
+  pergunta: "Comparando o que foi planejado no PCA e o executado em Educação no exercício 2024."
+  intencao: pca_vs_execucao
+  chaves_esperadas_top6:
+    - "resumo_pca:2024:Educação"
+    - "resumo_funcao:2024:*:Educação"
+  deve_citar: true
+  motivo_inclusao: "Segunda variante do cruzamento em outra função sensível."
+
+- id: golden-003
+  pergunta: "Qual a diferença entre PCA e execução para Assistência Social em 2024?"
+  intencao: pca_vs_execucao
+  chaves_esperadas_top6:
+    - "resumo_pca:2024:Assistência Social"
+    - "resumo_funcao:2024:*:Assistência Social"
+  deve_citar: true
+  motivo_inclusao: "Função tipicamente com desvio PCA×execução alto."
+
+- id: golden-004
+  pergunta: "Jequié está dentro do limite de despesa com pessoal da LRF?"
+  intencao: lrf
+  chaves_esperadas_top6:
+    - "indicador:*"
+  deve_citar: true
+  motivo_inclusao: "Pergunta direta sobre limite prudencial/máximo da LRF."
+
+- id: golden-005
+  pergunta: "A aplicação em educação atingiu os 25% constitucionais em 2024?"
+  intencao: lrf
+  chaves_esperadas_top6:
+    - "indicador:*"
+  deve_citar: true
+  motivo_inclusao: "Mínimo constitucional (CF Art. 212) com resposta factual."
+
+- id: golden-006
+  pergunta: "Quais contratos de limpeza urbana estão próximos do fim da vigência?"
+  intencao: contratos
+  chaves_esperadas_top6:
+    - "contrato:*"
+  deve_citar: true
+  motivo_inclusao: "Query de contrato por tema + vigência."
+
+- id: golden-007
+  pergunta: "Qual o valor total dos contratos firmados com empresas de tecnologia em 2024?"
+  intencao: contratos
+  chaves_esperadas_top6:
+    - "contrato:*"
+  deve_citar: true
+  motivo_inclusao: "Agregação implícita sobre conjunto de contratos."
+
+- id: golden-008
+  pergunta: "Se a despesa com pessoal está no limite, há contratos de terceirização que poderiam ser reclassificados?"
+  intencao: cruzamento_lrf_contratos
+  chaves_esperadas_top6:
+    - "indicador:*"
+    - "contrato:*"
+  deve_citar: true
+  motivo_inclusao: "Cruzamento clássico LRF × terceirização — valida uso de thinking."
+
+- id: golden-009
+  pergunta: "A situação fiscal de 2024 sugere risco para o próximo exercício considerando os contratos em vigência?"
+  intencao: cruzamento_lrf_contratos
+  chaves_esperadas_top6:
+    - "indicador:*"
+    - "contrato:*"
+  deve_citar: true
+  motivo_inclusao: "Pergunta analítica que exige sintetizar LRF + vigências de contratos."
+
+- id: golden-010
+  pergunta: "Quantos funcionários ativos a prefeitura tem hoje?"
+  intencao: recusa_esperada
+  chaves_esperadas_top6: []
+  deve_citar: false
+  motivo_inclusao: "Dado não ingerido. Resposta correta é NAO_SEI — valida ancoragem."
