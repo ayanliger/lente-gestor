@@ -146,7 +146,14 @@ async def por_mes(
     exercicio: int = Query(...),
     db: AsyncSession = Depends(get_db),
 ):
-    """Série mensal de arrecadação de um exercício."""
+    """
+    Série mensal de arrecadação de um exercício.
+
+    Filtra `fonte='SICONFI_DCA'` porque DCA é anual; mantendo-a o valor
+    inteiro do ano apareceria empilhado em dezembro (`mes=12`), criando
+    um pico artificial. A série mensal é exclusiva da fonte mensal
+    (Município Online).
+    """
     query = (
         select(
             Arrecadacao.mes,
@@ -154,7 +161,10 @@ async def por_mes(
                 func.sum(Arrecadacao.valor_arrecadado_periodo), 0
             ).label("valor"),
         )
-        .where(Arrecadacao.exercicio == exercicio)
+        .where(
+            Arrecadacao.exercicio == exercicio,
+            Arrecadacao.fonte != "SICONFI_DCA",
+        )
         .group_by(Arrecadacao.mes)
         .order_by(Arrecadacao.mes)
     )
@@ -440,6 +450,9 @@ async def historico_mes_x_ano(
     if ano_fim < ano_inicio:
         ano_inicio, ano_fim = ano_fim, ano_inicio
 
+    # Filtra SICONFI_DCA: o backfill DCA é anual e carregado em
+    # `mes=12` como sentinela; incluí-lo distorceria o perfil mensal
+    # do gráfico de barras empilhadas.
     query = (
         select(
             Arrecadacao.exercicio.label("ano"),
@@ -450,6 +463,7 @@ async def historico_mes_x_ano(
         )
         .where(
             Arrecadacao.exercicio.between(ano_inicio, ano_fim),
+            Arrecadacao.fonte != "SICONFI_DCA",
         )
         .group_by(Arrecadacao.exercicio, Arrecadacao.mes)
         .order_by(Arrecadacao.exercicio, Arrecadacao.mes)

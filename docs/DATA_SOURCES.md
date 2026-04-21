@@ -273,19 +273,27 @@ Mapeamento com o Município Online: DCA usa `cod_conta = "RO1.1.1.8.01.1.0"`; Mu
 
 **Limitação**: granularidade **anual apenas**. Não alimenta o painel “mês × ano”; alimenta apenas o painel plurianual “por receita × ano”.
 
-### Estratégia de integração proposta
-Para fechar o gap sem misturar fontes conflitantes na mesma tabela `arrecadacao`:
+### Integração DCA → arrecadação (implementado)
+O backfill via DCA está integrado à tabela `arrecadacao` com isolamento por fonte:
 
-1. Adicionar método `dca` no conector SICONFI (análogo a `rreo`).
-2. Criar serviço `ingestao_arrecadacao_historica` que consome DCA Anexo I-C e grava em `arrecadacao` usando `fonte="SICONFI_DCA"` e `mes=12` (uma linha anual agregada por item). Manter `fonte="MUNICIPIO_ONLINE"` para 2023+.
-3. Na API `/historico/por-receita` unir as duas fontes por ano, preferindo `MUNICIPIO_ONLINE` quando disponível e caindo em `SICONFI_DCA` para 2020–2022.
-4. Opcional (fase 2): ingerir RREO Anexo 03 para reconstituir a série mensal dos ~7 itens-chave (FPM, ICMS, ISS, IPTU, ITBI, IRRF, IPVA) em 2020–2022 e alimentar o painel mês × ano retrospectivamente.
+- Conector: `SICONFIClient.paginar_dca(an_exercicio, no_anexo="DCA-Anexo I-C")` em `app/connectors/siconfi.py`.
+- Serviço: `ingerir_arrecadacao_dca(exercicios)` em `app/services/ingestao_arrecadacao_historica.py`.
+- Filtro de folhas STN: grava apenas nós sem descendentes na hierarquia (categoria.origem.espécie.rubrica.alínea.sub-alínea.detalhamento), evitando dupla contagem de rollups.
+- Chave de desambiguação: cada linha DCA usa `fonte="SICONFI_DCA"` e `cod_fonte_recurso="SICONFI_DCA"` — nunca colide com o índice único do Município Online (`orgao × exercício × mês × cod_item × cod_fonte_recurso`).
+- Sentinela temporal: `mes=12` (DCA é anual). Os endpoints mensais (`/por-mes`, `/historico/mes-x-ano`) excluem `fonte='SICONFI_DCA'` para não gerar pico artificial em dezembro. Os endpoints anuais/plurianuais (`/por-exercicio`, `/historico/por-receita`, `/resumo`, `/por-especie`, `/top-tributos`) incluem naturalmente as duas fontes.
 
-Comandos Make sugeridos:
+Comandos Make:
 ```
-make ingest-arrecadacao-dca ano=2020
-make ingest-arrecadacao-dca-historico       # 2020..2022
+make ingest-arrecadacao-dca ano=2020            # um ano
+make ingest-arrecadacao-dca-historico           # backfill 2020..2022
 ```
+
+Totais carregados em 04/2026 (Jequié): 2020 → 59 folhas / R$ 469,0 mi; 2021 → 57 folhas / R$ 494,6 mi; 2022 → 65 folhas / R$ 649,1 mi.
+
+**Caveat de granularidade**: o código `cod_item_receita` gerado pelo DCA (ex.: `111801010000` para IPTU) não casa 1:1 com os códigos do Município Online (ex.: `111801010103` para "IPTU-Principal"). Linhas DCA e MO aparecem como entradas distintas no pivot plurianual. Como os anos são disjuntos (DCA é 2020–2022, MO é 2023+), isso não causa sobreposição, mas cria linhas espelhadas com nível de detalhe diferente. Unificação via tabela de mapeamento é um passo futuro opcional.
+
+### Fase 2 opcional
+Reconstituir a série mensal 2020–2022 para os itens-chave (FPM, ICMS, ISS, IPTU, ITBI, IRRF, IPVA) via RREO Anexo 03, alimentando `/historico/mes-x-ano` retrospectivamente.
 
 ### Outras capacidades já cobertas pelo SICONFI
 - **RREO Anexo 01** (Balanço Orçamentário): Receita Arrecadada agregada por categoria econômica (Impostos, Taxas, Transferências) — **já ingerido** para 2023–2024; cobertura 2020–2022 disponível no endpoint, pendente de backfill.
