@@ -44,6 +44,7 @@ de `/api/**` → Cloud Run. Infraestrutura completa documentada em [`infra/READM
 | Testes automatizados (backend) | ✅ 83 testes passando |
 | Deploy em Google Cloud (Cloud Run + Cloud SQL) | ✅ No ar |
 | Camada RAG (Gemini + pgvector) | 🟡 Fase 1 implementada |
+| Painel de Arrecadação Tributária (Município Online) | ✅ Implementado |
 | Conectores Portal Transparência + TCM-BA | 📋 Roadmap |
 
 ## Arquitetura da Lente
@@ -260,6 +261,7 @@ make ingest-pncp               # Ingestão PNCP + auto-reindex RAG (CONTRATO, RE
 make ingest-orcamento ano=AAAA # RREO/SICONFI + auto-reindex (RESUMO_FUNCAO)
 make ingest-rgf ano=AAAA       # RGF/SICONFI + indicadores + auto-reindex (INDICADOR_FISCAL)
 make ingest-ibge               # Dados contextuais do IBGE
+make ingest-arrecadacao ano=AAAA # Arrecadação tributária (Município Online) + drill-down por banco
 make ingest-rag                # Reindexação RAG completa (rebuild manual)
 make test                      # Testes unitários (sem rede)
 make test-integration          # Testes contra Vertex AI (consome créditos GCP)
@@ -274,6 +276,7 @@ make format                    # ruff format
 | **PNCP** — Contratações, contratos, PCA, atas, NF-e | API REST pública | ✅ Ingerido |
 | **SICONFI** — RREO, RGF, DCA (Tesouro Nacional) | API REST pública (ORDS) | ✅ Ingerido |
 | **IBGE** — População, PIB, metadados municipais | APIs SIDRA + localidades | ✅ Ingerido |
+| **Município Online** — Arrecadação tributária (mensal + por banco recebedor) | Scraping estruturado (ASP.NET postback + drill-down JSON) | ✅ Ingerido |
 | **Portal Transparência Jequié** — Empenhos detalhados, folha | Scraping / acesso direto | 📋 Roadmap |
 | **TCM-BA** — Obras, publicidade, SICOB, SIES | Portal público | 📋 Roadmap |
 

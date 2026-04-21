@@ -1,12 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
 import { api, type PaginatedResponse } from "./client";
 import type {
+  AgregacaoBanco,
+  AgregacaoEspecie,
+  AnoEspecie,
   Contratacao,
   Contrato,
   DadosMunicipio,
   Fornecedor,
   IndicadorFiscal,
+  ResumoArrecadacao,
   ResumoFuncao,
+  SerieAnualArrecadacao,
+  SerieMensalArrecadacao,
+  TopTributo,
 } from "./types";
 
 interface PaginationParams {
@@ -121,6 +128,93 @@ export function useDadosMunicipio(exercicio: number) {
           params: { exercicio },
         })
         .then((r) => r.data[0] ?? null),
+    enabled: Number.isFinite(exercicio) && exercicio > 0,
+  });
+}
+
+// ─────────────────────────────────────
+// Arrecadação tributária (Município Online)
+// ─────────────────────────────────────
+
+export function useResumoArrecadacao(exercicio: number) {
+  return useQuery({
+    queryKey: ["arrecadacao", "resumo", exercicio],
+    queryFn: () =>
+      api
+        .get<ResumoArrecadacao>("/arrecadacao/resumo", {
+          params: { exercicio },
+        })
+        .then((r) => r.data),
+    enabled: Number.isFinite(exercicio) && exercicio > 0,
+  });
+}
+
+export function useArrecadacaoPorExercicio() {
+  return useQuery({
+    queryKey: ["arrecadacao", "por-exercicio"],
+    queryFn: () =>
+      api
+        .get<SerieAnualArrecadacao[]>("/arrecadacao/por-exercicio")
+        .then((r) => r.data),
+  });
+}
+
+export function useArrecadacaoPorMes(exercicio: number) {
+  return useQuery({
+    queryKey: ["arrecadacao", "por-mes", exercicio],
+    queryFn: () =>
+      api
+        .get<SerieMensalArrecadacao[]>("/arrecadacao/por-mes", {
+          params: { exercicio },
+        })
+        .then((r) => r.data),
+    enabled: Number.isFinite(exercicio) && exercicio > 0,
+  });
+}
+
+export function useArrecadacaoPorEspecie(exercicio: number) {
+  return useQuery({
+    queryKey: ["arrecadacao", "por-especie", exercicio],
+    queryFn: () =>
+      api
+        .get<AgregacaoEspecie[]>("/arrecadacao/por-especie", {
+          params: { exercicio },
+        })
+        .then((r) => r.data),
+    enabled: Number.isFinite(exercicio) && exercicio > 0,
+  });
+}
+
+export function useTopTributos(exercicio: number, limite = 20) {
+  return useQuery({
+    queryKey: ["arrecadacao", "top-tributos", exercicio, limite],
+    queryFn: () =>
+      api
+        .get<TopTributo[]>("/arrecadacao/top-tributos", {
+          params: { exercicio, limite },
+        })
+        .then((r) => r.data),
+    enabled: Number.isFinite(exercicio) && exercicio > 0,
+  });
+}
+
+export function useArrecadacaoAnoEspecie() {
+  return useQuery({
+    queryKey: ["arrecadacao", "ano-x-especie"],
+    queryFn: () =>
+      api.get<AnoEspecie[]>("/arrecadacao/ano-x-especie").then((r) => r.data),
+  });
+}
+
+export function useArrecadacaoPorBanco(exercicio: number, mes?: number) {
+  return useQuery({
+    queryKey: ["arrecadacao", "por-banco", exercicio, mes],
+    queryFn: () =>
+      api
+        .get<AgregacaoBanco[]>("/arrecadacao/por-banco", {
+          params: { exercicio, ...(mes != null ? { mes } : {}) },
+        })
+        .then((r) => r.data),
     enabled: Number.isFinite(exercicio) && exercicio > 0,
   });
 }

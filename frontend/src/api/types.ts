@@ -100,6 +100,89 @@ export interface DadosMunicipio {
   ingerido_em: string;
 }
 
+// ─────────────────────────────────────
+// Arrecadação tributária
+// ─────────────────────────────────────
+
+export interface Arrecadacao {
+  id: string;
+  orgao_id: string;
+  cod_ibge: string;
+  exercicio: number;
+  mes: number;
+  data_emissao: string | null;
+  cod_item_receita: string;
+  descricao_receita: string;
+  poder: string | null;
+  categoria: string | null;
+  cod_fonte_recurso: string | null;
+  descricao_fonte_recurso: string | null;
+  valor_previsto: number | null;
+  valor_atualizado: number | null;
+  valor_arrecadado_periodo: number | null;
+  valor_arrecadado_acumulado: number | null;
+  fonte: string;
+  ingerido_em: string;
+}
+
+export interface RecolhimentoDetalhe {
+  id: string;
+  arrecadacao_id: string;
+  orgao_id: string;
+  exercicio: number;
+  mes: number;
+  data_emissao: string | null;
+  numero_processo: string | null;
+  banco: string;
+  historico: string | null;
+  valor: number | null;
+  ingerido_em: string;
+}
+
+export interface SerieAnualArrecadacao {
+  exercicio: number;
+  valor: number;
+}
+
+export interface SerieMensalArrecadacao {
+  mes: number;
+  valor: number;
+}
+
+export interface AgregacaoEspecie {
+  especie: string;
+  valor: number;
+  pct: number;
+}
+
+export interface TopTributo {
+  cod_item_receita: string;
+  descricao_receita: string;
+  valor: number;
+  pct: number;
+}
+
+export interface AnoEspecie {
+  exercicio: number;
+  especie: string;
+  valor: number;
+}
+
+export interface AgregacaoBanco {
+  banco: string;
+  valor: number;
+  pct: number;
+}
+
+export interface ResumoArrecadacao {
+  exercicio: number;
+  total_arrecadado: number;
+  total_previsto: number | null;
+  pct_realizacao: number | null;
+  delta_yoy: number | null;
+  n_tributos: number;
+}
+
 export interface Contrato {
   id: string;
   pncp_id: string | null;

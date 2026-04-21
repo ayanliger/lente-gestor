@@ -296,3 +296,148 @@ SAMPLE_RGF_ITEM = {
 @pytest.fixture
 def rgf_item():
     return SAMPLE_RGF_ITEM.copy()
+
+
+# ─────────────────────────────────────
+# Fixtures: Município Online (arrecadação)
+# ─────────────────────────────────────
+
+# HTML capturado da resposta agregada do portal (reduzido: 2 itens de receita).
+# Estrutura observada via inspeção do DOM real do
+# `municipioonline.com.br/ba/prefeitura/jequie/cidadao/receita`.
+_DATA_KEY_IPTU = (
+    '{"NuCnpj": "13894878000160", "DtAno": "2026", '
+    '"DtAnoMes": "202602", "DtPeriodo": "", '
+    '"FlCovid19": "0", "CdItemReceita": "111250010000"}'
+)
+_DATA_KEY_TFF = (
+    '{"NuCnpj": "13894878000160", "DtAno": "2026", '
+    '"DtAnoMes": "202602", "DtPeriodo": "", '
+    '"FlCovid19": "0", "CdItemReceita": "112101010200"}'
+)
+SAMPLE_MUNICIPIO_ONLINE_HTML = f"""
+<html><body>
+<table>
+  <thead><tr>
+    <th></th><th>Poder</th><th>Órgão</th><th>Categoria</th><th>Receita</th>
+    <th>Descrição</th><th>Data</th><th>Previsto</th><th>Atualizado</th>
+    <th>Período</th><th>Acumulado</th><th>%</th><th>NuCnpj</th>
+  </tr></thead>
+  <tbody>
+    <tr data-key='{_DATA_KEY_IPTU}'>
+      <td width="6px"></td>
+      <td>Executivo</td>
+      <td>PREFEITURA MUNICIPAL DE JEQUIE</td>
+      <td>Obrigatória</td>
+      <td>111250010000</td>
+      <td>Imposto sobre a Propriedade Predial e Territorial Urbana - Principal</td>
+      <td>11/02/2026</td>
+      <td>R$ 10.000.000,00</td>
+      <td>R$ 10.000.000,00</td>
+      <td>R$ 32.813,40</td>
+      <td>R$ 270.631,73</td>
+      <td>2.70</td>
+      <td>13894878000160</td>
+    </tr>
+    <tr>
+      <td style="display: none"></td>
+      <td style="display: none"></td>
+      <td style="display: none"></td>
+      <td style="display: none"></td>
+      <td style="display: none"></td>
+      <td style="display: none"></td>
+      <td style="display: none"></td>
+      <td colspan="7">15001001 - Recurso não Vinculado de Imposto destinado à Educação<br/></td>
+      <td align="right">R$ 2.500.000,00<br/></td>
+      <td align="right">R$ 2.500.000,00<br/></td>
+      <td align="right">R$ 8.203,36<br/></td>
+      <td align="right">R$ 67.657,87<br/></td>
+      <td align="center"></td>
+    </tr>
+    <tr data-key='{_DATA_KEY_TFF}'>
+      <td width="6px"></td>
+      <td>Executivo</td>
+      <td>PREFEITURA MUNICIPAL DE JEQUIE</td>
+      <td>Obrigatória</td>
+      <td>112101010200</td>
+      <td>Taxa de Fiscalização e Funcionamento - TFF - Principal</td>
+      <td>11/02/2026</td>
+      <td>R$ 8.200.000,00</td>
+      <td>R$ 8.200.000,00</td>
+      <td>R$ 309.457,54</td>
+      <td>R$ 1.190.972,68</td>
+      <td>14.52</td>
+      <td>13894878000160</td>
+    </tr>
+  </tbody>
+</table>
+</body></html>
+"""
+
+# HTML do drill-down (campo `DsReceitaDetalhe` da resposta JSON).
+# Classes CSS vem do template `ReceitaDetalhe.htm` usado pelo Receita.js.
+SAMPLE_DRILL_DOWN_HTML = """
+<table>
+  <tr>
+    <td class="dt_emissao">05/02/2026</td>
+    <td class="nu_processo">2026/00123</td>
+    <td class="ds_contaBanco">BANCO DO BRASIL S.A.</td>
+    <td class="vl_realizado">R$ 15.000,00</td>
+    <td class="ds_observacao">IPTU cota única</td>
+  </tr>
+  <tr>
+    <td class="dt_emissao">12/02/2026</td>
+    <td class="nu_processo">2026/00124</td>
+    <td class="ds_contaBanco">CAIXA ECONOMICA FEDERAL</td>
+    <td class="vl_realizado">R$ 17.813,40</td>
+    <td class="ds_observacao">IPTU parcelado</td>
+  </tr>
+</table>
+"""
+
+# Estrutura normalizada retornada por `listar_receitas` para o HTML acima.
+SAMPLE_MUNICIPIO_ONLINE_REGISTROS = [
+    {
+        "keys": {
+            "NuCnpj": "13894878000160",
+            "DtAno": "2026",
+            "DtAnoMes": "202602",
+            "DtPeriodo": "",
+            "FlCovid19": "0",
+            "CdItemReceita": "111250010000",
+        },
+        "poder": "Executivo",
+        "orgao": "PREFEITURA MUNICIPAL DE JEQUIE",
+        "categoria": "Obrigatória",
+        "cod_item_receita": "111250010000",
+        "descricao_receita": "Imposto sobre a Propriedade Predial e Territorial Urbana - Principal",
+        "data_emissao": "11/02/2026",
+        "valor_previsto": "R$ 10.000.000,00",
+        "valor_atualizado": "R$ 10.000.000,00",
+        "valor_arrecadado_periodo": "R$ 32.813,40",
+        "valor_arrecadado_acumulado": "R$ 270.631,73",
+        "valor_previsto_total": "R$ 10.000.000,00",
+        "valor_atualizado_total": "R$ 10.000.000,00",
+        "valor_arrecadado_periodo_total": "R$ 32.813,40",
+        "valor_arrecadado_acumulado_total": "R$ 270.631,73",
+        "cod_fonte_recurso": None,
+        "descricao_fonte_recurso": None,
+    },
+]
+
+
+@pytest.fixture
+def municipio_online_html():
+    return SAMPLE_MUNICIPIO_ONLINE_HTML
+
+
+@pytest.fixture
+def drill_down_html():
+    return SAMPLE_DRILL_DOWN_HTML
+
+
+@pytest.fixture
+def arrecadacao_raw():
+    import copy
+
+    return copy.deepcopy(SAMPLE_MUNICIPIO_ONLINE_REGISTROS[0])

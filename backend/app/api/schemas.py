@@ -229,9 +229,115 @@ class DadosMunicipioOut(BaseModel):
     ingerido_em: datetime
 
 
-# ────────────────────────────────────────
+# ─────────────────────────────────────
+# Arrecadação tributária (Município Online)
+# ─────────────────────────────────────
+
+
+class ArrecadacaoOut(BaseModel):
+    """Linha agregada de arrecadação por item de receita e fonte de recursos."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    orgao_id: uuid.UUID
+    cod_ibge: str
+    exercicio: int
+    mes: int
+    data_emissao: date | None = None
+    cod_item_receita: str
+    descricao_receita: str
+    poder: str | None = None
+    categoria: str | None = None
+    cod_fonte_recurso: str | None = None
+    descricao_fonte_recurso: str | None = None
+    valor_previsto: float | None = None
+    valor_atualizado: float | None = None
+    valor_arrecadado_periodo: float | None = None
+    valor_arrecadado_acumulado: float | None = None
+    fonte: str
+    ingerido_em: datetime
+
+
+class RecolhimentoDetalheOut(BaseModel):
+    """Recolhimento individual (detalhe por banco/data/processo)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    arrecadacao_id: uuid.UUID
+    orgao_id: uuid.UUID
+    exercicio: int
+    mes: int
+    data_emissao: date | None = None
+    numero_processo: str | None = None
+    banco: str
+    historico: str | None = None
+    valor: float | None = None
+    ingerido_em: datetime
+
+
+class SerieAnualArrecadacaoOut(BaseModel):
+    """Ponto da série anual de arrecadação."""
+
+    exercicio: int
+    valor: float
+
+
+class SerieMensalArrecadacaoOut(BaseModel):
+    """Ponto da série mensal de arrecadação em um exercício."""
+
+    mes: int
+    valor: float
+
+
+class AgregacaoEspecieOut(BaseModel):
+    """Total arrecadado por espécie tributária."""
+
+    especie: str
+    valor: float
+    pct: float
+
+
+class TopTributoOut(BaseModel):
+    """Top-N item de receita por valor arrecadado."""
+
+    cod_item_receita: str
+    descricao_receita: str
+    valor: float
+    pct: float
+
+
+class AnoEspecieOut(BaseModel):
+    """Célula da matriz ano × espécie."""
+
+    exercicio: int
+    especie: str
+    valor: float
+
+
+class AgregacaoBancoOut(BaseModel):
+    """Total arrecadado por banco recebedor."""
+
+    banco: str
+    valor: float
+    pct: float
+
+
+class ResumoArrecadacaoOut(BaseModel):
+    """KPIs de arrecadação de um exercício."""
+
+    exercicio: int
+    total_arrecadado: float
+    total_previsto: float | None = None
+    pct_realizacao: float | None = None
+    delta_yoy: float | None = None
+    n_tributos: int
+
+
+# ─────────────────────────────────────
 # Chat / RAG
-# ────────────────────────────────────────
+# ─────────────────────────────────────
 
 
 class ChatRequest(BaseModel):

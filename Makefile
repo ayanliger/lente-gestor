@@ -70,6 +70,9 @@ ingest-ibge: ## Ingestão de dados contextuais do IBGE (população, PIB)
 ingest-rgf: ## Ingestão do RGF/SICONFI + indicadores fiscais (uso: make ingest-rgf ano=2024)
 	cd backend && python -m scripts.ingest_rgf --exercicio $(ano)
 
+ingest-arrecadacao: ## Ingestão da arrecadação tributária (uso: make ingest-arrecadacao ano=2025)
+	cd backend && python -m scripts.ingest_arrecadacao --exercicio $(ano)
+
 ingest-rag: ## Reindexação completa da base RAG (supõe ingestões de negócio já feitas)
 	cd backend && python -m scripts.ingest_rag
 

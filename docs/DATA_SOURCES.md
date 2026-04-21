@@ -162,3 +162,34 @@ Os dados do TCM-BA permitem comparar o que foi **licitado/contratado** (PNCP) co
 ### Diário Oficial do Município
 - **Dados**: Nomeações, exonerações, portarias, decretos
 - **Uso**: Correlacionar atos administrativos com movimentações contratuais
+
+---
+
+## 5. Município Online (Portal da Transparência)
+
+**Fornecedor**: terceiro (distinto do ERP municipal, que é E&L GPI).
+**Escopo coberto pela Lente**: arrecadação tributária mensal, com drill-down por recolhimento individual (banco recebedor + data).
+
+### URL base
+- `https://municipioonline.com.br/<slug>/cidadao/receita`
+- Slug de Jequié: `ba/prefeitura/jequie`
+
+### Protocolo
+Portal é **ASP.NET Web Forms + AngularJS**. Não há API REST formal. Ingestão replica o fluxo do navegador:
+
+1. **GET** da página → extrair `__VIEWSTATE`, `__EVENTVALIDATION`, `__VIEWSTATEGENERATOR`.
+2. **POST form-urlencoded** na mesma URL com `__EVENTTARGET=ctl00$body$btnFiltrarRS`, `ctl00$body$hfAnoR`, `ctl00$body$hfMesR` → HTML com linhas por item de receita (cada `<tr data-key>`).
+3. **POST JSON** em `?o=R` com `{NuCnpj, DtAno, DtAnoMes, DtPeriodo, FlCovid19, CdItemReceita}` → drill-down com recolhimentos individuais (classes CSS `.dt_emissao`, `.nu_processo`, `.ds_contaBanco`, `.vl_realizado`, `.ds_observacao`).
+
+### Campos capturados
+
+**Agregado** (`arrecadacao`): código de receita do Tesouro (10+ dígitos), descrição, poder, categoria (Obrigatória/Voluntária), fonte de recursos, valores previsto/atualizado/período/acumulado, data de emissão.
+
+**Detalhe** (`recolhimento_detalhe`): data de emissão, número de processo, banco recebedor, valor do recolhimento, histórico.
+
+### Classificação de espécie
+Derivada do prefixo do código do STN: `111*` Impostos, `112*` Taxas, `113*` Contribuição de Melhoria, `12*` Contribuições, `13*`–`19*` Patrimonial/Serviços/Transferências/Não Tributária, `2*` Capital, `7*`/`8*` Intraorçamentária.
+
+### Limitações
+- **Contribuinte individual** (nome/CPF do pagador) não é exposto no portal público — inviável capturar sem contrato direto com o ERP.
+- Protocolo ASP.NET é frágil a mudanças de layout do portal; logging estruturado no conector facilita diagnóstico.

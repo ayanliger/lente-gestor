@@ -52,6 +52,12 @@ class Settings(BaseSettings):
     # IBGE
     ibge_base_url: str = "https://servicodados.ibge.gov.br/api"
 
+    # Portal de Transparência (Município Online)
+    # Fonte do painel de arrecadação tributária. URL concatena base + slug
+    # + path da página de receita (ex: `ba/prefeitura/jequie/cidadao/receita`).
+    municipio_online_base_url: str = "https://municipioonline.com.br"
+    municipio_online_slug_jequie: str = "ba/prefeitura/jequie"
+
     # Google Cloud / Gemini (RAG)
     gcp_project_id: str = ""
     # Região do endpoint de embeddings. `gemini-embedding-2-preview` é servido

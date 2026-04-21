@@ -86,6 +86,26 @@ const IconBudget: NavIcon = ({ className }) => (
   </svg>
 );
 
+// Cofre horizontal com faixa sutil — alude a receita/tributos sem cair
+// em clichê de "$" ou moeda.
+const IconRevenue: NavIcon = ({ className }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.6}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden
+  >
+    <rect x="3" y="6" width="18" height="13" rx="2" />
+    <path d="M3 11h18" />
+    <circle cx="8" cy="15" r="0.9" fill="currentColor" stroke="none" />
+    <path d="M13 15h4" />
+  </svg>
+);
+
 const IconLRF: NavIcon = ({ className }) => (
   <svg
     viewBox="0 0 24 24"
@@ -172,6 +192,7 @@ const navGroups: { heading: string; tone: "primary" | "secondary"; links: NavLin
       { to: "/", label: "Visão Geral", Icon: IconOverview },
       { to: "/assistente", label: "Assistente", Icon: IconChat },
       { to: "/orcamento", label: "Execução", Icon: IconBudget },
+      { to: "/arrecadacao", label: "Arrecadação", Icon: IconRevenue },
       { to: "/lrf", label: "Indicadores LRF", Icon: IconLRF },
     ],
   },
