@@ -183,6 +183,21 @@ export interface ResumoArrecadacao {
   n_tributos: number;
 }
 
+export interface PorReceitaContabil {
+  cod_item_receita: string;
+  descricao_receita: string;
+  total: number;
+  // JSON converte chaves numéricas em strings ("2020"); refletir isso
+  // no tipo para evitar surpresas ao indexar.
+  por_ano: Record<string, number>;
+}
+
+export interface MesAnoArrecadacao {
+  ano: number;
+  mes: number;
+  valor: number;
+}
+
 export interface Contrato {
   id: string;
   pncp_id: string | null;

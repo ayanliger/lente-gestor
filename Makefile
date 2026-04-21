@@ -73,6 +73,9 @@ ingest-rgf: ## Ingestão do RGF/SICONFI + indicadores fiscais (uso: make ingest-
 ingest-arrecadacao: ## Ingestão da arrecadação tributária (uso: make ingest-arrecadacao ano=2025)
 	cd backend && python -m scripts.ingest_arrecadacao --exercicio $(ano)
 
+ingest-arrecadacao-historico: ## Backfill plurianual 2020–2026 (agregado, sem drill-down)
+	cd backend && python -m scripts.ingest_arrecadacao --exercicios 2020 2021 2022 2023 2024 2025 2026
+
 ingest-rag: ## Reindexação completa da base RAG (supõe ingestões de negócio já feitas)
 	cd backend && python -m scripts.ingest_rag
 

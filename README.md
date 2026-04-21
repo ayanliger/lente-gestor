@@ -261,7 +261,8 @@ make ingest-pncp               # Ingestão PNCP + auto-reindex RAG (CONTRATO, RE
 make ingest-orcamento ano=AAAA # RREO/SICONFI + auto-reindex (RESUMO_FUNCAO)
 make ingest-rgf ano=AAAA       # RGF/SICONFI + indicadores + auto-reindex (INDICADOR_FISCAL)
 make ingest-ibge               # Dados contextuais do IBGE
-make ingest-arrecadacao ano=AAAA # Arrecadação tributária (Município Online) + drill-down por banco
+make ingest-arrecadacao ano=AAAA # Arrecadação tributária de um exercício (Município Online)
+make ingest-arrecadacao-historico   # Backfill plurianual 2020–2026 (agregado, sem drill-down)
 make ingest-rag                # Reindexação RAG completa (rebuild manual)
 make test                      # Testes unitários (sem rede)
 make test-integration          # Testes contra Vertex AI (consome créditos GCP)
@@ -276,7 +277,7 @@ make format                    # ruff format
 | **PNCP** — Contratações, contratos, PCA, atas, NF-e | API REST pública | ✅ Ingerido |
 | **SICONFI** — RREO, RGF, DCA (Tesouro Nacional) | API REST pública (ORDS) | ✅ Ingerido |
 | **IBGE** — População, PIB, metadados municipais | APIs SIDRA + localidades | ✅ Ingerido |
-| **Município Online** — Arrecadação tributária (mensal + por banco recebedor) | Scraping estruturado (ASP.NET postback + drill-down JSON) | ✅ Ingerido |
+| **Município Online** — Arrecadação tributária (mensal, histórica 2020–2026; drill-down por banco opcional) | Scraping estruturado (ASP.NET postback + drill-down JSON) | ✅ Ingerido |
 | **Portal Transparência Jequié** — Empenhos detalhados, folha | Scraping / acesso direto | 📋 Roadmap |
 | **TCM-BA** — Obras, publicidade, SICOB, SIES | Portal público | 📋 Roadmap |
 

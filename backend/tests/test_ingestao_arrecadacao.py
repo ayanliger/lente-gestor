@@ -577,3 +577,161 @@ class TestRotasArrecadacao:
         assert dados["total_arrecadado"] == 600_000.0
         assert abs(dados["pct_realizacao"] - 50.0) < 0.01
         assert dados["n_tributos"] == 2
+
+    async def test_historico_por_receita_pivot_top_n(
+        self, client, db_session, monkeypatch
+    ):
+        """
+        Pivot plurianual: agrupa por cod_item_receita no intervalo de anos,
+        devolve total + valores por ano. Ordena por total desc. Limite
+        aplicado ao final.
+        """
+        monkeypatch.setattr(
+            "app.services.ingestao_arrecadacao.settings.pncp_cnpj_jequie",
+            TEST_CNPJ_ARRECADACAO,
+        )
+        orgao = Orgao(cnpj=TEST_CNPJ_ARRECADACAO, razao_social="PREF TESTE", esfera="M")
+        db_session.add(orgao)
+        await db_session.flush()
+
+        # Anos históricos fictícios (1990–1992) para isolar do banco real.
+        # IPTU arrecada em todos os 3 anos; TFF só em 1991 e 1992.
+        dados = [
+            (1990, "111250010000", "IPTU Principal", Decimal("100000.00")),
+            (1991, "111250010000", "IPTU Principal", Decimal("150000.00")),
+            (1992, "111250010000", "IPTU Principal", Decimal("200000.00")),
+            (1991, "112101010200", "TFF", Decimal("30000.00")),
+            (1992, "112101010200", "TFF", Decimal("40000.00")),
+        ]
+        for exercicio, cod, desc, valor in dados:
+            db_session.add(
+                Arrecadacao(
+                    orgao_id=orgao.id,
+                    cod_ibge="2918001",
+                    exercicio=exercicio,
+                    mes=1,
+                    cod_item_receita=cod,
+                    descricao_receita=desc,
+                    valor_arrecadado_periodo=valor,
+                    fonte=FONTE_MUNICIPIO_ONLINE,
+                )
+            )
+        await db_session.flush()
+
+        resp = await client.get(
+            "/api/v1/arrecadacao/historico/por-receita"
+            "?ano_inicio=1990&ano_fim=1992&limite=10"
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        mapa = {r["cod_item_receita"]: r for r in body}
+
+        iptu = mapa["111250010000"]
+        assert iptu["total"] == 450_000.0
+        assert iptu["por_ano"] == {"1990": 100_000.0, "1991": 150_000.0, "1992": 200_000.0}
+
+        tff = mapa["112101010200"]
+        assert tff["total"] == 70_000.0
+        assert "1990" not in tff["por_ano"]  # ano sem arrecadação omitido
+        assert tff["por_ano"] == {"1991": 30_000.0, "1992": 40_000.0}
+
+        # Ordem: IPTU (450k) vem antes de TFF (70k).
+        assert body[0]["cod_item_receita"] == "111250010000"
+
+    async def test_historico_por_receita_respeita_intervalo(
+        self, client, db_session, monkeypatch
+    ):
+        """Linhas fora de [ano_inicio, ano_fim] não entram no pivot."""
+        monkeypatch.setattr(
+            "app.services.ingestao_arrecadacao.settings.pncp_cnpj_jequie",
+            TEST_CNPJ_ARRECADACAO,
+        )
+        orgao = Orgao(cnpj=TEST_CNPJ_ARRECADACAO, razao_social="PREF TESTE", esfera="M")
+        db_session.add(orgao)
+        await db_session.flush()
+
+        for ano, valor in [(1990, 100), (1991, 200), (1992, 300)]:
+            db_session.add(
+                Arrecadacao(
+                    orgao_id=orgao.id,
+                    cod_ibge="2918001",
+                    exercicio=ano,
+                    mes=1,
+                    cod_item_receita="111250010000",
+                    descricao_receita="IPTU",
+                    valor_arrecadado_periodo=Decimal(str(valor)),
+                    fonte=FONTE_MUNICIPIO_ONLINE,
+                )
+            )
+        await db_session.flush()
+
+        # Só 1991 está no intervalo.
+        resp = await client.get(
+            "/api/v1/arrecadacao/historico/por-receita"
+            "?ano_inicio=1991&ano_fim=1991"
+        )
+        assert resp.status_code == 200
+        # Pode haver registros reais de outros anos, mas esta receita específica
+        # só deve aparecer com os 200 de 1991.
+        body = resp.json()
+        alvo = [r for r in body if r["cod_item_receita"] == "111250010000"]
+        assert len(alvo) == 1
+        assert alvo[0]["total"] == 200.0
+
+    async def test_historico_mes_x_ano(self, client, db_session, monkeypatch):
+        """Agrega (ano, mes) — um ponto por célula."""
+        monkeypatch.setattr(
+            "app.services.ingestao_arrecadacao.settings.pncp_cnpj_jequie",
+            TEST_CNPJ_ARRECADACAO,
+        )
+        orgao = Orgao(cnpj=TEST_CNPJ_ARRECADACAO, razao_social="PREF TESTE", esfera="M")
+        db_session.add(orgao)
+        await db_session.flush()
+
+        # 1990/jan: dois tributos somando 500; 1991/fev: um tributo 1000.
+        db_session.add(
+            Arrecadacao(
+                orgao_id=orgao.id,
+                cod_ibge="2918001",
+                exercicio=1990,
+                mes=1,
+                cod_item_receita="111250010000",
+                descricao_receita="IPTU",
+                valor_arrecadado_periodo=Decimal("300.00"),
+                fonte=FONTE_MUNICIPIO_ONLINE,
+            )
+        )
+        db_session.add(
+            Arrecadacao(
+                orgao_id=orgao.id,
+                cod_ibge="2918001",
+                exercicio=1990,
+                mes=1,
+                cod_item_receita="112101010200",
+                descricao_receita="TFF",
+                valor_arrecadado_periodo=Decimal("200.00"),
+                fonte=FONTE_MUNICIPIO_ONLINE,
+            )
+        )
+        db_session.add(
+            Arrecadacao(
+                orgao_id=orgao.id,
+                cod_ibge="2918001",
+                exercicio=1991,
+                mes=2,
+                cod_item_receita="111250010000",
+                descricao_receita="IPTU",
+                valor_arrecadado_periodo=Decimal("1000.00"),
+                fonte=FONTE_MUNICIPIO_ONLINE,
+            )
+        )
+        await db_session.flush()
+
+        resp = await client.get(
+            "/api/v1/arrecadacao/historico/mes-x-ano?ano_inicio=1990&ano_fim=1991"
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        alvo = [(r["ano"], r["mes"], r["valor"]) for r in body if r["ano"] in (1990, 1991)]
+        assert (1990, 1, 500.0) in alvo
+        assert (1991, 2, 1000.0) in alvo

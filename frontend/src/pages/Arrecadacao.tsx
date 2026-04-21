@@ -15,9 +15,11 @@ import {
 } from "recharts";
 import {
   useArrecadacaoAnoEspecie,
+  useArrecadacaoMesXAno,
   useArrecadacaoPorEspecie,
   useArrecadacaoPorExercicio,
   useArrecadacaoPorMes,
+  useArrecadacaoPorReceita,
   useResumoArrecadacao,
   useTopTributos,
 } from "@/api/hooks";
@@ -112,12 +114,18 @@ export default function Arrecadacao() {
   const anoCorrente = new Date().getFullYear();
   const [exercicio, setExercicio] = useState(anoCorrente);
 
+  // Intervalo default para a seção histórica: 2020 até o exercício atual.
+  const [anoInicio, setAnoInicio] = useState(2020);
+  const [anoFim, setAnoFim] = useState(anoCorrente);
+
   const resumo = useResumoArrecadacao(exercicio);
   const porExercicio = useArrecadacaoPorExercicio();
   const porMes = useArrecadacaoPorMes(exercicio);
   const porEspecie = useArrecadacaoPorEspecie(exercicio);
   const topTributos = useTopTributos(exercicio, 10);
   const anoEspecie = useArrecadacaoAnoEspecie();
+  const porReceitaHist = useArrecadacaoPorReceita(anoInicio, anoFim, 30);
+  const mesXAno = useArrecadacaoMesXAno(anoInicio, anoFim);
 
   const tokens = useChartTokens();
   const escala = useOrdinalScale();
@@ -169,6 +177,30 @@ export default function Arrecadacao() {
       })),
     [topTributos.data],
   );
+
+  // Seção histórica: anos cobertos pelo intervalo atual.
+  const anosRange = useMemo(() => {
+    const ini = Math.min(anoInicio, anoFim);
+    const fim = Math.max(anoInicio, anoFim);
+    const out: number[] = [];
+    for (let a = ini; a <= fim; a++) out.push(a);
+    return out;
+  }, [anoInicio, anoFim]);
+
+  // Pivot mês × ano: um registro por mês com campos `${ano}` para cada barra.
+  const barrasMesXAno = useMemo(() => {
+    const mapa = new Map<number, Record<string, number | string>>();
+    for (let m = 1; m <= 12; m++) {
+      mapa.set(m, { mes: MESES_LABEL[m - 1] ?? String(m), mesNum: m });
+    }
+    for (const p of mesXAno.data ?? []) {
+      const linha = mapa.get(p.mes);
+      if (linha) linha[String(p.ano)] = p.valor;
+    }
+    return Array.from(mapa.values()).sort(
+      (a, b) => Number(a.mesNum) - Number(b.mesNum),
+    );
+  }, [mesXAno.data]);
 
   return (
     <div className="space-y-8 animate-fade-up">
@@ -529,6 +561,173 @@ export default function Arrecadacao() {
                   }}
                 />
               </Treemap>
+            </ResponsiveContainer>
+          )}
+        </section>
+      </div>
+
+      {/* ────── Visão histórica plurianual (2º painel do sócio) ────── */}
+      <div className="pt-4">
+        <div className="flex flex-wrap items-end justify-between gap-4 mb-4">
+          <div>
+            <h2 className="font-display text-2xl tracking-tight text-text-primary">
+              Visão histórica
+            </h2>
+            <p className="text-text-secondary text-xs mt-1">
+              Arrecadação por receita contábil ao longo dos anos.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 text-sm">
+            <label className="flex items-center gap-2">
+              <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
+                De
+              </span>
+              <input
+                type="number"
+                min={2000}
+                max={anoCorrente}
+                value={anoInicio}
+                onChange={(e) => setAnoInicio(Number(e.target.value) || 2020)}
+                className="field-select w-24 text-center font-mono"
+              />
+            </label>
+            <label className="flex items-center gap-2">
+              <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
+                Até
+              </span>
+              <input
+                type="number"
+                min={2000}
+                max={anoCorrente}
+                value={anoFim}
+                onChange={(e) => setAnoFim(Number(e.target.value) || anoCorrente)}
+                className="field-select w-24 text-center font-mono"
+              />
+            </label>
+          </div>
+        </div>
+
+        {/* Tabela pivot por receita contábil */}
+        <section className="card-accent bg-surface-raised border border-border rounded-xl p-6 mb-6">
+          <h3 className="font-display text-xl text-text-primary">
+            Arrecadação discriminada por receita
+          </h3>
+          <p className="text-xs text-text-muted mt-1 mb-4">
+            Top-30 receitas no intervalo {Math.min(anoInicio, anoFim)}–{Math.max(anoInicio, anoFim)},
+            ordenadas pelo total agregado.
+          </p>
+          {porReceitaHist.isLoading ? (
+            <p className="text-text-muted text-sm py-8">Carregando…</p>
+          ) : (porReceitaHist.data ?? []).length === 0 ? (
+            <p className="text-text-muted text-sm py-8">
+              Sem dados no intervalo selecionado.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left">
+                    <th className="py-2 pr-4 font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted font-normal">
+                      Receita contábil
+                    </th>
+                    {anosRange.map((ano) => (
+                      <th
+                        key={ano}
+                        className="py-2 px-3 font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted font-normal text-right"
+                      >
+                        {ano}
+                      </th>
+                    ))}
+                    <th className="py-2 pl-3 font-mono text-[10px] uppercase tracking-[0.18em] text-accent-ink font-normal text-right">
+                      Total
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(porReceitaHist.data ?? []).map((linha) => (
+                    <tr
+                      key={linha.cod_item_receita}
+                      className="border-b border-border/40 hover:bg-accent-500/[0.04] transition-colors"
+                    >
+                      <td
+                        className="py-2 pr-4 text-text-primary max-w-md truncate"
+                        title={linha.descricao_receita}
+                      >
+                        {linha.descricao_receita || linha.cod_item_receita}
+                      </td>
+                      {anosRange.map((ano) => {
+                        const valor = linha.por_ano[String(ano)];
+                        return (
+                          <td
+                            key={ano}
+                            className="py-2 px-3 text-right font-mono tabular-nums text-text-secondary"
+                          >
+                            {valor != null ? formatCompact(valor) : "—"}
+                          </td>
+                        );
+                      })}
+                      <td className="py-2 pl-3 text-right font-mono tabular-nums text-accent-ink font-semibold">
+                        {formatCompact(linha.total)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        {/* Barras mensais empilhadas por ano */}
+        <section className="card-accent bg-surface-raised border border-border rounded-xl p-6">
+          <h3 className="font-display text-xl text-text-primary">
+            Arrecadação mensal por ano
+          </h3>
+          <p className="text-xs text-text-muted mt-1 mb-4">
+            Comparativo mês a mês, uma cor por exercício.
+          </p>
+          {mesXAno.isLoading ? (
+            <p className="text-text-muted text-sm py-8">Carregando…</p>
+          ) : (mesXAno.data ?? []).length === 0 ? (
+            <p className="text-text-muted text-sm py-8">
+              Sem dados no intervalo selecionado.
+            </p>
+          ) : (
+            <ResponsiveContainer width="100%" height={320}>
+              <BarChart data={barrasMesXAno}>
+                <CartesianGrid strokeDasharray="3 3" stroke={tokens.grid} vertical={false} />
+                <XAxis
+                  dataKey="mes"
+                  stroke={tokens.axis}
+                  tick={{ fill: tokens.tick, fontSize: 11, fontFamily: "JetBrains Mono" }}
+                />
+                <YAxis
+                  stroke={tokens.axis}
+                  tickFormatter={(v) => formatCompact(Number(v)).replace("R$ ", "")}
+                  tick={{ fill: tokens.tick, fontSize: 11 }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: tokens.surfaceRaised,
+                    border: `1px solid ${tokens.grid}`,
+                    borderRadius: 10,
+                    fontSize: 12,
+                  }}
+                  formatter={(value: unknown, name: unknown) => [
+                    formatBRL(Number(value)),
+                    String(name),
+                  ]}
+                />
+                <Legend wrapperStyle={{ fontSize: 11, color: tokens.textSecondary }} />
+                {anosRange.map((ano, idx) => (
+                  <Bar
+                    key={ano}
+                    dataKey={String(ano)}
+                    name={String(ano)}
+                    fill={escala[idx % escala.length]}
+                    radius={[3, 3, 0, 0]}
+                  />
+                ))}
+              </BarChart>
             </ResponsiveContainer>
           )}
         </section>

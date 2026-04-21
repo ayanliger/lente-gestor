@@ -335,6 +335,23 @@ class ResumoArrecadacaoOut(BaseModel):
     n_tributos: int
 
 
+class PorReceitaContabilOut(BaseModel):
+    """Linha da visão plurianual: receita contábil × valores por ano."""
+
+    cod_item_receita: str
+    descricao_receita: str
+    total: float
+    por_ano: dict[int, float]
+
+
+class MesAnoArrecadacaoOut(BaseModel):
+    """Célula da matriz mês × ano (barras empilhadas plurianuais)."""
+
+    ano: int
+    mes: int
+    valor: float
+
+
 # ─────────────────────────────────────
 # Chat / RAG
 # ─────────────────────────────────────

@@ -10,7 +10,9 @@ from app.api.schemas import (
     AgregacaoEspecieOut,
     AnoEspecieOut,
     ArrecadacaoOut,
+    MesAnoArrecadacaoOut,
     PaginatedResponse,
+    PorReceitaContabilOut,
     ResumoArrecadacaoOut,
     SerieAnualArrecadacaoOut,
     SerieMensalArrecadacaoOut,
@@ -362,3 +364,98 @@ async def resumo(
         delta_yoy=delta,
         n_tributos=int(row.n_tributos or 0),
     )
+
+
+# ────────────────────────────────────────────
+# Visão histórica (plurianual) — 2º painel de BI do sócio
+# ────────────────────────────────────────────
+
+
+@router.get("/historico/por-receita", response_model=list[PorReceitaContabilOut])
+async def historico_por_receita(
+    ano_inicio: int = Query(..., ge=1900, le=2100),
+    ano_fim: int = Query(..., ge=1900, le=2100),
+    limite: int = Query(30, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Ranking plurianual de receitas contábeis: top-N por total no intervalo,
+    com valores desagregados por ano. Usado na tabela pivot do painel
+    'Arrecadação por Receita Contábil'.
+    """
+    if ano_fim < ano_inicio:
+        ano_inicio, ano_fim = ano_fim, ano_inicio
+
+    # 1 query retorna (cod, descricao, ano, valor). Pivot em Python mantendo
+    # o número de queries fixo.
+    query = (
+        select(
+            Arrecadacao.cod_item_receita,
+            func.max(Arrecadacao.descricao_receita).label("descricao_receita"),
+            Arrecadacao.exercicio,
+            func.coalesce(
+                func.sum(Arrecadacao.valor_arrecadado_periodo), 0
+            ).label("valor"),
+        )
+        .where(
+            Arrecadacao.exercicio.between(ano_inicio, ano_fim),
+        )
+        .group_by(Arrecadacao.cod_item_receita, Arrecadacao.exercicio)
+    )
+    result = await db.execute(query)
+
+    pivot: dict[str, dict] = {}
+    for r in result.all():
+        entry = pivot.setdefault(
+            r.cod_item_receita,
+            {
+                "cod_item_receita": r.cod_item_receita,
+                "descricao_receita": r.descricao_receita or "",
+                "total": 0.0,
+                "por_ano": {},
+            },
+        )
+        valor = float(r.valor or 0)
+        entry["por_ano"][r.exercicio] = valor
+        entry["total"] += valor
+        # Mais longa costuma ser mais completa (casos de descrição truncada
+        # em anos antigos do portal).
+        if len(r.descricao_receita or "") > len(entry["descricao_receita"]):
+            entry["descricao_receita"] = r.descricao_receita or ""
+
+    ordenado = sorted(pivot.values(), key=lambda e: e["total"], reverse=True)
+    return [PorReceitaContabilOut(**e) for e in ordenado[:limite]]
+
+
+@router.get("/historico/mes-x-ano", response_model=list[MesAnoArrecadacaoOut])
+async def historico_mes_x_ano(
+    ano_inicio: int = Query(..., ge=1900, le=2100),
+    ano_fim: int = Query(..., ge=1900, le=2100),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Matriz mês × ano para barras empilhadas plurianuais. Frontend faz
+    o pivot final para gerar `{mes, 2020: X, 2021: Y, ...}`.
+    """
+    if ano_fim < ano_inicio:
+        ano_inicio, ano_fim = ano_fim, ano_inicio
+
+    query = (
+        select(
+            Arrecadacao.exercicio.label("ano"),
+            Arrecadacao.mes,
+            func.coalesce(
+                func.sum(Arrecadacao.valor_arrecadado_periodo), 0
+            ).label("valor"),
+        )
+        .where(
+            Arrecadacao.exercicio.between(ano_inicio, ano_fim),
+        )
+        .group_by(Arrecadacao.exercicio, Arrecadacao.mes)
+        .order_by(Arrecadacao.exercicio, Arrecadacao.mes)
+    )
+    result = await db.execute(query)
+    return [
+        MesAnoArrecadacaoOut(ano=r.ano, mes=r.mes, valor=float(r.valor))
+        for r in result.all()
+    ]

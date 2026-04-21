@@ -9,6 +9,8 @@ import type {
   DadosMunicipio,
   Fornecedor,
   IndicadorFiscal,
+  MesAnoArrecadacao,
+  PorReceitaContabil,
   ResumoArrecadacao,
   ResumoFuncao,
   SerieAnualArrecadacao,
@@ -216,5 +218,47 @@ export function useArrecadacaoPorBanco(exercicio: number, mes?: number) {
         })
         .then((r) => r.data),
     enabled: Number.isFinite(exercicio) && exercicio > 0,
+  });
+}
+
+// ─────────────────────────────────────
+// Arrecadação — visão histórica plurianual (2º painel do sócio)
+// ─────────────────────────────────────
+
+export function useArrecadacaoPorReceita(
+  anoInicio: number,
+  anoFim: number,
+  limite = 30,
+) {
+  return useQuery({
+    queryKey: ["arrecadacao", "historico", "por-receita", anoInicio, anoFim, limite],
+    queryFn: () =>
+      api
+        .get<PorReceitaContabil[]>("/arrecadacao/historico/por-receita", {
+          params: { ano_inicio: anoInicio, ano_fim: anoFim, limite },
+        })
+        .then((r) => r.data),
+    enabled:
+      Number.isFinite(anoInicio) &&
+      Number.isFinite(anoFim) &&
+      anoInicio > 0 &&
+      anoFim > 0,
+  });
+}
+
+export function useArrecadacaoMesXAno(anoInicio: number, anoFim: number) {
+  return useQuery({
+    queryKey: ["arrecadacao", "historico", "mes-x-ano", anoInicio, anoFim],
+    queryFn: () =>
+      api
+        .get<MesAnoArrecadacao[]>("/arrecadacao/historico/mes-x-ano", {
+          params: { ano_inicio: anoInicio, ano_fim: anoFim },
+        })
+        .then((r) => r.data),
+    enabled:
+      Number.isFinite(anoInicio) &&
+      Number.isFinite(anoFim) &&
+      anoInicio > 0 &&
+      anoFim > 0,
   });
 }
