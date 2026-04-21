@@ -512,3 +512,68 @@ class TestRotasArrecadacao:
         assert dados[0]["banco"] == "BANCO DO BRASIL S.A."
         assert dados[0]["valor"] == 70000.0
         assert abs(dados[0]["pct"] - 70.0) < 0.01
+
+    async def test_resumo_nao_infla_previsto_com_varios_meses(
+        self, client, db_session, monkeypatch
+    ):
+        """
+        Regressão: `valor_atualizado` carrega a LOA anual e é repetido em cada
+        competência ingerida. O resumo deve colapsar por (item, fonte) antes de
+        somar, caso contrário o previsto fica multiplicado pelo número de meses.
+
+        Usa exercício 1999 para isolar de dados reais possivelmente presentes
+        no banco compartilhado de desenvolvimento.
+        """
+        monkeypatch.setattr(
+            "app.services.ingestao_arrecadacao.settings.pncp_cnpj_jequie",
+            TEST_CNPJ_ARRECADACAO,
+        )
+        orgao = Orgao(cnpj=TEST_CNPJ_ARRECADACAO, razao_social="PREF TESTE", esfera="M")
+        db_session.add(orgao)
+        await db_session.flush()
+
+        # IPTU fonte única: LOA anual R$ 1.000.000 repetida em 12 meses,
+        # arrecadando R$ 50.000/mês (total R$ 600.000 = 60% realizado).
+        for mes in range(1, 13):
+            db_session.add(
+                Arrecadacao(
+                    orgao_id=orgao.id,
+                    cod_ibge="2918001",
+                    exercicio=1999,
+                    mes=mes,
+                    cod_item_receita="111250010000",
+                    descricao_receita="IPTU",
+                    cod_fonte_recurso="15000000",
+                    valor_atualizado=Decimal("1000000.00"),
+                    valor_arrecadado_periodo=Decimal("50000.00"),
+                    fonte=FONTE_MUNICIPIO_ONLINE,
+                )
+            )
+        # Segundo tributo (TFF) com LOA R$ 200.000 em 12 meses, zero arrecadado.
+        for mes in range(1, 13):
+            db_session.add(
+                Arrecadacao(
+                    orgao_id=orgao.id,
+                    cod_ibge="2918001",
+                    exercicio=1999,
+                    mes=mes,
+                    cod_item_receita="112101010200",
+                    descricao_receita="TFF",
+                    cod_fonte_recurso=None,
+                    valor_atualizado=Decimal("200000.00"),
+                    valor_arrecadado_periodo=Decimal("0.00"),
+                    fonte=FONTE_MUNICIPIO_ONLINE,
+                )
+            )
+        await db_session.flush()
+
+        resp = await client.get("/api/v1/arrecadacao/resumo?exercicio=1999")
+        assert resp.status_code == 200
+        dados = resp.json()
+
+        # Previsto anual esperado: IPTU (1.000.000) + TFF (200.000) = 1.200.000.
+        # Sem a correção seria 12x mais (14.400.000).
+        assert dados["total_previsto"] == 1_200_000.0
+        assert dados["total_arrecadado"] == 600_000.0
+        assert abs(dados["pct_realizacao"] - 50.0) < 0.01
+        assert dados["n_tributos"] == 2

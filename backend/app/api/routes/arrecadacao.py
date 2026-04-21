@@ -304,20 +304,42 @@ async def resumo(
     db: AsyncSession = Depends(get_db),
 ):
     """KPIs do exercício: total arrecadado, previsto, % realização, delta YoY."""
+    # `valor_arrecadado_periodo` é mensal (soma direta). Já `valor_atualizado`
+    # carrega a LOA anual e é **repetido** em todas as competências do mesmo
+    # (cod_item_receita, cod_fonte_recurso) — somar cru infla o previsto pelo
+    # número de meses ingeridos. Colapsamos via subquery que toma MAX por
+    # (item, fonte) antes de somar. MAX (em vez de último mês) também tolera
+    # retificações de LOA ao longo do ano, ficando com a maior janela vigente.
+    prev_sub = (
+        select(
+            func.max(Arrecadacao.valor_atualizado).label("valor_anual"),
+        )
+        .where(
+            Arrecadacao.exercicio == exercicio,
+            Arrecadacao.valor_atualizado.is_not(None),
+        )
+        .group_by(
+            Arrecadacao.cod_item_receita,
+            Arrecadacao.cod_fonte_recurso,
+        )
+        .subquery()
+    )
+
     totais = await db.execute(
         select(
             func.coalesce(func.sum(Arrecadacao.valor_arrecadado_periodo), 0).label(
                 "total_arrecadado"
-            ),
-            func.coalesce(func.sum(Arrecadacao.valor_atualizado), 0).label(
-                "total_previsto"
             ),
             func.count(func.distinct(Arrecadacao.cod_item_receita)).label("n_tributos"),
         ).where(Arrecadacao.exercicio == exercicio)
     )
     row = totais.one()
     total_arrec = float(row.total_arrecadado or 0)
-    total_prev = float(row.total_previsto or 0)
+
+    total_prev_raw = (
+        await db.execute(select(func.coalesce(func.sum(prev_sub.c.valor_anual), 0)))
+    ).scalar_one()
+    total_prev = float(total_prev_raw or 0)
 
     pct = (total_arrec / total_prev * 100) if total_prev > 0 else None
 
