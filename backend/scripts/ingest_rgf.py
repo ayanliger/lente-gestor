@@ -7,6 +7,7 @@ Uso:
     python -m scripts.ingest_rgf --exercicio 2024 --quadrimestres 1 2
     python -m scripts.ingest_rgf --exercicio 2024 --co-poder L
     python -m scripts.ingest_rgf --exercicio 2024 --no-derivar
+    python -m scripts.ingest_rgf --exercicios 2020 2021 2022 2023 2024 2025
 """
 
 import argparse
@@ -18,9 +19,11 @@ from app.services.rag.indexador import FONTES_POR_SCRIPT
 from scripts._rag_auto_reindex import reindex_apos_ingestao
 
 
-async def _executar(args: argparse.Namespace) -> tuple[dict, dict | None]:
+async def _executar_ano(
+    exercicio: int, args: argparse.Namespace
+) -> tuple[dict, dict | None]:
     stats_rgf = await ingerir_rgf(
-        exercicio=args.exercicio,
+        exercicio=exercicio,
         quadrimestres=args.quadrimestres,
         co_poder=args.co_poder,
     )
@@ -28,7 +31,7 @@ async def _executar(args: argparse.Namespace) -> tuple[dict, dict | None]:
     stats_indicadores: dict | None = None
     if not args.no_derivar:
         stats_indicadores = await derivar_indicadores_fiscais(
-            exercicio=args.exercicio
+            exercicio=exercicio
         )
 
     return stats_rgf, stats_indicadores
@@ -38,7 +41,18 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Ingestão de RGF do SICONFI + derivação de indicadores fiscais"
     )
-    parser.add_argument("--exercicio", type=int, required=True, help="Ano (ex: 2024).")
+    grupo = parser.add_mutually_exclusive_group(required=True)
+    grupo.add_argument("--exercicio", type=int, help="Ano (ex: 2024).")
+    grupo.add_argument(
+        "--exercicios",
+        type=int,
+        nargs="+",
+        help=(
+            "Lista de exercícios para backfill histórico em sequência "
+            "(ex: --exercicios 2020 2021 2022). Reindex RAG roda uma "
+            "única vez ao final."
+        ),
+    )
     parser.add_argument(
         "--quadrimestres",
         type=int,
@@ -65,23 +79,28 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    exercicios: list[int] = (
+        [args.exercicio] if args.exercicio is not None else list(args.exercicios)
+    )
+
     async def _run() -> None:
-        stats_rgf, stats_indicadores = await _executar(args)
+        derivou_algum = False
+        for exercicio in exercicios:
+            print(f"\n>>> Ingerindo exercício {exercicio}...")
+            stats_rgf, stats_indicadores = await _executar_ano(exercicio, args)
 
-        print("\n=== Resultado da Ingestão (RGF) ===")
-        print(f"exercicio: {args.exercicio}")
-        print(f"co_poder:  {args.co_poder}")
-        for k, v in stats_rgf.items():
-            print(f"  {k}: {v}")
-
-        if stats_indicadores is not None:
-            print("\n=== Indicadores Fiscais Derivados ===")
-            for k, v in stats_indicadores.items():
+            print(f"=== Resultado (RGF {exercicio}, poder={args.co_poder}) ===")
+            for k, v in stats_rgf.items():
                 print(f"  {k}: {v}")
 
-        # Reindex só faz sentido se os indicadores foram derivados (são a
-        # fonte dos documentos INDICADOR_FISCAL). Respeita --no-derivar.
-        if stats_indicadores is not None:
+            if stats_indicadores is not None:
+                derivou_algum = True
+                print(f"=== Indicadores Fiscais Derivados ({exercicio}) ===")
+                for k, v in stats_indicadores.items():
+                    print(f"  {k}: {v}")
+
+        # Reindex só faz sentido se algum exercício derivou indicadores.
+        if derivou_algum:
             rag_stats = await reindex_apos_ingestao(
                 FONTES_POR_SCRIPT["rgf"],
                 sem_reindex=args.sem_reindex,

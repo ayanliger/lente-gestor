@@ -261,6 +261,7 @@ make ingest-pncp               # Ingestão PNCP + auto-reindex RAG (CONTRATO, RE
 make ingest-orcamento ano=AAAA # RREO/SICONFI + auto-reindex (RESUMO_FUNCAO)
 make ingest-orcamento-historico     # Backfill RREO plurianual 2020–2026
 make ingest-rgf ano=AAAA       # RGF/SICONFI + indicadores + auto-reindex (INDICADOR_FISCAL)
+make ingest-rgf-historico           # Backfill RGF plurianual 2020–2025
 make ingest-ibge               # Dados contextuais do IBGE
 make ingest-arrecadacao ano=AAAA # Arrecadação tributária de um exercício (Município Online)
 make ingest-arrecadacao-historico   # Backfill plurianual 2020–2026 (agregado, sem drill-down)
