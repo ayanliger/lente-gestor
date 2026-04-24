@@ -64,6 +64,9 @@ ingest-pncp: ## Executa ingestão de dados do PNCP
 ingest-orcamento: ## Ingestão do RREO/SICONFI (uso: make ingest-orcamento ano=2024)
 	cd backend && python -m scripts.ingest_orcamento --exercicio $(ano)
 
+ingest-orcamento-historico: ## Backfill RREO plurianual 2020–2026 (reindex RAG único ao final)
+	cd backend && python -m scripts.ingest_orcamento --exercicios 2020 2021 2022 2023 2024 2025 2026
+
 ingest-ibge: ## Ingestão de dados contextuais do IBGE (população, PIB)
 	cd backend && python -m scripts.ingest_ibge
 

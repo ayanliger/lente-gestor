@@ -259,6 +259,7 @@ make migrate                   # Aplica migrações pendentes
 make migrate-new msg="..."     # Nova migração a partir dos modelos
 make ingest-pncp               # Ingestão PNCP + auto-reindex RAG (CONTRATO, RESUMO_PCA)
 make ingest-orcamento ano=AAAA # RREO/SICONFI + auto-reindex (RESUMO_FUNCAO)
+make ingest-orcamento-historico     # Backfill RREO plurianual 2020–2026
 make ingest-rgf ano=AAAA       # RGF/SICONFI + indicadores + auto-reindex (INDICADOR_FISCAL)
 make ingest-ibge               # Dados contextuais do IBGE
 make ingest-arrecadacao ano=AAAA # Arrecadação tributária de um exercício (Município Online)

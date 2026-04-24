@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import {
   useDadosMunicipio,
+  useExerciciosOrcamento,
   useIndicadoresFiscais,
   useResumoFuncao,
 } from "@/api/hooks";
@@ -67,12 +68,17 @@ function KpiCard({
 }
 
 export default function Orcamento() {
-  const [exercicio, setExercicio] = useState(2024);
+  const exerciciosQuery = useExerciciosOrcamento();
+  const exerciciosDisponiveis = exerciciosQuery.data ?? [];
+  const [exercicio, setExercicio] = useState<number | undefined>(undefined);
   const [periodo, setPeriodo] = useState<number | undefined>(undefined);
 
-  const resumo = useResumoFuncao(exercicio, periodo);
-  const municipio = useDadosMunicipio(exercicio);
-  const indicadores = useIndicadoresFiscais({ exercicio });
+  // Seleciona o mais recente enquanto o usuário não escolhe manualmente.
+  const anoSelecionado = exercicio ?? exerciciosDisponiveis[0];
+
+  const resumo = useResumoFuncao(anoSelecionado ?? 0, periodo);
+  const municipio = useDadosMunicipio(anoSelecionado ?? 0);
+  const indicadores = useIndicadoresFiscais({ exercicio: anoSelecionado });
 
   const tokens = useChartTokens();
 
@@ -133,14 +139,18 @@ export default function Orcamento() {
               Exercício
             </span>
             <select
-              value={exercicio}
+              value={anoSelecionado ?? ""}
               onChange={(e) => {
                 setExercicio(Number(e.target.value));
                 setPeriodo(undefined);
               }}
               className="field-select"
+              disabled={exerciciosDisponiveis.length === 0}
             >
-              {[2024, 2023].map((ano) => (
+              {exerciciosDisponiveis.length === 0 && (
+                <option value="">—</option>
+              )}
+              {exerciciosDisponiveis.map((ano) => (
                 <option key={ano} value={ano}>
                   {ano}
                 </option>
@@ -228,7 +238,7 @@ export default function Orcamento() {
           <p className="text-text-muted text-sm py-8">Carregando…</p>
         ) : top10.length === 0 ? (
           <p className="text-text-muted text-sm py-8">
-            Sem dados para {exercicio}
+            Sem dados para {anoSelecionado ?? "—"}
             {periodo ? ` · B${periodo}` : ""}.
           </p>
         ) : (

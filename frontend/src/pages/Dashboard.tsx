@@ -4,6 +4,7 @@ import {
   useContratos,
   useContratosVencendo,
   useDadosMunicipio,
+  useExerciciosOrcamento,
   useFornecedores,
   useIndicadoresFiscais,
   useResumoFuncao,
@@ -202,13 +203,17 @@ function StatTileLink({
 }
 
 export default function Dashboard() {
-  const [exercicio, setExercicio] = useState(2024);
+  const exerciciosQuery = useExerciciosOrcamento();
+  const exerciciosDisponiveis = exerciciosQuery.data ?? [];
+  const [exercicio, setExercicio] = useState<number | undefined>(undefined);
   const [periodo, setPeriodo] = useState<number | undefined>(undefined);
 
+  const anoSelecionado = exercicio ?? exerciciosDisponiveis[0];
+
   // Orçamento é a fonte primária.
-  const resumo = useResumoFuncao(exercicio, periodo);
-  const indicadores = useIndicadoresFiscais({ exercicio });
-  const municipio = useDadosMunicipio(exercicio);
+  const resumo = useResumoFuncao(anoSelecionado ?? 0, periodo);
+  const indicadores = useIndicadoresFiscais({ exercicio: anoSelecionado });
+  const municipio = useDadosMunicipio(anoSelecionado ?? 0);
 
   // Contratos entram como painel secundário.
   const contratos = useContratos({ tamanho_pagina: 1 });
@@ -313,7 +318,7 @@ export default function Dashboard() {
               <>
                 <span className="text-text-muted"> · </span>
                 <span className="font-mono text-text-primary">
-                  {exercicio}
+                  {anoSelecionado ?? "—"}
                 </span>
                 <span className="text-text-muted"> · {periodoLabel}</span>
               </>
@@ -328,14 +333,18 @@ export default function Dashboard() {
               Exercício
             </span>
             <select
-              value={exercicio}
+              value={anoSelecionado ?? ""}
               onChange={(e) => {
                 setExercicio(Number(e.target.value));
                 setPeriodo(undefined);
               }}
               className="field-select"
+              disabled={exerciciosDisponiveis.length === 0}
             >
-              {[2024, 2023].map((ano) => (
+              {exerciciosDisponiveis.length === 0 && (
+                <option value="">—</option>
+              )}
+              {exerciciosDisponiveis.map((ano) => (
                 <option key={ano} value={ano}>
                   {ano}
                 </option>
@@ -427,7 +436,7 @@ export default function Dashboard() {
             <p className="text-text-muted text-sm py-8">Carregando…</p>
           ) : composicao.length === 0 ? (
             <p className="text-text-muted text-sm py-8">
-              Sem execução registrada para {exercicio}
+              Sem execução registrada para {anoSelecionado ?? "—"}
               {periodo ? ` · B${periodo}` : ""}.
             </p>
           ) : (
@@ -476,7 +485,7 @@ export default function Dashboard() {
             <p className="text-text-muted text-sm py-8">Carregando…</p>
           ) : (indicadores.data ?? []).length === 0 ? (
             <p className="text-text-muted text-sm py-8">
-              Sem indicadores derivados para {exercicio}.
+              Sem indicadores derivados para {anoSelecionado ?? "—"}.
             </p>
           ) : (
             <ul className="space-y-2.5">

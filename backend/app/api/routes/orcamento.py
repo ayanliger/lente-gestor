@@ -16,9 +16,34 @@ from app.models.orcamento import ExecucaoOrcamentaria, IndicadorFiscal
 router = APIRouter(prefix="/orcamento", tags=["Orçamento"])
 
 
-# ──────────────────────────────────────────
+# ───────────────────────────────────────────
+# Lista de exercícios disponíveis
+# ───────────────────────────────────────────
+
+
+@router.get("/exercicios", response_model=list[int])
+async def listar_exercicios_disponiveis(
+    tipo_relatorio: str | None = Query(
+        None, description="Filtrar por tipo (RREO ou RGF)."
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Exercícios distintos presentes em `execucao_orcamentaria`, em ordem decrescente.
+
+    Usado pelos seletores do frontend para descobrir dinamicamente os anos
+    ingeridos sem exigir deploy a cada backfill.
+    """
+    query = select(ExecucaoOrcamentaria.exercicio).distinct()
+    if tipo_relatorio:
+        query = query.where(ExecucaoOrcamentaria.tipo_relatorio == tipo_relatorio)
+    query = query.order_by(ExecucaoOrcamentaria.exercicio.desc())
+    result = await db.execute(query)
+    return [row[0] for row in result.all() if row[0] is not None]
+
+
+# ───────────────────────────────────────────
 # Execução orçamentária (células brutas)
-# ──────────────────────────────────────────
+# ───────────────────────────────────────────
 
 
 @router.get("/execucao", response_model=PaginatedResponse[ExecucaoOrcamentariaOut])

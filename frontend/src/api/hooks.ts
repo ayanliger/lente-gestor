@@ -79,9 +79,21 @@ export function useFornecedores(params: PaginationParams = {}) {
   });
 }
 
-// ────────────────────────────────────────
+// ───────────────────────────────────────
 // Orçamento (RREO/RGF + indicadores) — Fase 4
-// ────────────────────────────────────────
+// ───────────────────────────────────────
+
+export function useExerciciosOrcamento(tipoRelatorio?: "RREO" | "RGF") {
+  return useQuery({
+    queryKey: ["orcamento", "exercicios", tipoRelatorio],
+    queryFn: () =>
+      api
+        .get<number[]>("/orcamento/exercicios", {
+          params: tipoRelatorio ? { tipo_relatorio: tipoRelatorio } : undefined,
+        })
+        .then((r) => r.data),
+  });
+}
 
 export function useResumoFuncao(exercicio: number, periodo?: number) {
   return useQuery({

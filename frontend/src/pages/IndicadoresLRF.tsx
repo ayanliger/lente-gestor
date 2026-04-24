@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useIndicadoresFiscais } from "@/api/hooks";
+import { useExerciciosOrcamento, useIndicadoresFiscais } from "@/api/hooks";
 import type { IndicadorFiscal, SituacaoIndicador } from "@/api/types";
 import Termometro from "@/components/Termometro";
 
@@ -99,8 +99,13 @@ function IndicadorCard({ indicador }: { indicador: IndicadorFiscal }) {
 }
 
 export default function IndicadoresLRF() {
-  const [exercicio, setExercicio] = useState(2024);
-  const { data, isLoading } = useIndicadoresFiscais({ exercicio });
+  const exerciciosQuery = useExerciciosOrcamento();
+  const exerciciosDisponiveis = exerciciosQuery.data ?? [];
+  const [exercicio, setExercicio] = useState<number | undefined>(undefined);
+  const anoSelecionado = exercicio ?? exerciciosDisponiveis[0];
+  const { data, isLoading } = useIndicadoresFiscais({
+    exercicio: anoSelecionado,
+  });
 
   const indicadoresOrdenados = useMemo(() => {
     if (!data) return [];
@@ -140,11 +145,15 @@ export default function IndicadoresLRF() {
             Exercício
           </span>
           <select
-            value={exercicio}
+            value={anoSelecionado ?? ""}
             onChange={(e) => setExercicio(Number(e.target.value))}
             className="field-select"
+            disabled={exerciciosDisponiveis.length === 0}
           >
-            {[2024, 2023].map((ano) => (
+            {exerciciosDisponiveis.length === 0 && (
+              <option value="">—</option>
+            )}
+            {exerciciosDisponiveis.map((ano) => (
               <option key={ano} value={ano}>
                 {ano}
               </option>
