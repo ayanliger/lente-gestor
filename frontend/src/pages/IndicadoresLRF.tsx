@@ -18,28 +18,48 @@ const METADATA: Record<
     tipoLimite: "MAXIMO",
     referencia: "LRF Art. 22 §único",
   },
-  DIVIDA_CONSOLIDADA_PCT_RCL: {
+  LIMITE_ALERTA_PESSOAL: {
     ordem: 3,
+    tipoLimite: "MAXIMO",
+    referencia: "LRF Art. 59 §1º IV",
+  },
+  DIVIDA_CONSOLIDADA_PCT_RCL: {
+    ordem: 4,
     tipoLimite: "MAXIMO",
     referencia: "Res. Senado 40/2001",
   },
   OP_CREDITO_PCT_RCL: {
-    ordem: 4,
-    tipoLimite: "MAXIMO",
-    referencia: "Res. Senado 43/2001",
-  },
-  GARANTIAS_PCT_RCL: {
     ordem: 5,
     tipoLimite: "MAXIMO",
     referencia: "Res. Senado 43/2001",
   },
-  APLIC_MIN_SAUDE_PCT: {
+  GARANTIAS_PCT_RCL: {
     ordem: 6,
+    tipoLimite: "MAXIMO",
+    referencia: "Res. Senado 43/2001",
+  },
+  RESULTADO_PRIMARIO: {
+    ordem: 7,
+    tipoLimite: "MINIMO",
+    referencia: "LRF Art. 4º §1º I e Art. 9º",
+  },
+  RESULTADO_NOMINAL: {
+    ordem: 8,
+    tipoLimite: "MINIMO",
+    referencia: "LRF Art. 4º §1º I e Art. 9º",
+  },
+  SUFICIENCIA_FINANCEIRA_RP: {
+    ordem: 9,
+    tipoLimite: "MINIMO",
+    referencia: "LRF Art. 42",
+  },
+  APLIC_MIN_SAUDE_PCT: {
+    ordem: 10,
     tipoLimite: "MINIMO",
     referencia: "CF Art. 198 §2º",
   },
   APLIC_MIN_EDUCACAO_PCT: {
-    ordem: 7,
+    ordem: 11,
     tipoLimite: "MINIMO",
     referencia: "CF Art. 212",
   },
@@ -87,6 +107,9 @@ function IndicadorCard({ indicador }: { indicador: IndicadorFiscal }) {
         limite={indicador.limite_legal}
         tipoLimite={meta?.tipoLimite ?? "MAXIMO"}
         situacao={indicador.situacao}
+        unidade={
+          indicador.unidade === "MONETARIO" ? "MONETARIO" : "PERCENTUAL"
+        }
       />
 
       {meta && (
