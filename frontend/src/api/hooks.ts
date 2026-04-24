@@ -1,12 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
 import { api, type PaginatedResponse } from "./client";
 import type {
+  AgregacaoBanco,
+  AgregacaoEspecie,
+  AnoEspecie,
   Contratacao,
   Contrato,
   DadosMunicipio,
   Fornecedor,
   IndicadorFiscal,
+  MesAnoArrecadacao,
+  PorReceitaContabil,
+  ResumoArrecadacao,
   ResumoFuncao,
+  SerieAnualArrecadacao,
+  SerieMensalArrecadacao,
+  TopTributo,
 } from "./types";
 
 interface PaginationParams {
@@ -122,5 +131,134 @@ export function useDadosMunicipio(exercicio: number) {
         })
         .then((r) => r.data[0] ?? null),
     enabled: Number.isFinite(exercicio) && exercicio > 0,
+  });
+}
+
+// ─────────────────────────────────────
+// Arrecadação tributária (Município Online)
+// ─────────────────────────────────────
+
+export function useResumoArrecadacao(exercicio: number) {
+  return useQuery({
+    queryKey: ["arrecadacao", "resumo", exercicio],
+    queryFn: () =>
+      api
+        .get<ResumoArrecadacao>("/arrecadacao/resumo", {
+          params: { exercicio },
+        })
+        .then((r) => r.data),
+    enabled: Number.isFinite(exercicio) && exercicio > 0,
+  });
+}
+
+export function useArrecadacaoPorExercicio() {
+  return useQuery({
+    queryKey: ["arrecadacao", "por-exercicio"],
+    queryFn: () =>
+      api
+        .get<SerieAnualArrecadacao[]>("/arrecadacao/por-exercicio")
+        .then((r) => r.data),
+  });
+}
+
+export function useArrecadacaoPorMes(exercicio: number) {
+  return useQuery({
+    queryKey: ["arrecadacao", "por-mes", exercicio],
+    queryFn: () =>
+      api
+        .get<SerieMensalArrecadacao[]>("/arrecadacao/por-mes", {
+          params: { exercicio },
+        })
+        .then((r) => r.data),
+    enabled: Number.isFinite(exercicio) && exercicio > 0,
+  });
+}
+
+export function useArrecadacaoPorEspecie(exercicio: number) {
+  return useQuery({
+    queryKey: ["arrecadacao", "por-especie", exercicio],
+    queryFn: () =>
+      api
+        .get<AgregacaoEspecie[]>("/arrecadacao/por-especie", {
+          params: { exercicio },
+        })
+        .then((r) => r.data),
+    enabled: Number.isFinite(exercicio) && exercicio > 0,
+  });
+}
+
+export function useTopTributos(exercicio: number, limite = 20) {
+  return useQuery({
+    queryKey: ["arrecadacao", "top-tributos", exercicio, limite],
+    queryFn: () =>
+      api
+        .get<TopTributo[]>("/arrecadacao/top-tributos", {
+          params: { exercicio, limite },
+        })
+        .then((r) => r.data),
+    enabled: Number.isFinite(exercicio) && exercicio > 0,
+  });
+}
+
+export function useArrecadacaoAnoEspecie() {
+  return useQuery({
+    queryKey: ["arrecadacao", "ano-x-especie"],
+    queryFn: () =>
+      api.get<AnoEspecie[]>("/arrecadacao/ano-x-especie").then((r) => r.data),
+  });
+}
+
+export function useArrecadacaoPorBanco(exercicio: number, mes?: number) {
+  return useQuery({
+    queryKey: ["arrecadacao", "por-banco", exercicio, mes],
+    queryFn: () =>
+      api
+        .get<AgregacaoBanco[]>("/arrecadacao/por-banco", {
+          params: { exercicio, ...(mes != null ? { mes } : {}) },
+        })
+        .then((r) => r.data),
+    enabled: Number.isFinite(exercicio) && exercicio > 0,
+  });
+}
+
+// ─────────────────────────────────────
+// Arrecadação — visão histórica plurianual (2º painel do sócio)
+// ─────────────────────────────────────
+
+export function useArrecadacaoPorReceita(
+  anoInicio: number,
+  anoFim: number,
+  limite = 30,
+) {
+  return useQuery({
+    queryKey: ["arrecadacao", "historico", "por-receita", anoInicio, anoFim, limite],
+    queryFn: () =>
+      api
+        .get<PorReceitaContabil[]>("/arrecadacao/historico/por-receita", {
+          params: { ano_inicio: anoInicio, ano_fim: anoFim, limite },
+        })
+        .then((r) => r.data),
+    enabled:
+      Number.isFinite(anoInicio) &&
+      Number.isFinite(anoFim) &&
+      anoInicio > 0 &&
+      anoFim > 0,
+  });
+}
+
+export function useArrecadacaoMesXAno(anoInicio: number, anoFim: number) {
+  return useQuery({
+    queryKey: ["arrecadacao", "historico", "mes-x-ano", anoInicio, anoFim],
+    queryFn: () =>
+      api
+        .get<MesAnoArrecadacao[]>("/arrecadacao/historico/mes-x-ano", {
+          params: { ano_inicio: anoInicio, ano_fim: anoFim },
+        })
+        .then((r) => r.data),
+    enabled:
+      Number.isFinite(anoInicio) &&
+      Number.isFinite(anoFim) &&
+      anoInicio > 0 &&
+      anoFim > 0,
   });
 }

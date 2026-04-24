@@ -263,3 +263,57 @@ class SICONFIClient:
             total=len(todos),
         )
         return todos
+
+    async def paginar_dca(
+        self,
+        *,
+        an_exercicio: int,
+        no_anexo: str = "DCA-Anexo I-C",
+    ) -> list[dict]:
+        """
+        Consome todas as páginas do DCA (Demonstrativo Contábil Anual)
+        para um exercício, retornando a lista achatada de items.
+
+        GET /dca. DCA é anual (sem `nr_periodo`). O anexo padrão `I-C`
+        contém o Balanço Orçamentário — coluna `"Receitas Brutas Realizadas"`
+        traz a arrecadação realizada por `cod_conta` do STN, em estrutura
+        hierárquica (categoria → origem → espécie → … → detalhamento).
+        """
+        todos: list[dict] = []
+        offset = 0
+
+        for iteracao in range(MAX_ITERACOES_PAGINACAO):
+            params: dict[str, Any] = {
+                "an_exercicio": an_exercicio,
+                "no_anexo": no_anexo,
+                "id_ente": self.id_ente,
+                "offset": offset,
+            }
+
+            resultado = await self._get("/dca", params)
+            items = resultado.get("items", []) or []
+            if not items:
+                break
+
+            todos.extend(items)
+
+            if not resultado.get("hasMore"):
+                break
+
+            limit = resultado.get("limit") or len(items)
+            offset += limit
+
+            if iteracao == MAX_ITERACOES_PAGINACAO - 1:
+                logger.warning(
+                    "siconfi.paginacao_limite",
+                    exercicio=an_exercicio,
+                    iteracoes=iteracao + 1,
+                )
+
+        logger.info(
+            "siconfi.dca.paginacao_completa",
+            exercicio=an_exercicio,
+            anexo=no_anexo,
+            total=len(todos),
+        )
+        return todos

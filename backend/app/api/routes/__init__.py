@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter
 
+from app.api.routes.arrecadacao import router as arrecadacao_router
 from app.api.routes.chat import router as chat_router
 from app.api.routes.contratacoes import router as contratacoes_router
 from app.api.routes.contratos import router as contratos_router
@@ -18,5 +19,6 @@ api_router.include_router(contratacoes_router)
 api_router.include_router(contratos_router)
 api_router.include_router(itens_pca_router)
 api_router.include_router(orcamento_router)
+api_router.include_router(arrecadacao_router)
 api_router.include_router(municipio_router)
 api_router.include_router(chat_router)

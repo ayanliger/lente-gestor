@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Layout from "@/components/Layout";
+import Arrecadacao from "@/pages/Arrecadacao";
 import Assistente from "@/pages/Assistente";
 import Dashboard from "@/pages/Dashboard";
 import Contratacoes from "@/pages/Contratacoes";
@@ -16,6 +17,7 @@ export default function App() {
           <Route index element={<Dashboard />} />
           <Route path="assistente" element={<Assistente />} />
           <Route path="orcamento" element={<Orcamento />} />
+          <Route path="arrecadacao" element={<Arrecadacao />} />
           <Route path="lrf" element={<IndicadoresLRF />} />
           <Route path="contratacoes" element={<Contratacoes />} />
           <Route path="contratos" element={<Contratos />} />
