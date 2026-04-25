@@ -3,8 +3,8 @@
 /*
   Lente Gestor — Civic Analytics
   -------------------------------------------------------------------------
-  Light é o default: uma base clara de BI municipal, com azul-ciano como
-  acento principal e neutros de alto contraste. Dark é opt-in via
+  Light é o default: uma base branca/cinza de BI municipal, com azul-ciano
+  como acento principal e neutros de alto contraste. Dark é opt-in via
   [data-theme="dark"] no <html>. Somente os tokens semânticos (surface,
   texto, borda, ink do acento) trocam entre temas; as escalas cromáticas
   (lente-*, accent-*, success, warning, danger) seguem estáticas para que as
@@ -48,15 +48,15 @@
      primary, border-border, text-accent-ink) resolve o valor correto por
      tema sem precisar de prefixo `dark:`.
   --------------------------------------------------------------------- */
-  --color-surface: #f6fafc;
+  --color-surface: #f7f7f8;
   --color-surface-raised: #ffffff;
-  --color-surface-overlay: #e8f3f8;
-  --color-text-primary: #071826;
-  --color-text-secondary: #314b60;
-  --color-text-muted: #6f8494;
-  --color-border: #d6e6ee;
+  --color-surface-overlay: #eeeeef;
+  --color-text-primary: #111111;
+  --color-text-secondary: #3f3f46;
+  --color-text-muted: #71717a;
+  --color-border: #d7d7dc;
   --color-accent-ink: #075b7d; /* azul escuro para texto sobre claro */
-  --color-chart-neutral: #17445f; /* série "neutra" em gráficos */
+  --color-chart-neutral: #3f3f46; /* série "neutra" em gráficos */
 
   --font-sans: "DM Sans", system-ui, sans-serif;
   --font-serif: "DM Serif Display", "Iowan Old Style", "Palatino Linotype", serif;
@@ -65,15 +65,15 @@
 
 /* Dark mode — sobrescreve apenas os tokens semânticos. */
 :root[data-theme="dark"] {
-  --color-surface: #07111d;
-  --color-surface-raised: #0d1b2a;
-  --color-surface-overlay: #14273a;
-  --color-text-primary: #f2f8fb;
-  --color-text-secondary: #c6d7e1;
-  --color-text-muted: #8297a6;
-  --color-border: #244155;
+  --color-surface: #050505;
+  --color-surface-raised: #111111;
+  --color-surface-overlay: #1f1f1f;
+  --color-text-primary: #f5f5f5;
+  --color-text-secondary: #d4d4d4;
+  --color-text-muted: #a3a3a3;
+  --color-border: #303030;
   --color-accent-ink: #8be4fb;
-  --color-chart-neutral: #d6edf6;
+  --color-chart-neutral: #e5e5e5;
 
   /* Semânticos ganham luminosidade para manter contraste em superfície
      quase-preta. */
@@ -95,11 +95,10 @@
     @apply bg-surface text-text-primary font-sans antialiased;
     font-feature-settings: "ss01", "cv11", "kern";
     background-color: var(--color-surface);
-    /* Fundo de painel: brilho cívico discreto no canto; sem gradientes
-       competindo com o conteúdo. */
+    /* Fundo de painel neutro; os acentos cromáticos ficam nos highlights. */
     background-image: radial-gradient(
-      ellipse 1100px 520px at 95% -8%,
-      rgba(34, 168, 213, 0.10),
+      ellipse 1000px 500px at 95% -8%,
+      rgba(0, 0, 0, 0.055),
       transparent 60%
     );
     background-attachment: fixed;
@@ -110,12 +109,12 @@
     background-image:
       radial-gradient(
         ellipse 900px 600px at 85% -10%,
-        rgba(34, 168, 213, 0.16),
+        rgba(255, 255, 255, 0.045),
         transparent 60%
       ),
       radial-gradient(
         ellipse 1100px 700px at -10% 110%,
-        rgba(255, 255, 255, 0.015),
+        rgba(255, 255, 255, 0.025),
         transparent 55%
       );
   }
@@ -284,13 +283,13 @@
            transition-colors focus:outline-none focus:border-accent-500/60
            focus:ring-2 focus:ring-accent-500/20;
     appearance: none;
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%236f8494' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2371717a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 0.6rem center;
     background-size: 14px 14px;
   }
   :root[data-theme="dark"] .field-select {
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%238297a6' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23a3a3a3' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
   }
 
   /* Sistema de badges */
