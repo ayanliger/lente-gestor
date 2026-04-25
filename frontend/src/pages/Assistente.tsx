@@ -60,6 +60,7 @@ const ROTULO_FONTE: Record<string, string> = {
   RESUMO_FUNCAO: "Execução por função",
   RESUMO_PCA: "PCA por função",
   COBERTURA_DADOS: "Cobertura da base",
+  RANKING_DESPESA: "Ranking de despesas",
 };
 
 function rotuloFonte(fonte: string): string {
@@ -82,6 +83,8 @@ function FonteDrawer({
       case "resumo_funcao":
         return "/orcamento";
       case "resumo_pca":
+        return "/orcamento";
+      case "ranking_despesa":
         return "/orcamento";
       default:
         return null;

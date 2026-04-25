@@ -42,6 +42,36 @@ function formatCompactBRL(valor: number | null | undefined): string {
   if (valor >= 1_000) return `R$ ${(valor / 1_000).toFixed(1)} mil`;
   return formatBRL(valor);
 }
+function indicadorEhMonetario(ind: IndicadorFiscal): boolean {
+  return ind.unidade === "MONETARIO";
+}
+
+function indicadorUsaPiso(ind: IndicadorFiscal): boolean {
+  return indicadorEhMonetario(ind) || ind.codigo.startsWith("APLIC_MIN");
+}
+
+function formatIndicadorValor(ind: IndicadorFiscal): string {
+  if (ind.valor == null) return "—";
+  if (indicadorEhMonetario(ind)) return formatCompactBRL(ind.valor);
+  return `${ind.valor.toFixed(1)}%`;
+}
+
+function formatIndicadorLimite(ind: IndicadorFiscal): string | null {
+  if (ind.limite_legal == null) return null;
+  const rotulo = indicadorUsaPiso(ind) ? "piso" : "limite";
+  const valor = indicadorEhMonetario(ind)
+    ? formatCompactBRL(ind.limite_legal)
+    : `${ind.limite_legal.toFixed(1)}%`;
+  return `${rotulo} ${valor}`;
+}
+
+function formatIndicadorRazaoLimite(ind: IndicadorFiscal): string | null {
+  if (ind.valor == null || ind.limite_legal == null || ind.limite_legal <= 0) {
+    return null;
+  }
+  const pct = (ind.valor / ind.limite_legal) * 100;
+  return `${pct.toFixed(0)}% do ${indicadorUsaPiso(ind) ? "mínimo" : "teto"}`;
+}
 
 function HeroKpi({
   label,
@@ -140,21 +170,21 @@ function derivarAlertas(
       lista.push({
         tone: "danger",
         title: `${ind.descricao}: limite ultrapassado`,
-        detail: `Valor apurado ${ind.valor?.toFixed(2) ?? "—"}% contra limite de ${ind.limite_legal?.toFixed(2) ?? "—"}%.`,
+        detail: `Valor apurado ${formatIndicadorValor(ind)} contra ${formatIndicadorLimite(ind) ?? "limite —"}.`,
         key: `excedido-${ind.id}`,
       });
     } else if (ind.situacao === "ABAIXO_MINIMO") {
       lista.push({
         tone: "danger",
         title: `${ind.descricao}: abaixo do mínimo constitucional`,
-        detail: `Aplicação em ${ind.valor?.toFixed(2) ?? "—"}% (mínimo ${ind.limite_legal?.toFixed(2) ?? "—"}%).`,
+        detail: `Valor apurado ${formatIndicadorValor(ind)} (${formatIndicadorLimite(ind) ?? "piso —"}).`,
         key: `abaixo-${ind.id}`,
       });
     } else if (ind.situacao === "ALERTA") {
       lista.push({
         tone: "warning",
         title: `${ind.descricao}: próximo do limite`,
-        detail: `Valor ${ind.valor?.toFixed(2) ?? "—"}% — monitorar para evitar extrapolação.`,
+        detail: `Valor ${formatIndicadorValor(ind)} — monitorar para evitar extrapolação.`,
         key: `alerta-${ind.id}`,
       });
     }
@@ -243,29 +273,14 @@ export default function Dashboard() {
       0,
     );
 
-    // Top 6 por empenhado + "Outros" agregado.
     const ordenadas = [...dados]
       .filter((d) => (d.empenhado ?? 0) > 0)
       .sort((a, b) => (b.empenhado ?? 0) - (a.empenhado ?? 0));
-    const top = ordenadas.slice(0, 6);
-    const outros = ordenadas.slice(6);
-    const totalOutros = outros.reduce(
-      (acc, d) => acc + (d.empenhado ?? 0),
-      0,
-    );
-
-    const composicao = top.map((d, i) => ({
+    const composicao = ordenadas.map((d, i) => ({
       label: d.funcao,
       valor: d.empenhado ?? 0,
       color: paleta[i % paleta.length],
     }));
-    if (totalOutros > 0) {
-      composicao.push({
-        label: `Outros (${outros.length})`,
-        valor: totalOutros,
-        color: tokens.textMuted,
-      });
-    }
 
     return {
       totais: {
@@ -277,7 +292,7 @@ export default function Dashboard() {
       },
       composicao,
     };
-  }, [resumo.data, paleta, tokens]);
+  }, [resumo.data, paleta]);
 
   const alertas = useMemo(
     () => derivarAlertas(indicadores.data, vencendo.data?.total ?? 0),
@@ -427,7 +442,7 @@ export default function Dashboard() {
                 Composição da despesa
               </h2>
               <p className="text-xs text-text-muted mt-1.5">
-                Empenhado por função de governo · top 6 + agregado
+                Empenhado por função de governo · funções oficiais
               </p>
             </div>
             <Link
@@ -512,9 +527,8 @@ export default function Dashboard() {
                         ? { bg: "bg-danger-500/10", border: "border-danger-500/30", text: "text-danger-500" }
                         : { bg: "bg-surface-overlay", border: "border-border", text: "text-text-muted" };
                 const pctLimite =
-                  ind.valor != null && ind.limite_legal && ind.limite_legal > 0
-                    ? (ind.valor / ind.limite_legal) * 100
-                    : null;
+                  formatIndicadorRazaoLimite(ind);
+                const limite = formatIndicadorLimite(ind);
                 return (
                   <li
                     key={ind.id}
@@ -527,15 +541,13 @@ export default function Dashboard() {
                       <span
                         className={`font-mono tabular-nums text-sm font-semibold shrink-0 ${tone.text}`}
                       >
-                        {ind.valor != null ? `${ind.valor.toFixed(1)}%` : "—"}
+                        {formatIndicadorValor(ind)}
                       </span>
                     </div>
-                    {ind.limite_legal != null && (
+                    {limite != null && (
                       <p className="text-[10.5px] text-text-muted mt-1 font-mono">
-                        limite {ind.limite_legal.toFixed(1)}%
-                        {pctLimite != null
-                          ? ` · ${pctLimite.toFixed(0)}% do teto`
-                          : ""}
+                        {limite}
+                        {pctLimite != null ? ` · ${pctLimite}` : ""}
                       </p>
                     )}
                   </li>

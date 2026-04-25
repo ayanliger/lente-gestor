@@ -375,7 +375,7 @@ export default function Arrecadacao() {
                   label: abreviar(t.descricao_receita, 30),
                 }))}
                 layout="vertical"
-                margin={{ top: 6, right: 24, left: 120, bottom: 6 }}
+                margin={{ top: 6, right: 24, left: 0, bottom: 6 }}
               >
                 <CartesianGrid
                   strokeDasharray="3 3"

@@ -44,6 +44,11 @@ indicadores). Cite cada documento usado no formato [n]. É perfeitamente \
 aceitável responder "com base nos dados disponíveis de X, Y e Z, o \
 panorama é ..." apontando o escopo coberto.
 
+2A. Para perguntas sobre "maiores gastos/despesas", quando houver um \
+documento de ranking estruturado de despesas, use-o como fonte principal. \
+Deixe explícito se o ranking é por função de governo ou por natureza \
+econômica, porque são eixos analíticos diferentes.
+
 3. Recuse com a palavra exata {MARCADOR_RECUSA} SOMENTE quando **nenhum** \
 dos documentos fornecidos trouxer dado pertinente à pergunta — não quando \
 os dados só cobrem parte. Se cobrem parcialmente, responda o que dá \

@@ -35,6 +35,10 @@ from app.services.rag.prompts import (
     build_system_prompt,
     montar_prompt_usuario,
 )
+from app.services.rag.ranking import (
+    gerar_documento_ranking_despesas,
+    pergunta_pede_ranking_despesas,
+)
 from app.services.rag.recuperacao import DocumentoRelevante, buscar, buscar_por_chaves
 
 logger = structlog.get_logger()
@@ -64,6 +68,9 @@ _TERMOS_PERGUNTA_AMPLA = (
     "comparando",
     "cruzamento",
     "principais",
+    "maiores",
+    "gastos",
+    "despesas",
     "tendencia",
     "tendência",
 )
@@ -186,6 +193,10 @@ def _chaves_fontes_historico(historico: Sequence[Any]) -> list[str]:
     return list(dict.fromkeys(chaves))[-12:]
 
 
+def _chave_sintetica(chave: str) -> bool:
+    return chave == "cobertura:orcamento" or chave.startswith("ranking:despesas:")
+
+
 def _pergunta_ampla(pergunta: str) -> bool:
     normalizada = _normalizar(pergunta)
     return any(_normalizar(termo) in normalizada for termo in _TERMOS_PERGUNTA_AMPLA)
@@ -288,7 +299,8 @@ async def responder(
     t_inicio = time.perf_counter()
     historico_recente = _historico_recente(historico)
     modo_cobertura = pergunta_pede_cobertura(pergunta)
-    modo_amplo = modo_cobertura or _pergunta_ampla(pergunta)
+    modo_ranking = pergunta_pede_ranking_despesas(pergunta)
+    modo_amplo = modo_cobertura or modo_ranking or _pergunta_ampla(pergunta)
     consulta_recuperacao = _montar_consulta_recuperacao(pergunta, historico_recente)
     candidate_k = max(k, _CANDIDATE_K_AMPLO if modo_amplo else _CANDIDATE_K_PADRAO)
     prompt_k = max(k, _PROMPT_K_AMPLO if modo_amplo else _PROMPT_K_PADRAO)
@@ -299,8 +311,16 @@ async def responder(
     chaves_historico = _chaves_fontes_historico(historico_recente)
     if modo_cobertura or "cobertura:orcamento" in chaves_historico:
         prioritarios.append(await gerar_documento_cobertura(db))
+    if modo_ranking or any(
+        chave.startswith("ranking:despesas:") for chave in chaves_historico
+    ):
+        doc_ranking = await gerar_documento_ranking_despesas(
+            db, pergunta, chaves_historico
+        )
+        if doc_ranking is not None:
+            prioritarios.append(doc_ranking)
     chaves_persistidas = [
-        chave for chave in chaves_historico if chave != "cobertura:orcamento"
+        chave for chave in chaves_historico if not _chave_sintetica(chave)
     ]
     prioritarios.extend(await buscar_por_chaves(chaves_persistidas, db=db, score=0.99))
 
@@ -309,7 +329,7 @@ async def responder(
         db=db,
         cliente=cliente,
         k=candidate_k,
-        fontes=_FONTES_ORCAMENTO if modo_cobertura else None,
+        fontes=_FONTES_ORCAMENTO if modo_cobertura or modo_ranking else None,
         fallback_minimo=prompt_k if modo_amplo else None,
         aplicar_limiar=not modo_amplo,
     )
