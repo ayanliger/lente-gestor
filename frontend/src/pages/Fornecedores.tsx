@@ -2,24 +2,40 @@ import { useState } from "react";
 import { useFornecedores } from "@/api/hooks";
 import SearchInput from "@/components/SearchInput";
 import Pagination from "@/components/Pagination";
+import SortableHeader, { type SortDirection } from "@/components/SortableHeader";
 import TableSkeleton from "@/components/TableSkeleton";
 import {
   DataSourceStrip,
   EmptyState,
   PageHeader,
 } from "@/components/PageChrome";
+type CampoOrdenacaoFornecedores = "cpf_cnpj" | "nome" | "tipo";
 
 export default function Fornecedores() {
   const [busca, setBusca] = useState("");
   const [pagina, setPagina] = useState(1);
+  const [ordenacao, setOrdenacao] = useState<{
+    campo: CampoOrdenacaoFornecedores;
+    direcao: SortDirection;
+  }>({ campo: "nome", direcao: "asc" });
 
   const { data, isLoading } = useFornecedores({
     busca: busca || undefined,
     pagina,
     tamanho_pagina: 20,
+    ordenar_por: ordenacao.campo,
+    direcao: ordenacao.direcao,
   });
 
   const totalPaginas = data ? Math.ceil(data.total / 20) : 0;
+  const alternarOrdenacao = (campo: CampoOrdenacaoFornecedores) => {
+    setPagina(1);
+    setOrdenacao((atual) => ({
+      campo,
+      direcao:
+        atual.campo === campo && atual.direcao === "asc" ? "desc" : "asc",
+    }));
+  };
 
   return (
     <div className="space-y-6 animate-fade-up">
@@ -36,7 +52,7 @@ export default function Fornecedores() {
 
       <DataSourceStrip
         items={["PNCP", "CPF/CNPJ", "Fornecedores"]}
-        note="Use a busca para localizar fornecedores por nome, razão social ou documento."
+        note="Use a busca para localizar fornecedores e clique nos cabeçalhos para alternar a ordenação."
       />
 
       <SearchInput
@@ -68,9 +84,27 @@ export default function Fornecedores() {
             <table className="tbl">
               <thead>
                 <tr>
-                  <th>CNPJ / CPF</th>
-                  <th>Nome</th>
-                  <th>Tipo</th>
+                  <SortableHeader
+                    column="cpf_cnpj"
+                    label="CNPJ / CPF"
+                    sortBy={ordenacao.campo}
+                    direction={ordenacao.direcao}
+                    onSort={alternarOrdenacao}
+                  />
+                  <SortableHeader
+                    column="nome"
+                    label="Nome"
+                    sortBy={ordenacao.campo}
+                    direction={ordenacao.direcao}
+                    onSort={alternarOrdenacao}
+                  />
+                  <SortableHeader
+                    column="tipo"
+                    label="Tipo"
+                    sortBy={ordenacao.campo}
+                    direction={ordenacao.direcao}
+                    onSort={alternarOrdenacao}
+                  />
                 </tr>
               </thead>
               <tbody>

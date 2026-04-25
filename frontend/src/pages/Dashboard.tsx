@@ -164,10 +164,12 @@ function AlertRow({
   tone,
   title,
   detail,
+  to,
 }: {
   tone: "danger" | "warning";
   title: string;
   detail: string;
+  to?: string;
 }) {
   const classes =
     tone === "danger"
@@ -177,21 +179,43 @@ function AlertRow({
     tone === "danger" ? "bg-danger-500" : "bg-warning-500";
   const titleColor =
     tone === "danger" ? "text-danger-500" : "text-warning-500";
-
-  return (
-    <div
-      className={`flex items-start gap-3 rounded-lg border px-4 py-3 ${classes}`}
-    >
+  const content = (
+    <>
       <span
         className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${dot}`}
         aria-hidden
       />
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className={`text-sm font-medium ${titleColor}`}>{title}</p>
         <p className="text-[12.5px] text-text-secondary mt-0.5 leading-snug">
           {detail}
         </p>
       </div>
+    </>
+  );
+
+  if (to) {
+    return (
+      <Link
+        to={to}
+        className={`group flex items-start gap-3 rounded-lg border px-4 py-3 transition-colors hover:border-accent-500/40 hover:bg-surface-overlay focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/50 ${classes}`}
+      >
+        {content}
+        <span
+          className="mt-0.5 text-sm text-text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-accent-ink"
+          aria-hidden
+        >
+          →
+        </span>
+      </Link>
+    );
+  }
+
+  return (
+    <div
+      className={`flex items-start gap-3 rounded-lg border px-4 py-3 ${classes}`}
+    >
+      {content}
     </div>
   );
 }
@@ -201,6 +225,7 @@ interface AlertaItem {
   title: string;
   detail: string;
   key: string;
+  to?: string;
 }
 
 function derivarAlertas(
@@ -238,6 +263,7 @@ function derivarAlertas(
       title: `${vencendo} contrato(s) vencendo em 90 dias`,
       detail: "Avalie prorrogação, substituição ou encerramento antes do fim da vigência.",
       key: "vencendo",
+      to: "/contratos?vencendo=90",
     });
   }
   return lista;
@@ -680,6 +706,7 @@ export default function Dashboard() {
                 tone={a.tone}
                 title={a.title}
                 detail={a.detail}
+                to={a.to}
               />
             ))}
           </div>
@@ -717,7 +744,7 @@ export default function Dashboard() {
             accentColor={tokens.planned}
           />
           <StatTileLink
-            to="/contratos"
+            to="/contratos?vencendo=90"
             label="Vencendo em 90 dias"
             value={
               vencendo.data ? vencendo.data.total.toLocaleString("pt-BR") : "—"

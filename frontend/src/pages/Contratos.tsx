@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useContratos } from "@/api/hooks";
 import { formatBRL, formatDate } from "@/lib/format";
 import SearchInput from "@/components/SearchInput";
 import Pagination from "@/components/Pagination";
+import SortableHeader, { type SortDirection } from "@/components/SortableHeader";
 import TableSkeleton from "@/components/TableSkeleton";
 import {
   DataSourceStrip,
@@ -10,48 +12,89 @@ import {
   PageHeader,
 } from "@/components/PageChrome";
 
-// Threshold para destacar contratos vencendo em 90 dias. Calculado uma
-// única vez por montagem para atender a regra de pureza do React.
-const MS_90_DIAS = 90 * 86400000;
+const DIAS_ALERTA_VENCENDO = 90;
+const MS_DIA = 86400000;
+type CampoOrdenacaoContratos =
+  | "numero_contrato"
+  | "objeto"
+  | "categoria"
+  | "valor_inicial"
+  | "data_fim_vigencia";
+function formatDateParam(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 export default function Contratos() {
+  const [searchParams] = useSearchParams();
   const [busca, setBusca] = useState("");
   const [pagina, setPagina] = useState(1);
-
-  const { data, isLoading } = useContratos({
-    busca: busca || undefined,
-    pagina,
-    tamanho_pagina: 20,
-  });
-
-  const totalPaginas = data ? Math.ceil(data.total / 20) : 0;
+  const [ordenacao, setOrdenacao] = useState<{
+    campo: CampoOrdenacaoContratos;
+    direcao: SortDirection;
+  }>({ campo: "data_fim_vigencia", direcao: "asc" });
+  const filtroVencendoDias = useMemo(() => {
+    const valor = Number(searchParams.get("vencendo"));
+    return Number.isInteger(valor) && valor > 0 ? valor : undefined;
+  }, [searchParams]);
 
   const hoje = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     return d;
   }, []);
+  const diasDestaqueVencendo = filtroVencendoDias ?? DIAS_ALERTA_VENCENDO;
   const limiteVencendo = useMemo(
-    () => new Date(hoje.getTime() + MS_90_DIAS),
-    [hoje],
+    () => new Date(hoje.getTime() + diasDestaqueVencendo * MS_DIA),
+    [diasDestaqueVencendo, hoje],
   );
+  const { data, isLoading } = useContratos({
+    busca: busca || undefined,
+    pagina,
+    tamanho_pagina: 20,
+    data_inicio: filtroVencendoDias ? formatDateParam(hoje) : undefined,
+    data_fim: filtroVencendoDias ? formatDateParam(limiteVencendo) : undefined,
+    ordenar_por: ordenacao.campo,
+    direcao: ordenacao.direcao,
+  });
+
+  const totalPaginas = data ? Math.ceil(data.total / 20) : 0;
+  const alternarOrdenacao = (campo: CampoOrdenacaoContratos) => {
+    setPagina(1);
+    setOrdenacao((atual) => ({
+      campo,
+      direcao:
+        atual.campo === campo && atual.direcao === "asc" ? "desc" : "asc",
+    }));
+  };
 
   return (
     <div className="space-y-6 animate-fade-up">
       <PageHeader
         eyebrow="PNCP"
         title="Contratos"
-        description="Contratos firmados com vigência, categoria, valor e destaque para vencimentos nos próximos 90 dias."
+        description={
+          filtroVencendoDias
+            ? `Contratos com fim de vigência nos próximos ${filtroVencendoDias} dias.`
+            : "Contratos firmados com vigência, categoria, valor e destaque para vencimentos nos próximos 90 dias."
+        }
         actions={
           <span className="badge badge-accent">
-            {data ? data.total.toLocaleString("pt-BR") : "—"} contratos
+            {data ? data.total.toLocaleString("pt-BR") : "—"}{" "}
+            {filtroVencendoDias ? "vencendo" : "contratos"}
           </span>
         }
       />
 
       <DataSourceStrip
         items={["PNCP", "Contratos", "Vigência"]}
-        note="A lista é ordenada pelo fim de vigência mais próximo para priorizar revisão operacional."
+        note={
+          filtroVencendoDias
+            ? `Filtro ativo: vigências entre ${hoje.toLocaleDateString("pt-BR")} e ${limiteVencendo.toLocaleDateString("pt-BR")}.`
+            : "Clique nos cabeçalhos para alternar entre ordem crescente e decrescente."
+        }
       />
 
       <SearchInput
@@ -74,6 +117,8 @@ export default function Contratos() {
               description={
                 busca
                   ? "A busca atual não retornou contratos. Tente outro termo do objeto."
+                  : filtroVencendoDias
+                    ? `Não há contratos vencendo nos próximos ${filtroVencendoDias} dias.`
                   : "Não há contratos carregados para exibição."
               }
             />
@@ -83,11 +128,43 @@ export default function Contratos() {
             <table className="tbl">
               <thead>
                 <tr>
-                  <th>Contrato</th>
-                  <th>Objeto</th>
-                  <th>Categoria</th>
-                  <th className="text-right">Valor</th>
-                  <th className="text-right">Vigência</th>
+                  <SortableHeader
+                    column="numero_contrato"
+                    label="Contrato"
+                    sortBy={ordenacao.campo}
+                    direction={ordenacao.direcao}
+                    onSort={alternarOrdenacao}
+                  />
+                  <SortableHeader
+                    column="objeto"
+                    label="Objeto"
+                    sortBy={ordenacao.campo}
+                    direction={ordenacao.direcao}
+                    onSort={alternarOrdenacao}
+                  />
+                  <SortableHeader
+                    column="categoria"
+                    label="Categoria"
+                    sortBy={ordenacao.campo}
+                    direction={ordenacao.direcao}
+                    onSort={alternarOrdenacao}
+                  />
+                  <SortableHeader
+                    column="valor_inicial"
+                    label="Valor"
+                    sortBy={ordenacao.campo}
+                    direction={ordenacao.direcao}
+                    onSort={alternarOrdenacao}
+                    align="right"
+                  />
+                  <SortableHeader
+                    column="data_fim_vigencia"
+                    label="Vigência"
+                    sortBy={ordenacao.campo}
+                    direction={ordenacao.direcao}
+                    onSort={alternarOrdenacao}
+                    align="right"
+                  />
                 </tr>
               </thead>
               <tbody>
@@ -129,7 +206,11 @@ export default function Contratos() {
                             ? "text-warning-500 font-medium"
                             : "text-text-secondary"
                         }`}
-                        title={vencendo ? "Vencendo em até 90 dias" : undefined}
+                        title={
+                          vencendo
+                            ? `Vencendo em até ${diasDestaqueVencendo} dias`
+                            : undefined
+                        }
                       >
                         {formatDate(c.data_fim_vigencia)}
                       </td>

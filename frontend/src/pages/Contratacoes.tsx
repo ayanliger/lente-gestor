@@ -3,24 +3,46 @@ import { useContratacoes } from "@/api/hooks";
 import { formatBRL, formatDate } from "@/lib/format";
 import SearchInput from "@/components/SearchInput";
 import Pagination from "@/components/Pagination";
+import SortableHeader, { type SortDirection } from "@/components/SortableHeader";
 import TableSkeleton from "@/components/TableSkeleton";
 import {
   DataSourceStrip,
   EmptyState,
   PageHeader,
 } from "@/components/PageChrome";
+type CampoOrdenacaoContratacoes =
+  | "numero_processo"
+  | "modalidade"
+  | "objeto"
+  | "valor_estimado"
+  | "situacao"
+  | "data_publicacao";
 
 export default function Contratacoes() {
   const [busca, setBusca] = useState("");
   const [pagina, setPagina] = useState(1);
+  const [ordenacao, setOrdenacao] = useState<{
+    campo: CampoOrdenacaoContratacoes;
+    direcao: SortDirection;
+  }>({ campo: "data_publicacao", direcao: "desc" });
 
   const { data, isLoading } = useContratacoes({
     busca: busca || undefined,
     pagina,
     tamanho_pagina: 20,
+    ordenar_por: ordenacao.campo,
+    direcao: ordenacao.direcao,
   });
 
   const totalPaginas = data ? Math.ceil(data.total / 20) : 0;
+  const alternarOrdenacao = (campo: CampoOrdenacaoContratacoes) => {
+    setPagina(1);
+    setOrdenacao((atual) => ({
+      campo,
+      direcao:
+        atual.campo === campo && atual.direcao === "asc" ? "desc" : "asc",
+    }));
+  };
 
   return (
     <div className="space-y-6 animate-fade-up">
@@ -37,7 +59,7 @@ export default function Contratacoes() {
 
       <DataSourceStrip
         items={["PNCP", "Contratações públicas"]}
-        note="Ordenado por publicação mais recente; valores exibidos são estimados quando disponíveis."
+        note="Clique nos cabeçalhos para alternar entre ordem crescente e decrescente; valores exibidos são estimados quando disponíveis."
       />
 
       {/* Search */}
@@ -71,12 +93,50 @@ export default function Contratacoes() {
             <table className="tbl">
               <thead>
                 <tr>
-                  <th>Processo</th>
-                  <th>Modalidade</th>
-                  <th>Objeto</th>
-                  <th className="text-right">Valor est.</th>
-                  <th>Situação</th>
-                  <th className="text-right">Publicação</th>
+                  <SortableHeader
+                    column="numero_processo"
+                    label="Processo"
+                    sortBy={ordenacao.campo}
+                    direction={ordenacao.direcao}
+                    onSort={alternarOrdenacao}
+                  />
+                  <SortableHeader
+                    column="modalidade"
+                    label="Modalidade"
+                    sortBy={ordenacao.campo}
+                    direction={ordenacao.direcao}
+                    onSort={alternarOrdenacao}
+                  />
+                  <SortableHeader
+                    column="objeto"
+                    label="Objeto"
+                    sortBy={ordenacao.campo}
+                    direction={ordenacao.direcao}
+                    onSort={alternarOrdenacao}
+                  />
+                  <SortableHeader
+                    column="valor_estimado"
+                    label="Valor est."
+                    sortBy={ordenacao.campo}
+                    direction={ordenacao.direcao}
+                    onSort={alternarOrdenacao}
+                    align="right"
+                  />
+                  <SortableHeader
+                    column="situacao"
+                    label="Situação"
+                    sortBy={ordenacao.campo}
+                    direction={ordenacao.direcao}
+                    onSort={alternarOrdenacao}
+                  />
+                  <SortableHeader
+                    column="data_publicacao"
+                    label="Publicação"
+                    sortBy={ordenacao.campo}
+                    direction={ordenacao.direcao}
+                    onSort={alternarOrdenacao}
+                    align="right"
+                  />
                 </tr>
               </thead>
               <tbody>

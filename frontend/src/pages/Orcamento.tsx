@@ -335,8 +335,7 @@ export default function Orcamento() {
             </span>
             <span className="flex items-center gap-1.5">
               <span
-                className="inline-block h-2.5 w-2.5 rounded-sm"
-                style={{ background: tokens.expense }}
+                className="chart-expense-bar inline-block h-2.5 w-2.5 rounded-sm"
               />
               Empenhado
             </span>
@@ -408,10 +407,9 @@ export default function Orcamento() {
                       aria-hidden
                     />
                     <div
-                      className="absolute inset-y-1.5 left-0 rounded-r-md"
+                      className="chart-expense-bar absolute inset-y-1.5 left-0 rounded-r-md"
                       style={{
                         width: `${empenhadoPct}%`,
-                        backgroundColor: tokens.expense,
                       }}
                       aria-hidden
                     />

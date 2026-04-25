@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import date
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
@@ -13,6 +14,25 @@ from app.api.schemas import ContratacaoDetail, ContratacaoOut, PaginatedResponse
 from app.models.contratacoes import Contratacao
 
 router = APIRouter(prefix="/contratacoes", tags=["Contratações"])
+
+CampoOrdenacaoContratacoes = Literal[
+    "numero_processo",
+    "modalidade",
+    "objeto",
+    "valor_estimado",
+    "situacao",
+    "data_publicacao",
+]
+DirecaoOrdenacao = Literal["asc", "desc"]
+
+CAMPOS_ORDENACAO = {
+    "numero_processo": Contratacao.numero_processo,
+    "modalidade": Contratacao.modalidade,
+    "objeto": Contratacao.objeto,
+    "valor_estimado": Contratacao.valor_estimado,
+    "situacao": Contratacao.situacao,
+    "data_publicacao": Contratacao.data_publicacao,
+}
 
 
 @router.get("/", response_model=PaginatedResponse[ContratacaoOut])
@@ -26,6 +46,11 @@ async def listar_contratacoes(
     busca: str | None = Query(None, description="Buscar no objeto da contratação"),
     pagina: int = Query(1, ge=1),
     tamanho_pagina: int = Query(50, ge=1, le=100),
+    ordenar_por: CampoOrdenacaoContratacoes = Query(
+        "data_publicacao",
+        description="Coluna usada para ordenação",
+    ),
+    direcao: DirecaoOrdenacao = Query("desc", description="Direção da ordenação"),
     db: AsyncSession = Depends(get_db),
 ):
     """Lista contratações com filtros opcionais."""
@@ -54,8 +79,10 @@ async def listar_contratacoes(
 
     total = (await db.execute(count_query)).scalar_one()
     offset = (pagina - 1) * tamanho_pagina
+    coluna_ordenacao = CAMPOS_ORDENACAO[ordenar_por]
+    ordenacao = coluna_ordenacao.desc() if direcao == "desc" else coluna_ordenacao.asc()
     result = await db.execute(
-        query.order_by(Contratacao.data_publicacao.desc().nullslast())
+        query.order_by(ordenacao.nullslast())
         .offset(offset)
         .limit(tamanho_pagina)
     )

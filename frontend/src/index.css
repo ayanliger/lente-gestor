@@ -108,14 +108,25 @@
     @apply bg-surface text-text-primary font-sans antialiased;
     font-feature-settings: "ss01", "cv11", "kern";
     background-color: var(--color-surface);
-    /* Fundo de painel neutro com profundidade discreta, sem malha visual. */
+    /* Fundo de painel neutro com vinheta deslocada, sem virar textura. */
     background-image:
       radial-gradient(
-        ellipse 920px 500px at 96% -12%,
-        rgba(15, 23, 42, 0.050),
-        transparent 62%
+        ellipse 1080px 620px at 94% -10%,
+        rgba(47, 95, 143, 0.060),
+        transparent 64%
+      ),
+      radial-gradient(
+        ellipse 900px 620px at -12% 86%,
+        rgba(166, 107, 31, 0.050),
+        transparent 58%
+      ),
+      linear-gradient(
+        135deg,
+        #fbfbfc 0%,
+        var(--color-surface) 42%,
+        #eef1f5 100%
       );
-    background-size: auto;
+    background-size: auto, auto, auto;
     background-attachment: fixed;
     min-height: 100vh;
   }
@@ -369,6 +380,13 @@
   }
   .tbl-num {
     @apply font-mono tabular-nums text-right;
+  }
+
+  .chart-expense-bar {
+    background: var(--color-data-expense);
+  }
+  :root[data-theme="dark"] .chart-expense-bar {
+    background: color-mix(in oklab, var(--color-data-expense) 58%, transparent);
   }
 
   /* Skeleton shimmer — derivado de text-muted para adaptar por tema. */

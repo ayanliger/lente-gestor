@@ -22,6 +22,8 @@ interface PaginationParams {
   pagina?: number;
   tamanho_pagina?: number;
   busca?: string;
+  ordenar_por?: string;
+  direcao?: "asc" | "desc";
 }
 
 export function useContratacoes(
@@ -46,6 +48,8 @@ export function useContratos(
     situacao?: string;
     categoria?: string;
     ano?: number;
+    data_inicio?: string;
+    data_fim?: string;
   } = {}
 ) {
   return useQuery({
