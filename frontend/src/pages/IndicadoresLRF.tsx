@@ -1,6 +1,11 @@
 import { useMemo, useState } from "react";
 import { useExerciciosOrcamento, useIndicadoresFiscais } from "@/api/hooks";
 import type { IndicadorFiscal, SituacaoIndicador } from "@/api/types";
+import {
+  DataSourceStrip,
+  EmptyState,
+  PageHeader,
+} from "@/components/PageChrome";
 import Termometro from "@/components/Termometro";
 
 // Metadata visual por indicador, complementar ao retorno da API.
@@ -153,37 +158,38 @@ export default function IndicadoresLRF() {
 
   return (
     <div className="space-y-8 animate-fade-up">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="font-display text-4xl tracking-tight text-text-primary">
-            Indicadores LRF
-          </h1>
-          <p className="text-text-secondary text-sm mt-2 max-w-xl">
-            Cumprimento da Lei de Responsabilidade Fiscal e mínimos
-            constitucionais.
-          </p>
-        </div>
-        <label className="flex items-center gap-2 text-sm">
-          <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
-            Exercício
-          </span>
-          <select
-            value={anoSelecionado ?? ""}
-            onChange={(e) => setExercicio(Number(e.target.value))}
-            className="field-select"
-            disabled={exerciciosDisponiveis.length === 0}
-          >
-            {exerciciosDisponiveis.length === 0 && (
-              <option value="">—</option>
-            )}
-            {exerciciosDisponiveis.map((ano) => (
-              <option key={ano} value={ano}>
-                {ano}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      <PageHeader
+        eyebrow="Responsabilidade fiscal"
+        title="Indicadores LRF"
+        description="Cumprimento da Lei de Responsabilidade Fiscal, limites de endividamento e mínimos constitucionais calculados a partir dos relatórios fiscais ingeridos."
+        actions={
+          <label className="flex items-center gap-2 text-sm">
+            <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
+              Exercício
+            </span>
+            <select
+              value={anoSelecionado ?? ""}
+              onChange={(e) => setExercicio(Number(e.target.value))}
+              className="field-select"
+              disabled={exerciciosDisponiveis.length === 0}
+            >
+              {exerciciosDisponiveis.length === 0 && (
+                <option value="">—</option>
+              )}
+              {exerciciosDisponiveis.map((ano) => (
+                <option key={ano} value={ano}>
+                  {ano}
+                </option>
+              ))}
+            </select>
+          </label>
+        }
+      />
+
+      <DataSourceStrip
+        items={["RGF", "RREO", "Constituição Federal", "LRF"]}
+        note="Cada cartão mostra valor apurado, referência legal e situação derivada pelo backend."
+      />
 
       {/* Resumo geral */}
       {resumoGeral && (
@@ -232,13 +238,10 @@ export default function IndicadoresLRF() {
       {isLoading ? (
         <p className="text-text-muted text-sm">Carregando indicadores…</p>
       ) : indicadoresOrdenados.length === 0 ? (
-        <p className="text-text-muted text-sm">
-          Nenhum indicador derivado para {exercicio}. Execute{" "}
-          <code className="font-mono text-text-secondary">
-            make ingest-rgf ano={exercicio}
-          </code>{" "}
-          no backend.
-        </p>
+        <EmptyState
+          title="Nenhum indicador derivado"
+          description={`Não há indicadores fiscais para ${anoSelecionado ?? "—"}. Verifique se os relatórios RGF/RREO desse exercício foram ingeridos no backend.`}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {indicadoresOrdenados.map((i) => (

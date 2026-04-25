@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { type ChatResponse, type FonteCitada, useChat } from "@/api/chat";
+import { DataSourceStrip, PageHeader } from "@/components/PageChrome";
 
 /**
  * Linha de mensagem: pergunta do usuário ou resposta do assistente.
@@ -91,6 +92,7 @@ function FonteDrawer({
       <aside
         className="w-full max-w-md overflow-y-auto bg-surface-raised border-l border-border p-6 animate-fade-up shadow-2xl"
         role="dialog"
+        aria-modal="true"
         aria-label="Detalhes da fonte"
       >
         <div className="flex items-start justify-between gap-4 mb-4">
@@ -108,7 +110,7 @@ function FonteDrawer({
           <button
             type="button"
             onClick={onClose}
-            className="text-text-muted hover:text-text-primary transition-colors text-xl leading-none"
+            className="rounded-md px-2 py-1 text-text-muted hover:text-text-primary hover:bg-surface-overlay transition-colors text-xl leading-none"
             aria-label="Fechar"
           >
             ×
@@ -375,19 +377,28 @@ export default function Assistente() {
 
   return (
     <div className="h-full flex flex-col animate-fade-up">
-      <header className="pb-6 border-b border-border">
-        <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-accent-ink mb-2">
-          Assistente
-        </p>
-        <h1 className="font-display text-3xl md:text-4xl tracking-tight text-text-primary leading-[1.05]">
-          Pergunte à sua base
-        </h1>
-        <p className="text-text-secondary text-sm mt-3 max-w-2xl">
-          Respostas em linguagem natural sobre orçamento, indicadores fiscais
-          e contratos de Jequié — <span className="text-text-primary">sempre com citação à fonte</span>.
-          Se o dado não está na base, o assistente recusa em vez de inventar.
-        </p>
-      </header>
+      <div className="space-y-4 pb-6">
+        <PageHeader
+          eyebrow="Assistente"
+          title="Pergunte à sua base"
+          description={
+            <>
+              Respostas em linguagem natural sobre orçamento, indicadores
+              fiscais e contratos de Jequié —{" "}
+              <span className="text-text-primary">
+                sempre com citação à fonte
+              </span>
+              . Se o dado não está na base, o assistente recusa em vez de
+              inventar.
+            </>
+          }
+        />
+
+        <DataSourceStrip
+          items={["RAG", "pgvector", "RREO/RGF", "PNCP"]}
+          note="As fontes citadas abrem metadados e apontam para a página de origem quando possível."
+        />
+      </div>
 
       {/* Área de mensagens */}
       <div
@@ -429,7 +440,7 @@ export default function Assistente() {
         )}
 
         {chat.isPending && (
-          <div className="flex justify-start">
+          <div className="flex justify-start" role="status" aria-live="polite">
             <div className="bg-surface-raised border border-border rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-text-muted flex items-center gap-2">
               <span className="h-1.5 w-1.5 rounded-full bg-accent-500 animate-pulse" />
               pensando…
@@ -450,6 +461,7 @@ export default function Assistente() {
                 enviar();
               }
             }}
+            aria-label="Pergunta para o assistente"
             placeholder="Faça uma pergunta sobre orçamento, LRF, PCA ou contratos…"
             rows={2}
             className="field-input resize-none flex-1"

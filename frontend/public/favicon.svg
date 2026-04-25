@@ -1,23 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#132b4f"/>
-      <stop offset="100%" stop-color="#0c1b33"/>
+      <stop offset="0%" stop-color="#17445f"/>
+      <stop offset="100%" stop-color="#071826"/>
     </linearGradient>
-    <linearGradient id="amber" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#f5d26e"/>
-      <stop offset="100%" stop-color="#e6a817"/>
+    <linearGradient id="accent" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#9ee3f2"/>
+      <stop offset="100%" stop-color="#22a8d5"/>
     </linearGradient>
   </defs>
   <rect width="48" height="48" rx="10" fill="url(#bg)"/>
-  <!-- Ambient amber glow -->
-  <circle cx="16" cy="18" r="14" fill="#e6a817" opacity="0.10"/>
+  <!-- Ambient civic glow -->
+  <circle cx="16" cy="18" r="14" fill="#22a8d5" opacity="0.18"/>
   <!-- Magnifying-glass ring -->
-  <circle cx="20" cy="22" r="10" fill="none" stroke="url(#amber)" stroke-width="2.75"/>
+  <circle cx="20" cy="22" r="10" fill="none" stroke="url(#accent)" stroke-width="2.75"/>
   <!-- Handle -->
-  <path d="M28.2 30.2 L38 40" stroke="url(#amber)" stroke-width="3.25" stroke-linecap="round"/>
+  <path d="M28.2 30.2 L38 40" stroke="url(#accent)" stroke-width="3.25" stroke-linecap="round"/>
   <!-- Data bar accents inside lens -->
-  <rect x="15.5" y="22" width="1.75" height="4.5" rx="0.5" fill="#e6a817" opacity="0.55"/>
-  <rect x="19.125" y="19" width="1.75" height="7.5" rx="0.5" fill="#e6a817" opacity="0.85"/>
-  <rect x="22.75" y="16" width="1.75" height="10.5" rx="0.5" fill="#e6a817"/>
+  <rect x="15.5" y="22" width="1.75" height="4.5" rx="0.5" fill="#9ee3f2" opacity="0.55"/>
+  <rect x="19.125" y="19" width="1.75" height="7.5" rx="0.5" fill="#68cdeb" opacity="0.85"/>
+  <rect x="22.75" y="16" width="1.75" height="10.5" rx="0.5" fill="#22a8d5"/>
 </svg>

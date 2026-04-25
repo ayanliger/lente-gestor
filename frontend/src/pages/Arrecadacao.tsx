@@ -23,28 +23,33 @@ import {
   useResumoArrecadacao,
   useTopTributos,
 } from "@/api/hooks";
+import {
+  DataSourceStrip,
+  EmptyState,
+  PageHeader,
+} from "@/components/PageChrome";
 // `useArrecadacaoPorBanco` existe mas está oculto enquanto o drill-down
 // estiver desabilitado na ingestão. Para reabilitar, reimporte e
 // reintroduza a seção "Arrecadação por banco recebedor" (git histórico).
 import { formatBRL } from "@/lib/format";
-import { useChartTokens } from "@/lib/theme";
+import { useChartTokens } from "@/lib/theme-core";
 
 // Recharts precisa de cores hex resolvidas (SVG <rect fill>). Para séries
-// categóricas (espécie tributária, banco, tributo) derivamos uma escala
-// ordinal com tons de âmbar + neutros, preservando a identidade editorial.
+// categóricas, usamos uma escala próxima dos painéis BI do projeto: ciano,
+// azul profundo, laranja, lima, magenta e violeta.
 function useOrdinalScale(): string[] {
   const tokens = useChartTokens();
   return [
     tokens.accent,
-    "#b37a0a",
-    "#f5d26e",
-    "#8a5f08",
     tokens.neutral,
-    "#5c564d",
-    "#9a9386",
-    "#d4cec0",
-    "#3a3630",
-    "#7a7468",
+    "#f29f3d",
+    "#a8dc2f",
+    "#d92fb5",
+    "#5b8def",
+    "#7c3aed",
+    "#8edff0",
+    "#497f99",
+    "#c9e5ee",
   ];
 }
 
@@ -112,20 +117,14 @@ function abreviar(texto: string, max: number): string {
 
 export default function Arrecadacao() {
   const anoCorrente = new Date().getFullYear();
-  const [exercicio, setExercicio] = useState(anoCorrente);
+  const [exercicio, setExercicio] = useState<number | undefined>(undefined);
 
   // Intervalo default para a seção histórica: 2020 até o exercício atual.
   const [anoInicio, setAnoInicio] = useState(2020);
-  const [anoFim, setAnoFim] = useState(anoCorrente);
+  const [anoFim, setAnoFim] = useState<number | undefined>(undefined);
 
-  const resumo = useResumoArrecadacao(exercicio);
   const porExercicio = useArrecadacaoPorExercicio();
-  const porMes = useArrecadacaoPorMes(exercicio);
-  const porEspecie = useArrecadacaoPorEspecie(exercicio);
-  const topTributos = useTopTributos(exercicio, 10);
   const anoEspecie = useArrecadacaoAnoEspecie();
-  const porReceitaHist = useArrecadacaoPorReceita(anoInicio, anoFim, 30);
-  const mesXAno = useArrecadacaoMesXAno(anoInicio, anoFim);
 
   const tokens = useChartTokens();
   const escala = useOrdinalScale();
@@ -133,9 +132,28 @@ export default function Arrecadacao() {
   // Exercícios disponíveis extraídos da série anual.
   const exerciciosDisponiveis = useMemo(() => {
     const anos = (porExercicio.data ?? []).map((d) => d.exercicio);
-    if (anos.length === 0) return [exercicio];
-    return Array.from(new Set([...anos, exercicio])).sort((a, b) => b - a);
-  }, [porExercicio.data, exercicio]);
+    if (anos.length === 0) return [anoCorrente];
+    return Array.from(new Set(anos)).sort((a, b) => b - a);
+  }, [porExercicio.data, anoCorrente]);
+
+  const exercicioSelecionado =
+    exercicio ?? exerciciosDisponiveis[0] ?? anoCorrente;
+  const anoFimSelecionado = anoFim ?? exerciciosDisponiveis[0] ?? anoCorrente;
+  const anoMaximoDisponivel = Math.max(
+    anoCorrente,
+    ...exerciciosDisponiveis,
+  );
+
+  const resumo = useResumoArrecadacao(exercicioSelecionado);
+  const porMes = useArrecadacaoPorMes(exercicioSelecionado);
+  const porEspecie = useArrecadacaoPorEspecie(exercicioSelecionado);
+  const topTributos = useTopTributos(exercicioSelecionado, 10);
+  const porReceitaHist = useArrecadacaoPorReceita(
+    anoInicio,
+    anoFimSelecionado,
+    30,
+  );
+  const mesXAno = useArrecadacaoMesXAno(anoInicio, anoFimSelecionado);
 
   // Prepara dados de barras empilhadas ano × espécie.
   const barrasEmpilhadas = useMemo(() => {
@@ -180,12 +198,12 @@ export default function Arrecadacao() {
 
   // Seção histórica: anos cobertos pelo intervalo atual.
   const anosRange = useMemo(() => {
-    const ini = Math.min(anoInicio, anoFim);
-    const fim = Math.max(anoInicio, anoFim);
+    const ini = Math.min(anoInicio, anoFimSelecionado);
+    const fim = Math.max(anoInicio, anoFimSelecionado);
     const out: number[] = [];
     for (let a = ini; a <= fim; a++) out.push(a);
     return out;
-  }, [anoInicio, anoFim]);
+  }, [anoInicio, anoFimSelecionado]);
 
   // Pivot mês × ano: um registro por mês com campos `${ano}` para cada barra.
   const barrasMesXAno = useMemo(() => {
@@ -204,24 +222,23 @@ export default function Arrecadacao() {
 
   return (
     <div className="space-y-8 animate-fade-up">
-      {/* Header + filtros */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="font-display text-4xl tracking-tight text-text-primary">
-            Arrecadação
-          </h1>
-          <p className="text-text-secondary text-sm mt-2">
-            Receitas tributárias municipais · fonte: Portal da Transparência (Município Online)
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
+      <PageHeader
+        eyebrow="Receita pública"
+        title="Arrecadação"
+        description={
+          <>
+            Receitas tributárias municipais por exercício, espécie, tributo e
+            mês. A série mensal exclui DCA anual para evitar picos artificiais
+            em dezembro.
+          </>
+        }
+        actions={
           <label className="flex items-center gap-2 text-sm">
             <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
               Exercício
             </span>
             <select
-              value={exercicio}
+              value={exercicioSelecionado}
               onChange={(e) => setExercicio(Number(e.target.value))}
               className="field-select"
             >
@@ -232,8 +249,13 @@ export default function Arrecadacao() {
               ))}
             </select>
           </label>
-        </div>
-      </div>
+        }
+      />
+
+      <DataSourceStrip
+        items={["Município Online", "SICONFI/DCA", "STN"]}
+        note="Valores previstos são colapsados por item e fonte para evitar duplicidade mensal."
+      />
 
       {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -253,7 +275,7 @@ export default function Arrecadacao() {
           }
         />
         <KpiCard
-          label={`Δ vs. ${exercicio - 1}`}
+          label={`Δ vs. ${exercicioSelecionado - 1}`}
           value={
             resumo.data?.delta_yoy != null
               ? `${resumo.data.delta_yoy >= 0 ? "+" : ""}${resumo.data.delta_yoy.toFixed(1)}%`
@@ -264,7 +286,7 @@ export default function Arrecadacao() {
         <KpiCard
           label="Meses com registros"
           value={String((porMes.data ?? []).filter((m) => m.valor > 0).length)}
-          sub={`de 12 (${exercicio})`}
+          sub={`de 12 (${exercicioSelecionado})`}
         />
       </div>
 
@@ -281,7 +303,10 @@ export default function Arrecadacao() {
           {porEspecie.isLoading ? (
             <p className="text-text-muted text-sm py-8">Carregando…</p>
           ) : (porEspecie.data ?? []).length === 0 ? (
-            <p className="text-text-muted text-sm py-8">Sem dados para {exercicio}.</p>
+            <EmptyState
+              title="Sem dados por espécie"
+              description={`Não há arrecadação classificada para ${exercicioSelecionado}.`}
+            />
           ) : (
             <ResponsiveContainer width="100%" height={320}>
               <PieChart>
@@ -338,7 +363,10 @@ export default function Arrecadacao() {
           {topTributos.isLoading ? (
             <p className="text-text-muted text-sm py-8">Carregando…</p>
           ) : (topTributos.data ?? []).length === 0 ? (
-            <p className="text-text-muted text-sm py-8">Sem dados para {exercicio}.</p>
+            <EmptyState
+              title="Sem ranking de tributos"
+              description={`Nenhum item de receita foi encontrado para ${exercicioSelecionado}.`}
+            />
           ) : (
             <ResponsiveContainer width="100%" height={320}>
               <BarChart
@@ -446,42 +474,60 @@ export default function Arrecadacao() {
           ) : barrasEmpilhadas.data.length === 0 ? (
             <p className="text-text-muted text-sm py-8">Sem dados.</p>
           ) : (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={barrasEmpilhadas.data}>
-                <CartesianGrid strokeDasharray="3 3" stroke={tokens.grid} vertical={false} />
-                <XAxis
-                  dataKey="exercicio"
-                  stroke={tokens.axis}
-                  tick={{ fill: tokens.tick, fontSize: 12, fontFamily: "JetBrains Mono" }}
-                />
-                <YAxis
-                  stroke={tokens.axis}
-                  tickFormatter={(v) => formatCompact(Number(v)).replace("R$ ", "")}
-                  tick={{ fill: tokens.tick, fontSize: 11 }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: tokens.surfaceRaised,
-                    border: `1px solid ${tokens.grid}`,
-                    borderRadius: 10,
-                    fontSize: 12,
-                  }}
-                  formatter={(value: unknown, name: unknown) => [
-                    formatBRL(Number(value)),
-                    String(name),
-                  ]}
-                />
-                <Legend wrapperStyle={{ fontSize: 11, color: tokens.textSecondary }} />
-                {barrasEmpilhadas.series.map((especie, idx) => (
-                  <Bar
-                    key={especie}
-                    dataKey={especie}
-                    stackId="especies"
-                    fill={escala[idx % escala.length]}
+            <div>
+              <ResponsiveContainer width="100%" height={292}>
+                <BarChart
+                  data={barrasEmpilhadas.data}
+                  margin={{ top: 8, right: 12, left: 0, bottom: 10 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke={tokens.grid} vertical={false} />
+                  <XAxis
+                    dataKey="exercicio"
+                    stroke={tokens.axis}
+                    tick={{ fill: tokens.tick, fontSize: 12, fontFamily: "JetBrains Mono" }}
                   />
+                  <YAxis
+                    stroke={tokens.axis}
+                    tickFormatter={(v) => formatCompact(Number(v)).replace("R$ ", "")}
+                    tick={{ fill: tokens.tick, fontSize: 11 }}
+                  />
+                  <Tooltip
+                    allowEscapeViewBox={{ y: true }}
+                    position={{ y: -36 }}
+                    contentStyle={{
+                      background: tokens.surfaceRaised,
+                      border: `1px solid ${tokens.grid}`,
+                      borderRadius: 10,
+                      fontSize: 12,
+                    }}
+                    wrapperStyle={{ zIndex: 20 }}
+                    formatter={(value: unknown, name: unknown) => [
+                      formatBRL(Number(value)),
+                      String(name),
+                    ]}
+                  />
+                  {barrasEmpilhadas.series.map((especie, idx) => (
+                    <Bar
+                      key={especie}
+                      dataKey={especie}
+                      stackId="especies"
+                      fill={escala[idx % escala.length]}
+                    />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-2 text-[11px] text-text-secondary">
+                {barrasEmpilhadas.series.map((especie, idx) => (
+                  <span key={especie} className="inline-flex items-center gap-1.5">
+                    <span
+                      className="h-2 w-2 rounded-sm"
+                      style={{ backgroundColor: escala[idx % escala.length] }}
+                    />
+                    {especie}
+                  </span>
                 ))}
-              </BarChart>
-            </ResponsiveContainer>
+              </div>
+            </div>
           )}
         </section>
       </div>
@@ -490,7 +536,7 @@ export default function Arrecadacao() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <section className="card-accent bg-surface-raised border border-border rounded-xl p-6">
           <h2 className="font-display text-xl text-text-primary">
-            Arrecadação mensal — {exercicio}
+            Arrecadação mensal — {exercicioSelecionado}
           </h2>
           <p className="text-xs text-text-muted mt-1 mb-4">
             Evolução da arrecadação ao longo do ano.
@@ -534,7 +580,10 @@ export default function Arrecadacao() {
             Top-10 por área de contribuição.
           </p>
           {treemapData.length === 0 ? (
-            <p className="text-text-muted text-sm py-8">Sem dados para {exercicio}.</p>
+            <EmptyState
+              title="Sem mapa de tributos"
+              description={`O top-10 por área de contribuição ainda não está disponível para ${exercicioSelecionado}.`}
+            />
           ) : (
             <ResponsiveContainer width="100%" height={260}>
               <Treemap
@@ -585,10 +634,10 @@ export default function Arrecadacao() {
               <input
                 type="number"
                 min={2000}
-                max={anoCorrente}
+                max={anoMaximoDisponivel}
                 value={anoInicio}
                 onChange={(e) => setAnoInicio(Number(e.target.value) || 2020)}
-                className="field-select w-24 text-center font-mono"
+                className="field-input w-24 px-3 py-1.5 text-center font-mono"
               />
             </label>
             <label className="flex items-center gap-2">
@@ -598,10 +647,12 @@ export default function Arrecadacao() {
               <input
                 type="number"
                 min={2000}
-                max={anoCorrente}
-                value={anoFim}
-                onChange={(e) => setAnoFim(Number(e.target.value) || anoCorrente)}
-                className="field-select w-24 text-center font-mono"
+                max={anoMaximoDisponivel}
+                value={anoFimSelecionado}
+                onChange={(e) =>
+                  setAnoFim(Number(e.target.value) || anoMaximoDisponivel)
+                }
+                className="field-input w-24 px-3 py-1.5 text-center font-mono"
               />
             </label>
           </div>
@@ -613,7 +664,7 @@ export default function Arrecadacao() {
             Arrecadação discriminada por receita
           </h3>
           <p className="text-xs text-text-muted mt-1 mb-4">
-            Top-30 receitas no intervalo {Math.min(anoInicio, anoFim)}–{Math.max(anoInicio, anoFim)},
+            Top-30 receitas no intervalo {Math.min(anoInicio, anoFimSelecionado)}–{Math.max(anoInicio, anoFimSelecionado)},
             ordenadas pelo total agregado.
           </p>
           {porReceitaHist.isLoading ? (

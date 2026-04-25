@@ -1,45 +1,45 @@
 @import "tailwindcss";
 
 /*
-  Lente Gestor — Editorial B/W
+  Lente Gestor — Civic Analytics
   -------------------------------------------------------------------------
-  Light é o default (branco/creme quente, tinta preta). Dark é opt-in via
+  Light é o default: uma base clara de BI municipal, com azul-ciano como
+  acento principal e neutros de alto contraste. Dark é opt-in via
   [data-theme="dark"] no <html>. Somente os tokens semânticos (surface,
   texto, borda, ink do acento) trocam entre temas; as escalas cromáticas
-  (lente-*, accent-*, success, warning, danger) são estáticas para que as
+  (lente-*, accent-*, success, warning, danger) seguem estáticas para que as
   classes do Tailwind continuem funcionando sem alterações.
 */
 
 @theme {
-  /* Tom de fonte pura — usados diretamente (ex. bg-lente-900) e em alphas
-     baixas como overlays sutis. Família quente (coloração levemente
-     amarelada) para casar com o âmbar sem competir. */
-  --color-lente-900: #0a0a08;
-  --color-lente-800: #1d1a16;
-  --color-lente-700: #3a3630;
-  --color-lente-600: #5c564d;
-  --color-lente-500: #7a7468;
-  --color-lente-400: #9a9386;
-  --color-lente-300: #b8b1a3;
-  --color-lente-200: #d4cec0;
-  --color-lente-100: #e8e2d4;
-  --color-lente-50: #f5f0e3;
+  /* Escala institucional neutra-azulada: usada para texto forte, fundos
+     escuros, grades e contrastes em gráficos. */
+  --color-lente-900: #071826;
+  --color-lente-800: #102b40;
+  --color-lente-700: #17445f;
+  --color-lente-600: #27617e;
+  --color-lente-500: #497f99;
+  --color-lente-400: #78a9be;
+  --color-lente-300: #a6d0df;
+  --color-lente-200: #c9e5ee;
+  --color-lente-100: #e3f3f7;
+  --color-lente-50: #f3f9fb;
 
-  /* Acento âmbar — único vetor cromático. Mantido para continuidade visual
-     (logotipo, CTA, indicador ativo, chips de fonte, realce em gráficos). */
-  --color-accent-700: #8a5f08;
-  --color-accent-600: #b37a0a;
-  --color-accent-500: #e6a817;
-  --color-accent-400: #f0be3d;
-  --color-accent-300: #f5d26e;
-  --color-accent-200: #fae5a8;
+  /* Acento azul-ciano — vetor cromático primário para CTA, navegação ativa,
+     chips de fonte, gráficos e destaques de leitura. */
+  --color-accent-700: #075b7d;
+  --color-accent-600: #087fa8;
+  --color-accent-500: #22a8d5;
+  --color-accent-400: #68cdeb;
+  --color-accent-300: #9ee3f2;
+  --color-accent-200: #c8f1f8;
 
   /* Semânticos — preservados para status funcional em ambos os temas. */
-  --color-danger-500: #c12a2a;
+  --color-danger-500: #c83737;
   --color-danger-100: #fbe4e4;
-  --color-success-500: #167a3c;
+  --color-success-500: #16844a;
   --color-success-100: #dcf0e2;
-  --color-warning-500: #a86a13;
+  --color-warning-500: #b97316;
   --color-warning-100: #fcebc9;
 
   /* ---------------------------------------------------------------------
@@ -48,15 +48,15 @@
      primary, border-border, text-accent-ink) resolve o valor correto por
      tema sem precisar de prefixo `dark:`.
   --------------------------------------------------------------------- */
-  --color-surface: #faf8f2;
+  --color-surface: #f6fafc;
   --color-surface-raised: #ffffff;
-  --color-surface-overlay: #efeadb;
-  --color-text-primary: #0a0a08;
-  --color-text-secondary: #3a3630;
-  --color-text-muted: #7a7468;
-  --color-border: #e0d9c8;
-  --color-accent-ink: #8a5f08; /* âmbar escuro para texto sobre claro */
-  --color-chart-neutral: #3a3630; /* série "neutra" em gráficos */
+  --color-surface-overlay: #e8f3f8;
+  --color-text-primary: #071826;
+  --color-text-secondary: #314b60;
+  --color-text-muted: #6f8494;
+  --color-border: #d6e6ee;
+  --color-accent-ink: #075b7d; /* azul escuro para texto sobre claro */
+  --color-chart-neutral: #17445f; /* série "neutra" em gráficos */
 
   --font-sans: "DM Sans", system-ui, sans-serif;
   --font-serif: "DM Serif Display", "Iowan Old Style", "Palatino Linotype", serif;
@@ -65,15 +65,15 @@
 
 /* Dark mode — sobrescreve apenas os tokens semânticos. */
 :root[data-theme="dark"] {
-  --color-surface: #0a0a08;
-  --color-surface-raised: #141210;
-  --color-surface-overlay: #1f1c18;
-  --color-text-primary: #f5f0e3;
-  --color-text-secondary: #c4beb0;
-  --color-text-muted: #857f73;
-  --color-border: #2b2722;
-  --color-accent-ink: #f5d26e;
-  --color-chart-neutral: #d4cec0;
+  --color-surface: #07111d;
+  --color-surface-raised: #0d1b2a;
+  --color-surface-overlay: #14273a;
+  --color-text-primary: #f2f8fb;
+  --color-text-secondary: #c6d7e1;
+  --color-text-muted: #8297a6;
+  --color-border: #244155;
+  --color-accent-ink: #8be4fb;
+  --color-chart-neutral: #d6edf6;
 
   /* Semânticos ganham luminosidade para manter contraste em superfície
      quase-preta. */
@@ -95,11 +95,11 @@
     @apply bg-surface text-text-primary font-sans antialiased;
     font-feature-settings: "ss01", "cv11", "kern";
     background-color: var(--color-surface);
-    /* Fundo editorial: glow quente discreto no canto; sem gradientes
+    /* Fundo de painel: brilho cívico discreto no canto; sem gradientes
        competindo com o conteúdo. */
     background-image: radial-gradient(
       ellipse 1100px 520px at 95% -8%,
-      rgba(230, 168, 23, 0.06),
+      rgba(34, 168, 213, 0.10),
       transparent 60%
     );
     background-attachment: fixed;
@@ -110,7 +110,7 @@
     background-image:
       radial-gradient(
         ellipse 900px 600px at 85% -10%,
-        rgba(230, 168, 23, 0.10),
+        rgba(34, 168, 213, 0.16),
         transparent 60%
       ),
       radial-gradient(
@@ -121,8 +121,27 @@
   }
 
   ::selection {
-    background-color: rgba(230, 168, 23, 0.35);
+    background-color: rgba(34, 168, 213, 0.30);
     color: inherit;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent-500);
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0.001ms !important;
+    }
   }
 
   ::-webkit-scrollbar {
@@ -173,22 +192,24 @@
     opacity: 0.6;
   }
 
-  /* Card com fio âmbar no topo. */
+  /* Card com fio ciano no topo. */
   .card-accent {
     position: relative;
-    overflow: hidden;
+    overflow: visible;
   }
   .card-accent::before {
     content: "";
     position: absolute;
     inset: 0 0 auto 0;
     height: 2px;
+    border-top-left-radius: inherit;
+    border-top-right-radius: inherit;
     background: linear-gradient(
       to right,
       transparent 0%,
-      rgba(230, 168, 23, 0) 5%,
-      rgba(230, 168, 23, 0.85) 50%,
-      rgba(230, 168, 23, 0) 95%,
+      rgba(34, 168, 213, 0) 5%,
+      rgba(34, 168, 213, 0.85) 50%,
+      rgba(34, 168, 213, 0) 95%,
       transparent 100%
     );
     opacity: 0.55;
@@ -247,13 +268,13 @@
            transition-colors focus:outline-none focus:border-accent-500/60
            focus:ring-2 focus:ring-accent-500/20;
     appearance: none;
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%237a7468' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%236f8494' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 0.6rem center;
     background-size: 14px 14px;
   }
   :root[data-theme="dark"] .field-select {
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23857f73' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%238297a6' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
   }
 
   /* Sistema de badges */

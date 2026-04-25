@@ -11,15 +11,20 @@ import {
 } from "@/api/hooks";
 import type { IndicadorFiscal } from "@/api/types";
 import ComposicaoBar from "@/components/ComposicaoBar";
+import {
+  DataSourceStrip,
+  EmptyState,
+  PageHeader,
+} from "@/components/PageChrome";
 import { formatBRL } from "@/lib/format";
-import { useChartTokens, type ChartTokens } from "@/lib/theme";
+import { useChartTokens, type ChartTokens } from "@/lib/theme-core";
 
 // Paleta para a composição de despesa — derivada dos tokens do tema:
-// âmbar (acento), neutro escuro, semânticos e variações neutras. Todas
+// ciano (acento), neutro escuro, semânticos e variações neutras. Todas
 // trocam automaticamente entre light/dark via `useChartTokens`.
 function paletaDespesa(t: ChartTokens): string[] {
   return [
-    t.accent, // destaque #1 — âmbar
+    t.accent, // destaque #1 — ciano
     t.neutral, // neutro de alto contraste
     t.success, // verde semântico
     t.warning, // laranja semântico
@@ -302,16 +307,11 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-10 animate-fade-up">
-      {/* Header + filtros */}
-      <header className="flex flex-wrap items-end justify-between gap-6">
-        <div>
-          <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-accent-ink mb-2">
-            Painel Municipal
-          </p>
-          <h1 className="font-display text-4xl md:text-5xl tracking-tight text-text-primary leading-[1.05]">
-            Visão Geral
-          </h1>
-          <p className="text-text-secondary text-sm mt-3 max-w-2xl">
+      <PageHeader
+        eyebrow="Painel Municipal"
+        title="Visão Geral"
+        description={
+          <>
             Execução orçamentária, indicadores fiscais e contratos de{" "}
             {dadosMun?.nome_municipio ?? "Jequié"} ({dadosMun?.uf ?? "BA"})
             {periodoLabel ? (
@@ -324,56 +324,62 @@ export default function Dashboard() {
               </>
             ) : null}
             .
-          </p>
-        </div>
+          </>
+        }
+        actions={
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <label className="flex items-center gap-2 text-sm">
+              <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
+                Exercício
+              </span>
+              <select
+                value={anoSelecionado ?? ""}
+                onChange={(e) => {
+                  setExercicio(Number(e.target.value));
+                  setPeriodo(undefined);
+                }}
+                className="field-select"
+                disabled={exerciciosDisponiveis.length === 0}
+              >
+                {exerciciosDisponiveis.length === 0 && (
+                  <option value="">—</option>
+                )}
+                {exerciciosDisponiveis.map((ano) => (
+                  <option key={ano} value={ano}>
+                    {ano}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
+                Bimestre
+              </span>
+              <select
+                value={periodo ?? ""}
+                onChange={(e) =>
+                  setPeriodo(
+                    e.target.value === "" ? undefined : Number(e.target.value),
+                  )
+                }
+                className="field-select"
+              >
+                <option value="">Mais recente</option>
+                {BIMESTRES.map((b) => (
+                  <option key={b} value={b}>
+                    B{b}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        }
+      />
 
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-sm">
-            <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
-              Exercício
-            </span>
-            <select
-              value={anoSelecionado ?? ""}
-              onChange={(e) => {
-                setExercicio(Number(e.target.value));
-                setPeriodo(undefined);
-              }}
-              className="field-select"
-              disabled={exerciciosDisponiveis.length === 0}
-            >
-              {exerciciosDisponiveis.length === 0 && (
-                <option value="">—</option>
-              )}
-              {exerciciosDisponiveis.map((ano) => (
-                <option key={ano} value={ano}>
-                  {ano}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
-              Bimestre
-            </span>
-            <select
-              value={periodo ?? ""}
-              onChange={(e) =>
-                setPeriodo(
-                  e.target.value === "" ? undefined : Number(e.target.value),
-                )
-              }
-              className="field-select"
-            >
-              <option value="">Mais recente</option>
-              {BIMESTRES.map((b) => (
-                <option key={b} value={b}>
-                  B{b}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </header>
+      <DataSourceStrip
+        items={["RREO", "RGF/LRF", "IBGE", "PNCP"]}
+        note="Resumo operacional: orçamento como camada primária, contratos como camada de risco e contexto."
+      />
 
       {/* Hero KPIs */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -435,10 +441,16 @@ export default function Dashboard() {
           {loadingOrcamento ? (
             <p className="text-text-muted text-sm py-8">Carregando…</p>
           ) : composicao.length === 0 ? (
-            <p className="text-text-muted text-sm py-8">
-              Sem execução registrada para {anoSelecionado ?? "—"}
-              {periodo ? ` · B${periodo}` : ""}.
-            </p>
+            <EmptyState
+              title="Sem execução registrada"
+              description={
+                <>
+                  Não há valores de execução para {anoSelecionado ?? "—"}
+                  {periodo ? ` · B${periodo}` : ""}. Ajuste os filtros ou
+                  confirme a ingestão do RREO no backend.
+                </>
+              }
+            />
           ) : (
             <div className="divide-y divide-border/40">
               {composicao.map((linha, i) => {
@@ -484,9 +496,10 @@ export default function Dashboard() {
           {indicadores.isLoading ? (
             <p className="text-text-muted text-sm py-8">Carregando…</p>
           ) : (indicadores.data ?? []).length === 0 ? (
-            <p className="text-text-muted text-sm py-8">
-              Sem indicadores derivados para {anoSelecionado ?? "—"}.
-            </p>
+            <EmptyState
+              title="Sem indicadores derivados"
+              description={`Nenhum indicador fiscal foi encontrado para ${anoSelecionado ?? "—"}. Quando a ingestão RGF/RREO estiver disponível, os limites aparecem aqui.`}
+            />
           ) : (
             <ul className="space-y-2.5">
               {indicadores.data!.map((ind) => {

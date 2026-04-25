@@ -2,12 +2,14 @@ interface SearchInputProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  ariaLabel?: string;
 }
 
 export default function SearchInput({
   value,
   onChange,
   placeholder = "Buscar…",
+  ariaLabel = "Buscar",
 }: SearchInputProps) {
   return (
     <div className="relative w-full max-w-md">
@@ -27,6 +29,7 @@ export default function SearchInput({
       <input
         type="text"
         placeholder={placeholder}
+        aria-label={ariaLabel}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="field-input pl-10 pr-10"

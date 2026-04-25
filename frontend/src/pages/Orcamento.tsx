@@ -15,8 +15,13 @@ import {
   useIndicadoresFiscais,
   useResumoFuncao,
 } from "@/api/hooks";
+import {
+  DataSourceStrip,
+  EmptyState,
+  PageHeader,
+} from "@/components/PageChrome";
 import { formatBRL } from "@/lib/format";
-import { useChartTokens } from "@/lib/theme";
+import { useChartTokens } from "@/lib/theme-core";
 
 // As cores do gráfico vêm de `useChartTokens` para trocar automaticamente
 // entre light/dark. Recharts v3 renderiza SVG <rect fill>, que só aceita
@@ -122,63 +127,69 @@ export default function Orcamento() {
 
   return (
     <div className="space-y-8 animate-fade-up">
-      {/* Header + filtros */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="font-display text-4xl tracking-tight text-text-primary">
-            Orçamento
-          </h1>
-          <p className="text-text-secondary text-sm mt-2">
-            Execução orçamentária · {dadosMun?.nome_municipio ?? "Jequié"} ({dadosMun?.uf ?? "BA"})
-          </p>
-        </div>
+      <PageHeader
+        eyebrow="Execução orçamentária"
+        title="Orçamento"
+        description={
+          <>
+            Execução por função de governo em{" "}
+            {dadosMun?.nome_municipio ?? "Jequié"} ({dadosMun?.uf ?? "BA"}),
+            com comparação entre dotação atualizada, empenho e liquidação.
+          </>
+        }
+        actions={
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <label className="flex items-center gap-2 text-sm">
+              <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
+                Exercício
+              </span>
+              <select
+                value={anoSelecionado ?? ""}
+                onChange={(e) => {
+                  setExercicio(Number(e.target.value));
+                  setPeriodo(undefined);
+                }}
+                className="field-select"
+                disabled={exerciciosDisponiveis.length === 0}
+              >
+                {exerciciosDisponiveis.length === 0 && (
+                  <option value="">—</option>
+                )}
+                {exerciciosDisponiveis.map((ano) => (
+                  <option key={ano} value={ano}>
+                    {ano}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-sm">
-            <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
-              Exercício
-            </span>
-            <select
-              value={anoSelecionado ?? ""}
-              onChange={(e) => {
-                setExercicio(Number(e.target.value));
-                setPeriodo(undefined);
-              }}
-              className="field-select"
-              disabled={exerciciosDisponiveis.length === 0}
-            >
-              {exerciciosDisponiveis.length === 0 && (
-                <option value="">—</option>
-              )}
-              {exerciciosDisponiveis.map((ano) => (
-                <option key={ano} value={ano}>
-                  {ano}
-                </option>
-              ))}
-            </select>
-          </label>
+            <label className="flex items-center gap-2 text-sm">
+              <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
+                Bimestre
+              </span>
+              <select
+                value={periodo ?? ""}
+                onChange={(e) =>
+                  setPeriodo(e.target.value === "" ? undefined : Number(e.target.value))
+                }
+                className="field-select"
+              >
+                <option value="">Mais recente</option>
+                {BIMESTRES.map((b) => (
+                  <option key={b} value={b}>
+                    B{b}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        }
+      />
 
-          <label className="flex items-center gap-2 text-sm">
-            <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
-              Bimestre
-            </span>
-            <select
-              value={periodo ?? ""}
-              onChange={(e) =>
-                setPeriodo(e.target.value === "" ? undefined : Number(e.target.value))
-              }
-              className="field-select"
-            >
-              <option value="">Mais recente</option>
-              {BIMESTRES.map((b) => (
-                <option key={b} value={b}>
-                  B{b}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </div>
+      <DataSourceStrip
+        items={["RREO Anexo 02", "RGF/LRF", "IBGE"]}
+        note="Quando o bimestre não é informado, o backend seleciona o período mais recente ingerido."
+      />
 
       {/* KPI cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -237,10 +248,16 @@ export default function Orcamento() {
         {resumo.isLoading ? (
           <p className="text-text-muted text-sm py-8">Carregando…</p>
         ) : top10.length === 0 ? (
-          <p className="text-text-muted text-sm py-8">
-            Sem dados para {anoSelecionado ?? "—"}
-            {periodo ? ` · B${periodo}` : ""}.
-          </p>
+          <EmptyState
+            title="Sem execução por função"
+            description={
+              <>
+                Não há linhas do RREO-Anexo 02 para {anoSelecionado ?? "—"}
+                {periodo ? ` · B${periodo}` : ""}. Ajuste os filtros ou
+                confirme a ingestão orçamentária.
+              </>
+            }
+          />
         ) : (
           <ResponsiveContainer width="100%" height={440}>
             <BarChart

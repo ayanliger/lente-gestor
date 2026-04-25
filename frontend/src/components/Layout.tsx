@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { useTheme } from "@/lib/theme";
+import { useTheme } from "@/lib/theme-core";
 
 type NavIcon = (props: { className?: string }) => React.ReactElement;
 
@@ -213,14 +213,23 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen overflow-hidden">
+      <a
+        href="#conteudo-principal"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-accent-500 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-lente-900"
+      >
+        Pular para o conteúdo
+      </a>
       {/* Sidebar */}
-      <aside className="w-64 shrink-0 bg-surface-raised border-r border-border flex flex-col relative">
-        {/* acento ambiente — aura âmbar muito sutil no canto superior */}
+      <aside
+        className="w-64 shrink-0 bg-surface-raised/95 border-r border-border flex flex-col relative shadow-[12px_0_40px_rgba(7,24,38,0.04)]"
+        aria-label="Navegação principal"
+      >
+        {/* acento ambiente — aura cívica muito sutil no canto superior */}
         <div
           className="pointer-events-none absolute inset-0 opacity-60"
           style={{
             backgroundImage:
-              "radial-gradient(540px 260px at 0% 0%, rgba(230,168,23,0.08), transparent 70%)",
+              "radial-gradient(540px 260px at 0% 0%, rgba(34,168,213,0.14), transparent 70%)",
           }}
           aria-hidden
         />
@@ -236,7 +245,7 @@ export default function Layout() {
             />
           </div>
           <p className="text-[11px] text-text-muted mt-2 uppercase tracking-[0.2em] font-mono">
-            Gestor Municipal
+            Gestor municipal integrado
           </p>
         </div>
 
@@ -276,7 +285,7 @@ export default function Layout() {
                             <span
                               className={`absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full transition-colors ${
                                 isActive
-                                  ? "bg-accent-500 shadow-[0_0_10px_rgba(230,168,23,0.45)]"
+                                  ? "bg-accent-500 shadow-[0_0_10px_rgba(34,168,213,0.45)]"
                                   : "bg-transparent group-hover:bg-accent-500/50"
                               }`}
                               aria-hidden
@@ -305,10 +314,13 @@ export default function Layout() {
         <div className="relative p-4 border-t border-border space-y-3">
           <div>
             <p className="text-[10px] text-text-muted uppercase tracking-[0.2em] font-mono">
-              Município
+              Município-base
             </p>
             <p className="text-sm text-text-primary font-medium">
               Jequié <span className="text-text-muted font-normal">· BA</span>
+            </p>
+            <p className="mt-1 text-[10.5px] text-text-muted">
+              RREO/RGF · Município Online · PNCP
             </p>
           </div>
           <button
@@ -337,7 +349,11 @@ export default function Layout() {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto p-8 lg:p-10">
+      <main
+        id="conteudo-principal"
+        tabIndex={-1}
+        className="flex-1 overflow-y-auto p-6 md:p-8 lg:p-10 focus:outline-none"
+      >
         <Outlet />
       </main>
     </div>
