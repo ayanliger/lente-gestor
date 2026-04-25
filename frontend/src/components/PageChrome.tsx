@@ -14,12 +14,12 @@ export function PageHeader({
   actions,
 }: PageHeaderProps) {
   return (
-    <header className="relative overflow-hidden rounded-2xl border border-border bg-surface-raised p-6 md:p-7 shadow-[0_18px_60px_rgba(7,24,38,0.07)]">
+    <header className="relative overflow-hidden rounded-2xl border border-border bg-surface-raised p-6 md:p-7 shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
       <div
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(720px 260px at 100% 0%, rgba(34,168,213,0.13), transparent 68%)",
+            "radial-gradient(720px 260px at 100% 0%, color-mix(in oklab, var(--color-accent-500) 11%, transparent), transparent 68%)",
         }}
         aria-hidden
       />

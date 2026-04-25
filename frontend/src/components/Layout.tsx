@@ -215,13 +215,13 @@ export default function Layout() {
     <div className="flex h-screen overflow-hidden">
       <a
         href="#conteudo-principal"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-accent-500 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-lente-900"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-accent-500 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-accent-contrast"
       >
         Pular para o conteúdo
       </a>
       {/* Sidebar */}
       <aside
-        className="w-64 shrink-0 bg-surface-raised/95 border-r border-border flex flex-col relative shadow-[12px_0_40px_rgba(7,24,38,0.04)]"
+        className="w-64 shrink-0 bg-surface-raised/95 border-r border-border flex flex-col relative shadow-[12px_0_40px_rgba(15,23,42,0.05)]"
         aria-label="Navegação principal"
       >
         {/* acento ambiente — aura cívica muito sutil no canto superior */}
@@ -229,18 +229,18 @@ export default function Layout() {
           className="pointer-events-none absolute inset-0 opacity-60"
           style={{
             backgroundImage:
-              "radial-gradient(540px 260px at 0% 0%, rgba(34,168,213,0.14), transparent 70%)",
+              "radial-gradient(540px 260px at 0% 0%, color-mix(in oklab, var(--color-accent-500) 12%, transparent), transparent 70%)",
           }}
           aria-hidden
         />
 
         <div className="relative p-6 border-b border-border">
           <div className="flex items-baseline gap-2">
-            <span className="font-display text-3xl leading-none text-accent-ink">
+            <span className="font-display text-3xl leading-none text-text-primary">
               Lente
             </span>
             <span
-              className="h-1.5 w-1.5 rounded-full bg-accent-500"
+              className="h-1.5 w-1.5 rounded-full bg-text-primary"
               aria-hidden
             />
           </div>
@@ -285,7 +285,7 @@ export default function Layout() {
                             <span
                               className={`absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full transition-colors ${
                                 isActive
-                                  ? "bg-accent-500 shadow-[0_0_10px_rgba(34,168,213,0.45)]"
+                                  ? "bg-accent-500 shadow-[0_0_10px_rgba(75,85,99,0.34)]"
                                   : "bg-transparent group-hover:bg-accent-500/50"
                               }`}
                               aria-hidden

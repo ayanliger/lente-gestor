@@ -560,7 +560,7 @@ export default function Assistente() {
             type="button"
             onClick={enviar}
             disabled={desabilitado}
-            className="shrink-0 w-28 rounded-lg bg-accent-500 text-lente-900 font-semibold text-sm tracking-wide hover:bg-accent-400 disabled:bg-surface-overlay disabled:text-text-muted disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1.5"
+            className="shrink-0 w-28 rounded-lg bg-accent-500 text-accent-contrast font-semibold text-sm tracking-wide hover:bg-accent-600 disabled:bg-surface-overlay disabled:text-text-muted disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1.5"
           >
             <span>Enviar</span>
             <span aria-hidden>→</span>

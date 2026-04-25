@@ -20,11 +20,11 @@ import { formatBRL } from "@/lib/format";
 import { useChartTokens, type ChartTokens } from "@/lib/theme-core";
 
 // Paleta para a composição de despesa — derivada dos tokens do tema:
-// ciano (acento), neutro escuro, semânticos e variações neutras. Todas
+// grafite (acento), semânticos e variações neutras. Todas
 // trocam automaticamente entre light/dark via `useChartTokens`.
 function paletaDespesa(t: ChartTokens): string[] {
   return [
-    t.accent, // destaque #1 — ciano
+    t.accent, // destaque #1 — grafite
     t.neutral, // neutro de alto contraste
     t.success, // verde semântico
     t.warning, // laranja semântico
@@ -638,7 +638,7 @@ export default function Dashboard() {
           <div className="flex items-baseline justify-between mb-4">
             <h2 className="font-display text-xl text-text-primary leading-none flex items-center gap-3">
               <span
-                className="inline-block h-2 w-2 rounded-full bg-danger-500 shadow-[0_0_10px_rgba(220,38,38,0.6)]"
+                className="inline-block h-2 w-2 rounded-full bg-danger-500 shadow-[0_0_10px_rgba(184,66,66,0.52)]"
                 aria-hidden
               />
               Alertas

@@ -39,21 +39,21 @@ import { formatBRL } from "@/lib/format";
 import { useChartTokens } from "@/lib/theme-core";
 
 // Recharts precisa de cores hex resolvidas (SVG <rect fill>). Para séries
-// categóricas, usamos uma escala próxima dos painéis BI do projeto: ciano,
-// azul profundo, laranja, lima, magenta e violeta.
+// categóricas, usamos uma escala BI sóbria: grafite, verde fiscal,
+// âmbar e complementos discretos para manter leitura em light/dark.
 function useOrdinalScale(): string[] {
   const tokens = useChartTokens();
   return [
     tokens.accent,
     tokens.neutral,
-    "#f29f3d",
-    "#a8dc2f",
-    "#d92fb5",
-    "#5b8def",
-    "#7c3aed",
-    "#8edff0",
-    "#497f99",
-    "#c9e5ee",
+    tokens.success,
+    tokens.warning,
+    "#6b7280",
+    "#8a8178",
+    "#6f766d",
+    "#8b735d",
+    tokens.textSecondary,
+    tokens.textMuted,
   ];
 }
 

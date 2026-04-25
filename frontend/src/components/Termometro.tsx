@@ -29,32 +29,32 @@ type Tone = {
 
 const TONES: Record<SituacaoIndicador, Tone> = {
   OK: {
-    fillFrom: "#16a34a",
-    fillTo: "#4ade80",
+    fillFrom: "#207a4f",
+    fillTo: "#4fb178",
     text: "text-success-500",
-    glow: "rgba(22,163,74,0.4)",
+    glow: "rgba(32,122,79,0.32)",
   },
   ALERTA: {
-    fillFrom: "#d97706",
-    fillTo: "#fbbf24",
+    fillFrom: "#a66b1f",
+    fillTo: "#d39a3a",
     text: "text-warning-500",
-    glow: "rgba(217,119,6,0.4)",
+    glow: "rgba(166,107,31,0.32)",
   },
   EXCEDIDO: {
-    fillFrom: "#b91c1c",
-    fillTo: "#f87171",
+    fillFrom: "#b84242",
+    fillTo: "#e06a6a",
     text: "text-danger-500",
-    glow: "rgba(220,38,38,0.45)",
+    glow: "rgba(184,66,66,0.36)",
   },
   ABAIXO_MINIMO: {
-    fillFrom: "#b91c1c",
-    fillTo: "#f87171",
+    fillFrom: "#b84242",
+    fillTo: "#e06a6a",
     text: "text-danger-500",
-    glow: "rgba(220,38,38,0.45)",
+    glow: "rgba(184,66,66,0.36)",
   },
   SEM_DADO: {
-    fillFrom: "#334155",
-    fillTo: "#475569",
+    fillFrom: "#667085",
+    fillTo: "#98a2b3",
     text: "text-text-muted",
     glow: "transparent",
   },
@@ -195,7 +195,7 @@ function PercentualTermometro({
               width: `${Math.min(animatedPct - 100, 15)}%`,
               transform: "translateX(-100%)",
               backgroundImage:
-                "repeating-linear-gradient(135deg, rgba(220,38,38,0.7) 0 3px, rgba(220,38,38,0.3) 3px 6px)",
+                "repeating-linear-gradient(135deg, rgba(184,66,66,0.68) 0 3px, rgba(184,66,66,0.28) 3px 6px)",
               borderLeft: "1px solid rgba(255,255,255,0.4)",
             }}
             aria-hidden

@@ -3,44 +3,43 @@
 /*
   Lente Gestor — Civic Analytics
   -------------------------------------------------------------------------
-  Light é o default: uma base branca/cinza de BI municipal, com azul-ciano
-  como acento principal e neutros de alto contraste. Dark é opt-in via
+  Light é o default: uma base branca/cinza de BI municipal, com grafites de
+  alto contraste e acentos neutros. Dark é opt-in via
   [data-theme="dark"] no <html>. Somente os tokens semânticos (surface,
   texto, borda, ink do acento) trocam entre temas; as escalas cromáticas
-  (lente-*, accent-*, success, warning, danger) seguem estáticas para que as
-  classes do Tailwind continuem funcionando sem alterações.
+  (lente-*, accent-*, success, warning, danger) permanecem estáveis para que
+  as classes do Tailwind continuem funcionando sem alterações.
 */
 
 @theme {
-  /* Escala institucional neutra-azulada: usada para texto forte, fundos
-     escuros, grades e contrastes em gráficos. */
-  --color-lente-900: #071826;
-  --color-lente-800: #102b40;
-  --color-lente-700: #17445f;
-  --color-lente-600: #27617e;
-  --color-lente-500: #497f99;
-  --color-lente-400: #78a9be;
-  --color-lente-300: #a6d0df;
-  --color-lente-200: #c9e5ee;
-  --color-lente-100: #e3f3f7;
-  --color-lente-50: #f3f9fb;
+  /* Escala grafite: texto forte, fundos escuros, grades e séries neutras. */
+  --color-lente-900: #0e1116;
+  --color-lente-800: #1f232b;
+  --color-lente-700: #333946;
+  --color-lente-600: #4b5563;
+  --color-lente-500: #667085;
+  --color-lente-400: #98a2b3;
+  --color-lente-300: #c7ced8;
+  --color-lente-200: #e2e6ec;
+  --color-lente-100: #f0f2f5;
+  --color-lente-50: #f8f9fb;
 
-  /* Acento azul-ciano — vetor cromático primário para CTA, navegação ativa,
+  /* Acento neutro — usado com parcimônia para CTA, navegação ativa,
      chips de fonte, gráficos e destaques de leitura. */
-  --color-accent-700: #075b7d;
-  --color-accent-600: #087fa8;
-  --color-accent-500: #22a8d5;
-  --color-accent-400: #68cdeb;
-  --color-accent-300: #9ee3f2;
-  --color-accent-200: #c8f1f8;
+  --color-accent-700: #1f232b;
+  --color-accent-600: #333946;
+  --color-accent-500: #4b5563;
+  --color-accent-400: #667085;
+  --color-accent-300: #98a2b3;
+  --color-accent-200: #e2e6ec;
 
-  /* Semânticos — preservados para status funcional em ambos os temas. */
-  --color-danger-500: #c83737;
-  --color-danger-100: #fbe4e4;
-  --color-success-500: #16844a;
-  --color-success-100: #dcf0e2;
-  --color-warning-500: #b97316;
-  --color-warning-100: #fcebc9;
+  /* Semânticos — só status funcional, com saturação contida para painéis BI. */
+  --color-danger-500: #b84242;
+  --color-danger-100: #f7e6e6;
+  --color-success-500: #207a4f;
+  --color-success-100: #e3f0e9;
+  --color-warning-500: #a66b1f;
+  --color-warning-100: #f6ead5;
 
   /* ---------------------------------------------------------------------
      Semânticos adaptativos — default = LIGHT. São sobrescritos abaixo em
@@ -50,14 +49,14 @@
   --------------------------------------------------------------------- */
   --color-surface: #f7f7f8;
   --color-surface-raised: #ffffff;
-  --color-surface-overlay: #eeeeef;
-  --color-text-primary: #111111;
-  --color-text-secondary: #3f3f46;
-  --color-text-muted: #71717a;
-  --color-border: #d7d7dc;
-  --color-accent-ink: #075b7d; /* azul escuro para texto sobre claro */
-  --color-chart-neutral: #3f3f46; /* série "neutra" em gráficos */
-
+  --color-surface-overlay: #eceef2;
+  --color-text-primary: #15171a;
+  --color-text-secondary: #474c55;
+  --color-text-muted: #7a808a;
+  --color-border: #d9dde3;
+  --color-accent-ink: #333946; /* grafite para texto sobre claro */
+  --color-accent-contrast: #ffffff;
+  --color-chart-neutral: #4b5563; /* série "neutra" em gráficos */
   --font-sans: "DM Sans", system-ui, sans-serif;
   --font-serif: "DM Serif Display", "Iowan Old Style", "Palatino Linotype", serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
@@ -65,21 +64,22 @@
 
 /* Dark mode — sobrescreve apenas os tokens semânticos. */
 :root[data-theme="dark"] {
-  --color-surface: #050505;
-  --color-surface-raised: #111111;
-  --color-surface-overlay: #1f1f1f;
-  --color-text-primary: #f5f5f5;
-  --color-text-secondary: #d4d4d4;
-  --color-text-muted: #a3a3a3;
-  --color-border: #303030;
-  --color-accent-ink: #8be4fb;
-  --color-chart-neutral: #e5e5e5;
+  --color-surface: #060708;
+  --color-surface-raised: #111316;
+  --color-surface-overlay: #1b1e22;
+  --color-text-primary: #f3f4f6;
+  --color-text-secondary: #c6cad0;
+  --color-text-muted: #8f96a3;
+  --color-border: #2a2f35;
+  --color-accent-ink: #d1d5db;
+  --color-accent-contrast: #ffffff;
+  --color-chart-neutral: #e5e7eb;
 
   /* Semânticos ganham luminosidade para manter contraste em superfície
      quase-preta. */
-  --color-success-500: #38a55c;
-  --color-warning-500: #e6a817;
-  --color-danger-500: #e04545;
+  --color-success-500: #4fb178;
+  --color-warning-500: #d39a3a;
+  --color-danger-500: #e06a6a;
 }
 
 @layer base {
@@ -95,12 +95,14 @@
     @apply bg-surface text-text-primary font-sans antialiased;
     font-feature-settings: "ss01", "cv11", "kern";
     background-color: var(--color-surface);
-    /* Fundo de painel neutro; os acentos cromáticos ficam nos highlights. */
-    background-image: radial-gradient(
-      ellipse 1000px 500px at 95% -8%,
-      rgba(0, 0, 0, 0.055),
-      transparent 60%
-    );
+    /* Fundo de painel neutro com profundidade discreta, sem malha visual. */
+    background-image:
+      radial-gradient(
+        ellipse 920px 500px at 96% -12%,
+        rgba(15, 23, 42, 0.050),
+        transparent 62%
+      );
+    background-size: auto;
     background-attachment: fixed;
     min-height: 100vh;
   }
@@ -109,19 +111,23 @@
     background-image:
       radial-gradient(
         ellipse 900px 600px at 85% -10%,
-        rgba(255, 255, 255, 0.045),
+        rgba(255, 255, 255, 0.052),
         transparent 60%
       ),
       radial-gradient(
         ellipse 1100px 700px at -10% 110%,
-        rgba(255, 255, 255, 0.025),
+        rgba(255, 255, 255, 0.034),
         transparent 55%
       );
+    background-size: auto, auto;
   }
 
   ::selection {
-    background-color: rgba(34, 168, 213, 0.30);
+    background-color: rgba(75, 85, 99, 0.24);
     color: inherit;
+  }
+  :root[data-theme="dark"] ::selection {
+    background-color: rgba(209, 213, 219, 0.24);
   }
 
   :focus-visible {
@@ -182,7 +188,7 @@
     );
   }
 
-  /* Malha tipo papel-milimetrado — opcional em heros. */
+  /* Malha analítica — opcional em heros e painéis. */
   .bg-blueprint {
     background-image:
       linear-gradient(var(--color-border) 1px, transparent 1px),
@@ -191,7 +197,7 @@
     opacity: 0.6;
   }
 
-  /* Card com fio ciano no topo. */
+  /* Card com fio estatístico no topo. */
   .card-accent {
     position: relative;
     overflow: visible;
@@ -206,9 +212,9 @@
     background: linear-gradient(
       to right,
       transparent 0%,
-      rgba(34, 168, 213, 0) 5%,
-      rgba(34, 168, 213, 0.85) 50%,
-      rgba(34, 168, 213, 0) 95%,
+      color-mix(in oklab, var(--color-accent-500) 0%, transparent) 5%,
+      color-mix(in oklab, var(--color-accent-500) 88%, transparent) 50%,
+      color-mix(in oklab, var(--color-accent-500) 0%, transparent) 95%,
       transparent 100%
     );
     opacity: 0.55;
@@ -283,13 +289,13 @@
            transition-colors focus:outline-none focus:border-accent-500/60
            focus:ring-2 focus:ring-accent-500/20;
     appearance: none;
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2371717a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%237a808a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 0.6rem center;
     background-size: 14px 14px;
   }
   :root[data-theme="dark"] .field-select {
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23a3a3a3' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%238f96a3' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
   }
 
   /* Sistema de badges */
