@@ -442,8 +442,12 @@ export default function Assistente() {
         {chat.isPending && (
           <div className="flex justify-start" role="status" aria-live="polite">
             <div className="bg-surface-raised border border-border rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-text-muted flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-accent-500 animate-pulse" />
-              pensando…
+              <span className="flex items-center gap-1" aria-hidden>
+                <span className="h-1.5 w-1.5 rounded-full bg-accent-500 animate-thinking-dot" />
+                <span className="h-1.5 w-1.5 rounded-full bg-accent-500 animate-thinking-dot [animation-delay:160ms]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-accent-500 animate-thinking-dot [animation-delay:320ms]" />
+              </span>
+              Pensando…
             </div>
           </div>
         )}
@@ -477,7 +481,7 @@ export default function Assistente() {
           </button>
         </div>
         <p className="mt-2 text-[10px] font-mono uppercase tracking-wider text-text-muted">
-          Gemini 3.1 Flash Lite + pgvector · citação obrigatória · Enter envia, Shift+Enter quebra linha · 20 req/min
+          Gemini 3.1 Pro + pgvector · citação obrigatória · Enter envia, Shift+Enter quebra linha · 20 req/min
         </p>
       </div>
 
