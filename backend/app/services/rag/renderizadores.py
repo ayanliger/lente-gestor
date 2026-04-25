@@ -5,12 +5,14 @@ Cada função é pura (sem I/O, sem DB) e devolve um `DocumentoRenderizado` com
 título, conteúdo em português, metadados estruturados e a `chave_unica` usada
 no upsert.
 
-A escolha dos 4 tipos de documento foi guiada pelo valor de consulta:
-- CONTRATO            → perguntas sobre um contrato específico (fornecedor, vigência)
-- INDICADOR_FISCAL    → perguntas sobre LRF / mínimos constitucionais
-- RESUMO_FUNCAO       → execução orçamentária agregada por função
-- RESUMO_PCA          → plano anual agregado por função (eixo paralelo ao RESUMO_FUNCAO,
-                        habilita o cruzamento flagship "PCA × execução")
+A escolha dos tipos de documento é guiada pelo valor de consulta:
+- CONTRATO              → perguntas sobre um contrato específico (fornecedor, vigência)
+- INDICADOR_FISCAL      → perguntas sobre LRF / mínimos constitucionais
+- RESUMO_FUNCAO         → execução orçamentária por função (RREO-Anexo 02)
+- RESUMO_PCA            → plano anual agregado por função (cruzamento PCA × execução)
+- RESUMO_RECEITA        → receita orçamentária por categoria (RREO-Anexo 01)
+- RESUMO_NATUREZA_DESPESA → despesa por GND/categoria econômica (Pessoal, Custeio,
+                            Investimentos, etc. — RREO-Anexo 01)
 """
 
 from __future__ import annotations
@@ -356,14 +358,202 @@ def renderizar_resumo_pca(linha: LinhaResumoPCA) -> DocumentoRenderizado:
     )
 
 
+# ────────────────────────────────────────
+# RESUMO_RECEITA
+# ────────────────────────────────────────
+
+
+@dataclass(slots=True)
+class LinhaResumoReceita:
+    """Agregado de receita por (exercício, bimestre, categoria) do RREO-Anexo 01.
+
+    Cada linha cobre uma rubrica de receita (Tributária, Patrimonial,
+    Transferências, etc.) ou um total (Correntes / Capital / Geral).
+    `categoria_codigo` é o `cod_conta` original do SICONFI; `categoria_legivel`
+    é a forma humana usada no título e no texto indexado.
+    """
+
+    exercicio: int
+    periodo: int
+    categoria_codigo: str
+    categoria_legivel: str
+    previsao_inicial: Decimal | None
+    previsao_atualizada: Decimal | None
+    arrecadado_no_bimestre: Decimal | None
+    arrecadado_ate_bimestre: Decimal | None
+    saldo: Decimal | None
+
+
+def renderizar_resumo_receita(linha: LinhaResumoReceita) -> DocumentoRenderizado:
+    """Renderiza receita orçamentária de uma rubrica num bimestre."""
+    pct_arrecadacao: float | None = None
+    if linha.previsao_atualizada and linha.arrecadado_ate_bimestre is not None:
+        prev = float(linha.previsao_atualizada)
+        if prev > 0:
+            pct_arrecadacao = (
+                float(linha.arrecadado_ate_bimestre) / prev
+            ) * 100
+
+    linhas = [
+        f"Receita orçamentária — {linha.categoria_legivel} no exercício "
+        f"{linha.exercicio}, bimestre {linha.periodo}.",
+        f"Previsão inicial: {_fmt_brl(linha.previsao_inicial)}.",
+        f"Previsão atualizada: {_fmt_brl(linha.previsao_atualizada)}.",
+        f"Arrecadado no bimestre: {_fmt_brl(linha.arrecadado_no_bimestre)}.",
+        f"Arrecadado até o bimestre: {_fmt_brl(linha.arrecadado_ate_bimestre)}.",
+        f"Saldo a arrecadar: {_fmt_brl(linha.saldo)}.",
+    ]
+    if pct_arrecadacao is not None:
+        linhas.append(
+            f"Percentual de realização da previsão: {pct_arrecadacao:.1f}%."
+        )
+
+    conteudo = "\n".join(linhas)
+
+    metadados: dict[str, Any] = {
+        "exercicio": linha.exercicio,
+        "periodo": linha.periodo,
+        "categoria_codigo": linha.categoria_codigo,
+        "categoria_legivel": linha.categoria_legivel,
+        "previsao_inicial": (
+            float(linha.previsao_inicial) if linha.previsao_inicial else None
+        ),
+        "previsao_atualizada": (
+            float(linha.previsao_atualizada) if linha.previsao_atualizada else None
+        ),
+        "arrecadado_no_bimestre": (
+            float(linha.arrecadado_no_bimestre)
+            if linha.arrecadado_no_bimestre
+            else None
+        ),
+        "arrecadado_ate_bimestre": (
+            float(linha.arrecadado_ate_bimestre)
+            if linha.arrecadado_ate_bimestre
+            else None
+        ),
+        "saldo": float(linha.saldo) if linha.saldo else None,
+        "pct_arrecadacao": pct_arrecadacao,
+    }
+
+    chave = (
+        f"resumo_receita:{linha.exercicio}:{linha.periodo}:"
+        f"{linha.categoria_codigo}"
+    )
+    titulo = (
+        f"Receita {linha.categoria_legivel} — "
+        f"{linha.exercicio}/B{linha.periodo}"
+    )
+
+    return DocumentoRenderizado(
+        fonte=FonteDocumento.RESUMO_RECEITA,
+        referencia_tipo="resumo_receita",
+        referencia_id=None,
+        chave_unica=chave,
+        titulo=titulo[:500],
+        conteudo_texto=conteudo,
+        metadados=metadados,
+    )
+
+
+# ────────────────────────────────────────
+# RESUMO_NATUREZA_DESPESA
+# ────────────────────────────────────────
+
+
+@dataclass(slots=True)
+class LinhaResumoNaturezaDespesa:
+    """Agregado de despesa por (exercício, bimestre, GND) do RREO-Anexo 01.
+
+    Os GNDs principais são: Pessoal e Encargos, Juros e Encargos da Dívida,
+    Outras Despesas Correntes (custeio), Investimentos (CAPEX), Inversões
+    Financeiras e Amortização da Dívida; além dos totais por categoria
+    econômica (Despesas Correntes e Despesas de Capital).
+    """
+
+    exercicio: int
+    periodo: int
+    natureza_codigo: str
+    natureza_legivel: str
+    dotacao_inicial: Decimal | None
+    dotacao_atualizada: Decimal | None
+    empenhado: Decimal | None
+    liquidado: Decimal | None
+    saldo: Decimal | None
+
+
+def renderizar_resumo_natureza_despesa(
+    linha: LinhaResumoNaturezaDespesa,
+) -> DocumentoRenderizado:
+    """Renderiza despesa orçamentária de um GND num bimestre."""
+    pct_exec: float | None = None
+    if linha.dotacao_atualizada and linha.empenhado is not None:
+        dot = float(linha.dotacao_atualizada)
+        if dot > 0:
+            pct_exec = (float(linha.empenhado) / dot) * 100
+
+    linhas = [
+        f"Despesa orçamentária por natureza — {linha.natureza_legivel} "
+        f"no exercício {linha.exercicio}, bimestre {linha.periodo}.",
+        f"Dotação inicial: {_fmt_brl(linha.dotacao_inicial)}.",
+        f"Dotação atualizada: {_fmt_brl(linha.dotacao_atualizada)}.",
+        f"Empenhado até o bimestre: {_fmt_brl(linha.empenhado)}.",
+        f"Liquidado até o bimestre: {_fmt_brl(linha.liquidado)}.",
+        f"Saldo a executar: {_fmt_brl(linha.saldo)}.",
+    ]
+    if pct_exec is not None:
+        linhas.append(f"Percentual de execução: {pct_exec:.1f}%.")
+
+    conteudo = "\n".join(linhas)
+
+    metadados: dict[str, Any] = {
+        "exercicio": linha.exercicio,
+        "periodo": linha.periodo,
+        "natureza_codigo": linha.natureza_codigo,
+        "natureza_legivel": linha.natureza_legivel,
+        "dotacao_inicial": (
+            float(linha.dotacao_inicial) if linha.dotacao_inicial else None
+        ),
+        "dotacao_atualizada": (
+            float(linha.dotacao_atualizada) if linha.dotacao_atualizada else None
+        ),
+        "empenhado": float(linha.empenhado) if linha.empenhado else None,
+        "liquidado": float(linha.liquidado) if linha.liquidado else None,
+        "saldo": float(linha.saldo) if linha.saldo else None,
+        "pct_execucao": pct_exec,
+    }
+
+    chave = (
+        f"resumo_natureza:{linha.exercicio}:{linha.periodo}:"
+        f"{linha.natureza_codigo}"
+    )
+    titulo = (
+        f"Despesa {linha.natureza_legivel} — "
+        f"{linha.exercicio}/B{linha.periodo}"
+    )
+
+    return DocumentoRenderizado(
+        fonte=FonteDocumento.RESUMO_NATUREZA_DESPESA,
+        referencia_tipo="resumo_natureza_despesa",
+        referencia_id=None,
+        chave_unica=chave,
+        titulo=titulo[:500],
+        conteudo_texto=conteudo,
+        metadados=metadados,
+    )
+
+
 __all__ = [
     "DocumentoRenderizado",
     "LinhaResumoFuncao",
+    "LinhaResumoNaturezaDespesa",
     "LinhaResumoPCA",
+    "LinhaResumoReceita",
     "renderizar_contrato",
     "renderizar_indicador_fiscal",
     "renderizar_resumo_funcao",
+    "renderizar_resumo_natureza_despesa",
     "renderizar_resumo_pca",
+    "renderizar_resumo_receita",
 ]
 
 
