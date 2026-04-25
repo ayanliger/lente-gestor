@@ -54,6 +54,13 @@ export interface ChartTokens {
   success: string;
   warning: string;
   danger: string;
+  revenue: string;
+  expense: string;
+  planned: string;
+  liquidated: string;
+  transfer: string;
+  contract: string;
+  series: string[];
 }
 
 const LIGHT_FALLBACK: ChartTokens = {
@@ -71,6 +78,22 @@ const LIGHT_FALLBACK: ChartTokens = {
   success: "#207a4f",
   warning: "#a66b1f",
   danger: "#b84242",
+  revenue: "#207a4f",
+  expense: "#333946",
+  planned: "#667085",
+  liquidated: "#5f7666",
+  transfer: "#2f5f8f",
+  contract: "#7d7168",
+  series: [
+    "#333946",
+    "#207a4f",
+    "#a66b1f",
+    "#2f5f8f",
+    "#5f7666",
+    "#667085",
+    "#b84242",
+    "#98a2b3",
+  ],
 };
 
 const DARK_FALLBACK: ChartTokens = {
@@ -88,6 +111,22 @@ const DARK_FALLBACK: ChartTokens = {
   success: "#4fb178",
   warning: "#d39a3a",
   danger: "#e06a6a",
+  revenue: "#4fb178",
+  expense: "#d1d5db",
+  planned: "#8f96a3",
+  liquidated: "#83b894",
+  transfer: "#7fb3dc",
+  contract: "#b7a89a",
+  series: [
+    "#d1d5db",
+    "#4fb178",
+    "#d39a3a",
+    "#7fb3dc",
+    "#83b894",
+    "#98a2b3",
+    "#e06a6a",
+    "#8f96a3",
+  ],
 };
 
 export function useChartTokens(): ChartTokens {
@@ -98,6 +137,16 @@ export function useChartTokens(): ChartTokens {
     const s = getComputedStyle(document.documentElement);
     const read = (v: string, f: string) =>
       s.getPropertyValue(v).trim() || f;
+    const revenue = read("--color-data-revenue", fallback.revenue);
+    const expense = read("--color-data-expense", fallback.expense);
+    const planned = read("--color-data-planned", fallback.planned);
+    const liquidated = read("--color-data-liquidated", fallback.liquidated);
+    const transfer = read("--color-data-transfer", fallback.transfer);
+    const contract = read("--color-data-contract", fallback.contract);
+    const success = read("--color-success-500", fallback.success);
+    const warning = read("--color-warning-500", fallback.warning);
+    const danger = read("--color-danger-500", fallback.danger);
+    const textMuted = read("--color-text-muted", fallback.textMuted);
     return {
       accent: read("--color-accent-500", fallback.accent),
       accentSoft: read("--color-accent-ink", fallback.accentSoft),
@@ -109,10 +158,26 @@ export function useChartTokens(): ChartTokens {
       surfaceRaised: read("--color-surface-raised", fallback.surfaceRaised),
       textPrimary: read("--color-text-primary", fallback.textPrimary),
       textSecondary: read("--color-text-secondary", fallback.textSecondary),
-      textMuted: read("--color-text-muted", fallback.textMuted),
-      success: read("--color-success-500", fallback.success),
-      warning: read("--color-warning-500", fallback.warning),
-      danger: read("--color-danger-500", fallback.danger),
+      textMuted,
+      success,
+      warning,
+      danger,
+      revenue,
+      expense,
+      planned,
+      liquidated,
+      transfer,
+      contract,
+      series: [
+        expense,
+        revenue,
+        warning,
+        transfer,
+        liquidated,
+        planned,
+        danger,
+        textMuted,
+      ],
     };
   }, [theme]);
 }

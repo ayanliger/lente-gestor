@@ -36,25 +36,54 @@ import {
 // estiver desabilitado na ingestão. Para reabilitar, reimporte e
 // reintroduza a seção "Arrecadação por banco recebedor" (git histórico).
 import { formatBRL } from "@/lib/format";
-import { useChartTokens } from "@/lib/theme-core";
+import { useChartTokens, type ChartTokens } from "@/lib/theme-core";
 
 // Recharts precisa de cores hex resolvidas (SVG <rect fill>). Para séries
-// categóricas, usamos uma escala BI sóbria: grafite, verde fiscal,
-// âmbar e complementos discretos para manter leitura em light/dark.
+// categóricas, usamos uma escala BI sóbria e estável, com menos dominância
+// do verde para não confundir "receita" com "status OK".
 function useOrdinalScale(): string[] {
   const tokens = useChartTokens();
   return [
-    tokens.accent,
-    tokens.neutral,
-    tokens.success,
+    tokens.transfer,
+    tokens.expense,
+    tokens.planned,
     tokens.warning,
-    "#6b7280",
-    "#8a8178",
-    "#6f766d",
-    "#8b735d",
+    tokens.liquidated,
+    tokens.contract,
+    tokens.revenue,
+    tokens.danger,
     tokens.textSecondary,
     tokens.textMuted,
   ];
+}
+
+function revenueRankingPalette(tokens: ChartTokens): string[] {
+  return [
+    tokens.transfer,
+    tokens.expense,
+    tokens.planned,
+    tokens.warning,
+    tokens.liquidated,
+    tokens.contract,
+    tokens.revenue,
+    tokens.danger,
+    tokens.textSecondary,
+    tokens.textMuted,
+  ];
+}
+
+function corEspecie(especie: string, tokens: ChartTokens): string {
+  const nome = especie.toLowerCase();
+  if (nome.includes("transfer")) return tokens.transfer;
+  if (nome.includes("imposto")) return tokens.warning;
+  if (nome.includes("contribui")) return tokens.liquidated;
+  if (nome.includes("capital")) return tokens.revenue;
+  if (nome.includes("taxa")) return "#9a6a25";
+  if (nome.includes("servi")) return tokens.danger;
+  if (nome.includes("patrimonial")) return tokens.planned;
+  if (nome.includes("intra")) return tokens.expense;
+  if (nome.includes("não tribut")) return tokens.contract;
+  return tokens.textMuted;
 }
 
 const MESES_LABEL = [
@@ -84,27 +113,34 @@ function KpiCard({
   label,
   value,
   sub,
-  accent,
+  accentColor,
+  valueTone,
 }: {
   label: string;
   value: string;
   sub?: string;
-  accent?: boolean;
+  accentColor?: string;
+  valueTone?: string;
 }) {
   return (
     <div
-      className={`card-accent rounded-xl p-5 border transition-colors ${
-        accent
-          ? "bg-accent-500/[0.08] border-accent-500/30 hover:border-accent-500/55"
-          : "bg-surface-raised border-border hover:border-accent-500/30"
-      }`}
+      className="relative overflow-hidden rounded-xl border border-border bg-surface-raised p-5 transition-colors hover:border-accent-500/30"
     >
+      {accentColor && (
+        <span
+          className="absolute inset-x-0 top-0 h-[2px]"
+          style={{
+            background: `linear-gradient(90deg, transparent 0%, ${accentColor} 50%, transparent 100%)`,
+          }}
+          aria-hidden
+        />
+      )}
       <p className="text-text-muted text-[10px] uppercase tracking-[0.15em] mb-2">
         {label}
       </p>
       <p
         className={`text-2xl font-semibold font-mono tabular-nums ${
-          accent ? "text-accent-ink" : "text-text-primary"
+          valueTone ?? "text-text-primary"
         }`}
       >
         {value}
@@ -301,6 +337,7 @@ export default function Arrecadacao() {
 
   const tokens = useChartTokens();
   const escala = useOrdinalScale();
+  const chartPalette = revenueRankingPalette(tokens);
 
   // Exercícios disponíveis extraídos da série anual.
   const exerciciosDisponiveis = useMemo(() => {
@@ -395,7 +432,7 @@ export default function Arrecadacao() {
     const pct = resumo.data?.pct_realizacao ?? null;
     const diferenca = previsto != null ? arrecadado - previsto : null;
     const tone: TomAnalise =
-      pct == null ? "neutral" : pct >= 100 ? "success" : pct >= 85 ? "warning" : "accent";
+      pct == null ? "neutral" : pct >= 100 ? "success" : pct >= 85 ? "warning" : "danger";
     return { arrecadado, previsto, pct, diferenca, tone };
   }, [resumo.data]);
 
@@ -471,7 +508,8 @@ export default function Arrecadacao() {
           label="Total arrecadado"
           value={formatCompact(resumo.data?.total_arrecadado ?? null)}
           sub={`${resumo.data?.n_tributos ?? 0} tributos`}
-          accent
+          accentColor={tokens.revenue}
+          valueTone="text-data-revenue"
         />
         <KpiCard
           label="Previsto (LOA atualizada)"
@@ -481,6 +519,7 @@ export default function Arrecadacao() {
               ? `${resumo.data.pct_realizacao.toFixed(1)}% realizado`
               : ""
           }
+          accentColor={tokens.planned}
         />
         <KpiCard
           label={`Δ vs. ${exercicioSelecionado - 1}`}
@@ -490,11 +529,22 @@ export default function Arrecadacao() {
               : "—"
           }
           sub="variação ano a ano"
+          accentColor={
+            (resumo.data?.delta_yoy ?? 0) >= 0 ? tokens.revenue : tokens.warning
+          }
+          valueTone={
+            resumo.data?.delta_yoy == null
+              ? "text-text-primary"
+              : resumo.data.delta_yoy >= 0
+                ? "text-data-revenue"
+                : "text-warning-500"
+          }
         />
         <KpiCard
           label="Meses com registros"
           value={String((porMes.data ?? []).filter((m) => m.valor > 0).length)}
           sub={`de 12 (${exercicioSelecionado})`}
+          accentColor={tokens.contract}
         />
       </div>
 
@@ -526,10 +576,10 @@ export default function Arrecadacao() {
                   outerRadius={120}
                   paddingAngle={1}
                 >
-                  {(porEspecie.data ?? []).map((_, idx) => (
+                  {(porEspecie.data ?? []).map((item, idx) => (
                     <Cell
                       key={idx}
-                      fill={escala[idx % escala.length]}
+                      fill={corEspecie(item.especie, tokens)}
                       stroke={tokens.surfaceRaised}
                       strokeWidth={2}
                     />
@@ -620,9 +670,16 @@ export default function Arrecadacao() {
                 />
                 <Bar
                   dataKey="valor"
-                  fill={tokens.accent}
+                  fill={chartPalette[0]}
                   radius={[0, 4, 4, 0]}
-                />
+                >
+                  {top10Tributos.map((_, idx) => (
+                    <Cell
+                      key={idx}
+                      fill={chartPalette[idx % chartPalette.length]}
+                    />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -663,7 +720,14 @@ export default function Arrecadacao() {
                   }}
                   formatter={(value: unknown) => [formatBRL(Number(value)), "Arrecadado"]}
                 />
-                <Bar dataKey="valor" fill={tokens.accent} radius={[6, 6, 0, 0]} />
+                <Bar dataKey="valor" fill={chartPalette[0]} radius={[6, 6, 0, 0]}>
+                  {(porExercicio.data ?? []).map((_, idx) => (
+                    <Cell
+                      key={idx}
+                      fill={chartPalette[(idx + 1) % chartPalette.length]}
+                    />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -714,22 +778,22 @@ export default function Arrecadacao() {
                       String(name),
                     ]}
                   />
-                  {barrasEmpilhadas.series.map((especie, idx) => (
+                  {barrasEmpilhadas.series.map((especie) => (
                     <Bar
                       key={especie}
                       dataKey={especie}
                       stackId="especies"
-                      fill={escala[idx % escala.length]}
+                      fill={corEspecie(especie, tokens)}
                     />
                   ))}
                 </BarChart>
               </ResponsiveContainer>
               <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-2 text-[11px] text-text-secondary">
-                {barrasEmpilhadas.series.map((especie, idx) => (
+                {barrasEmpilhadas.series.map((especie) => (
                   <span key={especie} className="inline-flex items-center gap-1.5">
                     <span
                       className="h-2 w-2 rounded-sm"
-                      style={{ backgroundColor: escala[idx % escala.length] }}
+                      style={{ backgroundColor: corEspecie(especie, tokens) }}
                     />
                     {especie}
                   </span>
@@ -773,9 +837,16 @@ export default function Arrecadacao() {
               />
               <Bar
                 dataKey="valor"
-                fill={tokens.accent}
+                fill={chartPalette[0]}
                 radius={[4, 4, 0, 0]}
-              />
+              >
+                {serieMensal.map((_, idx) => (
+                  <Cell
+                    key={idx}
+                    fill={chartPalette[(idx + 2) % chartPalette.length]}
+                  />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </section>
@@ -803,17 +874,17 @@ export default function Arrecadacao() {
               title="Própria vs transferências"
               value={`${formatPct(origem.propriaPct)} própria`}
               detail={`Transferências somam ${formatCompact(origem.transferencias)}; receita própria soma ${formatCompact(origem.propria)}.`}
-              tone={origem.propriaPct >= origem.transferenciasPct ? "success" : "accent"}
+              tone={origem.propriaPct >= origem.transferenciasPct ? "success" : "warning"}
             >
               <BarraSegmentada
                 segmentos={[
-                  { label: "Própria", pct: origem.propriaPct, color: escala[0] },
+                  { label: "Própria", pct: origem.propriaPct, color: tokens.revenue },
                   {
                     label: "Transferências",
                     pct: origem.transferenciasPct,
-                    color: escala[2],
+                    color: tokens.transfer,
                   },
-                  { label: "Outras", pct: origem.outrasPct, color: escala[5] },
+                  { label: "Outras", pct: origem.outrasPct, color: tokens.planned },
                 ]}
               />
             </AnaliseCard>
@@ -834,7 +905,7 @@ export default function Arrecadacao() {
                   {
                     label: "Realizado",
                     pct: limitarPct(realizacao.pct ?? 0),
-                    color: tokens.accent,
+                    color: tokens.revenue,
                   },
                   {
                     label: "A realizar",
@@ -877,7 +948,7 @@ export default function Arrecadacao() {
                     </span>
                     <span
                       className={`shrink-0 text-right font-mono text-[11px] tabular-nums ${
-                        variacao.delta >= 0 ? "text-success-500" : "text-warning-500"
+                        variacao.delta >= 0 ? "text-data-revenue" : "text-warning-500"
                       }`}
                     >
                       {variacao.delta >= 0 ? "+" : ""}
@@ -1027,7 +1098,7 @@ export default function Arrecadacao() {
                         {ano}
                       </th>
                     ))}
-                    <th className="py-2 pl-3 font-mono text-[10px] uppercase tracking-[0.18em] text-accent-ink font-normal text-right">
+                    <th className="py-2 pl-3 font-mono text-[10px] uppercase tracking-[0.18em] text-data-revenue font-normal text-right">
                       Total
                     </th>
                   </tr>
@@ -1055,7 +1126,7 @@ export default function Arrecadacao() {
                           </td>
                         );
                       })}
-                      <td className="py-2 pl-3 text-right font-mono tabular-nums text-accent-ink font-semibold">
+                      <td className="py-2 pl-3 text-right font-mono tabular-nums text-data-revenue font-semibold">
                         {formatCompact(linha.total)}
                       </td>
                     </tr>

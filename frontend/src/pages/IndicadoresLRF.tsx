@@ -72,13 +72,38 @@ const METADATA: Record<
 
 const SITUACAO_RESUMO: Record<
   SituacaoIndicador,
-  { label: string; tom: string }
+  { label: string; tom: string; bar: string; panel: string }
 > = {
-  OK: { label: "Dentro dos limites", tom: "text-success-500" },
-  ALERTA: { label: "Atenção — próximo do limite", tom: "text-warning-500" },
-  EXCEDIDO: { label: "Limite ultrapassado", tom: "text-danger-500" },
-  ABAIXO_MINIMO: { label: "Abaixo do mínimo legal", tom: "text-danger-500" },
-  SEM_DADO: { label: "Sem dado publicado", tom: "text-text-muted" },
+  OK: {
+    label: "Dentro dos limites",
+    tom: "text-success-500",
+    bar: "bg-success-500",
+    panel: "border-success-500/25 bg-success-500/[0.045]",
+  },
+  ALERTA: {
+    label: "Atenção — próximo do limite",
+    tom: "text-warning-500",
+    bar: "bg-warning-500",
+    panel: "border-warning-500/30 bg-warning-500/[0.05]",
+  },
+  EXCEDIDO: {
+    label: "Limite ultrapassado",
+    tom: "text-danger-500",
+    bar: "bg-danger-500",
+    panel: "border-danger-500/30 bg-danger-500/[0.05]",
+  },
+  ABAIXO_MINIMO: {
+    label: "Abaixo do mínimo legal",
+    tom: "text-danger-500",
+    bar: "bg-danger-500",
+    panel: "border-danger-500/30 bg-danger-500/[0.05]",
+  },
+  SEM_DADO: {
+    label: "Sem dado publicado",
+    tom: "text-text-muted",
+    bar: "bg-text-muted",
+    panel: "border-border bg-surface-raised",
+  },
 };
 
 function IndicadorCard({ indicador }: { indicador: IndicadorFiscal }) {
@@ -86,7 +111,13 @@ function IndicadorCard({ indicador }: { indicador: IndicadorFiscal }) {
   const resumo = SITUACAO_RESUMO[indicador.situacao];
 
   return (
-    <article className="group bg-surface-raised border border-border rounded-xl p-6 space-y-5 hover:border-accent-500/40 transition-colors">
+    <article
+      className={`group relative overflow-hidden rounded-xl border p-6 space-y-5 transition-colors hover:border-accent-500/40 ${resumo.panel}`}
+    >
+      <span
+        className={`absolute inset-x-0 top-0 h-[2px] ${resumo.bar}`}
+        aria-hidden
+      />
       <header>
         <div className="flex items-start justify-between gap-3">
           <div>

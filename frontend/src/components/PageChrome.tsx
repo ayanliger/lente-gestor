@@ -49,6 +49,17 @@ interface DataSourceStripProps {
   note?: ReactNode;
 }
 
+function dataSourceColor(item: string): string {
+  if (item.includes("RREO")) return "#2f5f8f";
+  if (item.includes("RGF") || item.includes("LRF")) return "#a66b1f";
+  if (item.includes("IBGE")) return "#207a4f";
+  if (item.includes("PNCP")) return "#7a4ea3";
+  if (item.includes("SICONFI")) return "#1f7a8c";
+  if (item.includes("STN")) return "#5f7666";
+  if (item.includes("Município")) return "#b84242";
+  return "#667085";
+}
+
 export function DataSourceStrip({
   label = "Dados integrados",
   items,
@@ -64,11 +75,29 @@ export function DataSourceStrip({
           {label}
         </p>
         <ul className="flex flex-wrap gap-1.5">
-          {items.map((item) => (
-            <li key={item}>
-              <span className="badge badge-accent">{item}</span>
-            </li>
-          ))}
+          {items.map((item) => {
+            const color = dataSourceColor(item);
+            return (
+              <li key={item}>
+                <span
+                  className="badge gap-1.5"
+                  style={{
+                    background: `color-mix(in oklab, ${color} 14%, var(--color-surface-raised))`,
+                    borderColor: `color-mix(in oklab, ${color} 55%, var(--color-border))`,
+                    color: `color-mix(in oklab, ${color} 76%, var(--color-text-primary))`,
+                    boxShadow: `0 5px 16px color-mix(in oklab, ${color} 10%, transparent)`,
+                  }}
+                >
+                  <span
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{ backgroundColor: color }}
+                    aria-hidden
+                  />
+                  {item}
+                </span>
+              </li>
+            );
+          })}
         </ul>
         {note && <p className="text-xs text-text-secondary">{note}</p>}
       </div>

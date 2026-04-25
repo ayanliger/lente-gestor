@@ -40,6 +40,13 @@
   --color-success-100: #e3f0e9;
   --color-warning-500: #a66b1f;
   --color-warning-100: #f6ead5;
+  /* Dados de domínio — tons discretos sobre a base neutra. */
+  --color-data-revenue: #207a4f;
+  --color-data-expense: #333946;
+  --color-data-planned: #667085;
+  --color-data-liquidated: #5f7666;
+  --color-data-transfer: #2f5f8f;
+  --color-data-contract: #7d7168;
 
   /* ---------------------------------------------------------------------
      Semânticos adaptativos — default = LIGHT. São sobrescritos abaixo em
@@ -80,6 +87,12 @@
   --color-success-500: #4fb178;
   --color-warning-500: #d39a3a;
   --color-danger-500: #e06a6a;
+  --color-data-revenue: #4fb178;
+  --color-data-expense: #d1d5db;
+  --color-data-planned: #8f96a3;
+  --color-data-liquidated: #83b894;
+  --color-data-transfer: #7fb3dc;
+  --color-data-contract: #b7a89a;
 }
 
 @layer base {

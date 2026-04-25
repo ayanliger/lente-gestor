@@ -42,20 +42,20 @@ export default function ComposicaoBar({
 
       {/* Track + fill */}
       <div
-        className="relative h-2 w-full rounded-full bg-surface-overlay/40 overflow-hidden"
+        className="relative h-2 w-full rounded-full bg-surface-overlay/55 overflow-hidden"
         role="progressbar"
         aria-valuenow={Math.round(pct)}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuetext={`${label}: ${valorFormatado} (${pct.toFixed(1)}%)`}
       >
-        {/* barra principal com gradiente: saturado -> transparente */}
+        {/* barra principal com gradiente: saturado -> leve brilho */}
         <div
           className="h-full origin-left rounded-full transition-[width] duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
           style={{
             width: `${Math.min(width, 100)}%`,
-            background: `linear-gradient(90deg, ${color} 0%, ${color}99 70%, ${color}55 100%)`,
-            boxShadow: `0 0 12px ${color}44`,
+            background: `linear-gradient(90deg, ${color} 0%, ${color}ee 72%, ${color}bb 100%)`,
+            boxShadow: `0 0 10px ${color}33`,
           }}
         />
         {/* brilho sutil deslizando no hover */}

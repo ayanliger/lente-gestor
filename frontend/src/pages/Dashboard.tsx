@@ -19,17 +19,20 @@ import {
 import { formatBRL } from "@/lib/format";
 import { useChartTokens, type ChartTokens } from "@/lib/theme-core";
 
-// Paleta para a composição de despesa — derivada dos tokens do tema:
-// grafite (acento), semânticos e variações neutras. Todas
-// trocam automaticamente entre light/dark via `useChartTokens`.
+// Paleta para composição de despesa: mais cromática que os KPIs, pois este
+// painel precisa diferenciar várias funções sem depender só de comprimento.
 function paletaDespesa(t: ChartTokens): string[] {
   return [
-    t.accent, // destaque #1 — grafite
-    t.neutral, // neutro de alto contraste
-    t.success, // verde semântico
-    t.warning, // laranja semântico
-    t.textSecondary, // cinza médio
-    t.textMuted, // cinza suave
+    t.transfer,
+    t.revenue,
+    "#7a4ea3",
+    t.warning,
+    "#1f7a8c",
+    t.danger,
+    t.expense,
+    t.liquidated,
+    t.contract,
+    t.planned,
   ];
 }
 
@@ -118,27 +121,38 @@ function HeroKpi({
   return (
     <div
       className="relative rounded-xl p-6 border bg-surface-raised border-border overflow-hidden transition-colors hover:border-accent-500/40"
+      style={{
+        boxShadow: `inset 0 1px 0 color-mix(in oklab, ${accentColor} 32%, transparent)`,
+      }}
     >
-      {/* barra superior colorida identificando a métrica */}
       <span
-        className="absolute inset-x-0 top-0 h-[2px]"
+        className="pointer-events-none absolute inset-x-0 top-0 h-20 opacity-[0.35]"
         style={{
-          background: `linear-gradient(90deg, transparent 0%, ${accentColor} 50%, transparent 100%)`,
+          background: `linear-gradient(180deg, color-mix(in oklab, ${accentColor} 12%, transparent) 0%, transparent 78%)`,
         }}
         aria-hidden
       />
-      <p className="text-text-muted text-[10px] uppercase tracking-[0.18em] mb-3">
+      {/* barra superior colorida identificando a métrica */}
+      <span
+        className="absolute inset-x-0 top-0 h-[3px]"
+        style={{
+          background: `linear-gradient(90deg, transparent 0%, ${accentColor} 50%, transparent 100%)`,
+          boxShadow: `0 0 16px color-mix(in oklab, ${accentColor} 50%, transparent)`,
+        }}
+        aria-hidden
+      />
+      <p className="relative text-text-muted text-[10px] uppercase tracking-[0.18em] mb-3">
         {label}
       </p>
       <p
-        className={`font-mono tabular-nums text-[2.4rem] leading-none font-semibold ${
+        className={`relative font-mono tabular-nums text-[2.4rem] leading-none font-semibold ${
           valueTone ?? "text-text-primary"
         }`}
       >
         {value}
       </p>
       {sub && (
-        <p className="text-xs text-text-secondary mt-3 leading-snug">
+        <p className="relative text-xs text-text-secondary mt-3 leading-snug">
           {sub}
         </p>
       )}
@@ -234,22 +248,33 @@ function StatTileLink({
   label,
   value,
   hint,
+  accentColor,
+  valueClass = "text-text-primary",
 }: {
   to: string;
   label: string;
   value: string;
   hint: string;
+  accentColor: string;
+  valueClass?: string;
 }) {
   return (
     <Link
       to={to}
-      className="group flex flex-col justify-between gap-3 rounded-lg border border-border bg-surface-raised px-4 py-4 transition-colors hover:border-accent-500/40 hover:bg-surface-overlay"
+      className="group relative flex flex-col justify-between gap-3 overflow-hidden rounded-lg border border-border bg-surface-raised px-4 py-4 transition-colors hover:border-accent-500/40 hover:bg-surface-overlay"
     >
+      <span
+        className="absolute inset-x-0 top-0 h-[2px]"
+        style={{
+          background: `linear-gradient(90deg, transparent 0%, ${accentColor} 50%, transparent 100%)`,
+        }}
+        aria-hidden
+      />
       <div>
         <p className="text-text-muted text-[10px] uppercase tracking-[0.18em]">
           {label}
         </p>
-        <p className="mt-2 font-mono tabular-nums text-2xl text-text-primary">
+        <p className={`mt-2 font-mono tabular-nums text-2xl ${valueClass}`}>
           {value}
         </p>
       </div>
@@ -476,7 +501,8 @@ export default function Dashboard() {
           label="Dotação atualizada"
           value={loadingOrcamento ? "—" : formatCompactBRL(totais.dotacao)}
           sub={`Orçamento aprovado · ${rotuloPeriodoSelecionado}`}
-          accentColor={tokens.neutral}
+          accentColor={tokens.transfer}
+          valueTone="text-data-transfer"
         />
         <HeroKpi
           label="Empenhado"
@@ -486,8 +512,8 @@ export default function Dashboard() {
               ? "—"
               : `Liquidado: ${formatCompactBRL(totais.liquidado)}`
           }
-          accentColor={tokens.accent}
-          valueTone="text-accent-ink"
+          accentColor={tokens.warning}
+          valueTone="text-warning-500"
         />
         <HeroKpi
           label="Execução orçamentária"
@@ -677,6 +703,7 @@ export default function Dashboard() {
             label="Contratos firmados"
             value={contratos.data ? contratos.data.total.toLocaleString("pt-BR") : "—"}
             hint="abrir lista"
+            accentColor={tokens.contract}
           />
           <StatTileLink
             to="/fornecedores"
@@ -687,6 +714,7 @@ export default function Dashboard() {
                 : "—"
             }
             hint="abrir cadastro"
+            accentColor={tokens.planned}
           />
           <StatTileLink
             to="/contratos"
@@ -695,6 +723,8 @@ export default function Dashboard() {
               vencendo.data ? vencendo.data.total.toLocaleString("pt-BR") : "—"
             }
             hint="revisar vigências"
+            accentColor={tokens.warning}
+            valueClass={vencendo.data?.total ? "text-warning-500" : "text-text-primary"}
           />
         </div>
       </section>

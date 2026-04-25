@@ -120,7 +120,9 @@ export default function Contratos() {
                           <span className="text-text-muted">—</span>
                         )}
                       </td>
-                      <td className="tbl-num">{formatBRL(c.valor_inicial)}</td>
+                      <td className="tbl-num text-data-contract">
+                        {formatBRL(c.valor_inicial)}
+                      </td>
                       <td
                         className={`text-right font-mono tabular-nums ${
                           vencendo

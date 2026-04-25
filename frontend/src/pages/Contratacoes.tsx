@@ -98,7 +98,9 @@ export default function Contratacoes() {
                     >
                       {c.objeto ?? "—"}
                     </td>
-                    <td className="tbl-num">{formatBRL(c.valor_estimado)}</td>
+                    <td className="tbl-num text-data-contract">
+                      {formatBRL(c.valor_estimado)}
+                    </td>
                     <td className="text-xs">
                       {c.situacao ? (
                         <span className="text-text-secondary">{c.situacao}</span>

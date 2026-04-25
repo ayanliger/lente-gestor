@@ -1,15 +1,5 @@
 import { useMemo, useState } from "react";
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import {
   useDadosMunicipio,
   useExerciciosOrcamento,
   useIndicadoresFiscais,
@@ -24,9 +14,7 @@ import { formatBRL } from "@/lib/format";
 import { useChartTokens } from "@/lib/theme-core";
 
 // As cores do gráfico vêm de `useChartTokens` para trocar automaticamente
-// entre light/dark. Recharts v3 renderiza SVG <rect fill>, que só aceita
-// notação hex tradicional — por isso lemos os hexes finais já resolvidos
-// a partir das variáveis CSS.
+// entre light/dark a partir das variáveis CSS semânticas.
 
 const BIMESTRES = [1, 2, 3, 4, 5, 6];
 const SEMESTRES = [
@@ -71,27 +59,34 @@ function KpiCard({
   label,
   value,
   sub,
-  accent,
+  accentColor,
+  valueTone,
 }: {
   label: string;
   value: string;
   sub?: string;
-  accent?: boolean;
+  accentColor?: string;
+  valueTone?: string;
 }) {
   return (
     <div
-      className={`card-accent rounded-xl p-5 border transition-colors ${
-        accent
-          ? "bg-accent-500/[0.08] border-accent-500/30 hover:border-accent-500/55"
-          : "bg-surface-raised border-border hover:border-accent-500/30"
-      }`}
+      className="relative overflow-hidden rounded-xl border border-border bg-surface-raised p-5 transition-colors hover:border-accent-500/30"
     >
+      {accentColor && (
+        <span
+          className="absolute inset-x-0 top-0 h-[2px]"
+          style={{
+            background: `linear-gradient(90deg, transparent 0%, ${accentColor} 50%, transparent 100%)`,
+          }}
+          aria-hidden
+        />
+      )}
       <p className="text-text-muted text-[10px] uppercase tracking-[0.15em] mb-2">
         {label}
       </p>
       <p
         className={`text-2xl font-semibold font-mono tabular-nums ${
-          accent ? "text-accent-ink" : "text-text-primary"
+          valueTone ?? "text-text-primary"
         }`}
       >
         {value}
@@ -144,6 +139,7 @@ export default function Orcamento() {
         funcaoCompleta: d.funcao,
         dotacao: d.dotacao_atualizada ?? 0,
         empenhado: d.empenhado ?? 0,
+        liquidado: d.liquidado ?? 0,
       }));
   }, [resumo.data]);
 
@@ -154,17 +150,24 @@ export default function Orcamento() {
     );
   }, [resumo.data]);
 
+  const maxExecucao = useMemo(() => {
+    return Math.max(
+      1,
+      ...top10.flatMap((d) => [d.dotacao, d.empenhado, d.liquidado]),
+    );
+  }, [top10]);
+
   const situacaoLRF = useMemo(() => {
     const dados = indicadores.data ?? [];
     const excedidos = dados.filter(
       (i) => i.situacao === "EXCEDIDO" || i.situacao === "ABAIXO_MINIMO",
     ).length;
     const alertas = dados.filter((i) => i.situacao === "ALERTA").length;
-    if (excedidos > 0) return { label: `${excedidos} limite(s) excedido(s)`, tom: "text-danger-500" };
-    if (alertas > 0) return { label: `${alertas} em alerta`, tom: "text-warning-500" };
-    if (dados.length > 0) return { label: "Tudo em conformidade", tom: "text-success-500" };
+    if (excedidos > 0) return { label: `${excedidos} limite(s) excedido(s)`, tom: "text-danger-500", color: tokens.danger };
+    if (alertas > 0) return { label: `${alertas} em alerta`, tom: "text-warning-500", color: tokens.warning };
+    if (dados.length > 0) return { label: "Tudo em conformidade", tom: "text-success-500", color: tokens.success };
     return null;
-  }, [indicadores.data]);
+  }, [indicadores.data, tokens]);
 
   return (
     <div className="space-y-8 animate-fade-up">
@@ -287,22 +290,27 @@ export default function Orcamento() {
           label="Empenhado (top funções)"
           value={formatCompact(totalEmpenhado)}
           sub={`${(resumo.data ?? []).length} funções · ${rotuloPeriodoSelecionado}`}
-          accent
+          accentColor={tokens.expense}
+          valueTone="text-data-expense"
         />
         <KpiCard
           label="PIB Municipal"
           value={formatCompact(dadosMun?.pib_corrente ?? null)}
           sub={dadosMun ? `PIB ${dadosMun.exercicio}` : "IBGE"}
+          accentColor={tokens.contract}
         />
         <KpiCard
           label="PIB per capita"
           value={formatCompact(dadosMun?.pib_per_capita ?? null)}
           sub={dadosMun?.populacao ? `${dadosMun.populacao.toLocaleString("pt-BR")} habitantes` : ""}
+          accentColor={tokens.planned}
         />
         <KpiCard
           label="Indicadores LRF"
           value={situacaoLRF?.label ?? "—"}
           sub={`${indicadores.data?.length ?? 0} acompanhados`}
+          accentColor={situacaoLRF?.color}
+          valueTone={situacaoLRF?.tom}
         />
       </div>
 
@@ -321,16 +329,23 @@ export default function Orcamento() {
             <span className="flex items-center gap-1.5">
               <span
                 className="inline-block h-2.5 w-2.5 rounded-sm"
-                style={{ background: tokens.neutral, opacity: 0.85 }}
+                style={{ background: tokens.planned, opacity: 0.85 }}
               />
               Dotação
             </span>
             <span className="flex items-center gap-1.5">
               <span
                 className="inline-block h-2.5 w-2.5 rounded-sm"
-                style={{ background: tokens.accent }}
+                style={{ background: tokens.expense }}
               />
               Empenhado
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span
+                className="inline-block h-2.5 w-2.5 rounded-sm"
+                style={{ background: tokens.liquidated }}
+              />
+              Liquidado
             </span>
           </div>
         </div>
@@ -349,83 +364,77 @@ export default function Orcamento() {
             }
           />
         ) : (
-          <ResponsiveContainer width="100%" height={440}>
-            <BarChart
-              data={top10}
-              layout="vertical"
-              margin={{ top: 10, right: 40, left: 100, bottom: 10 }}
-              barCategoryGap={12}
-            >
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke={tokens.grid}
-                horizontal={false}
-              />
-              <XAxis
-                type="number"
-                tickFormatter={(v) => formatCompact(v).replace("R$ ", "")}
-                stroke={tokens.axis}
-                tick={{
-                  fill: tokens.tick,
-                  fontSize: 11,
-                  fontFamily: "JetBrains Mono",
-                }}
-              />
-              <YAxis
-                dataKey="funcao"
-                type="category"
-                stroke={tokens.axis}
-                width={130}
-                tick={{ fill: tokens.tick, fontSize: 12 }}
-              />
-              <Tooltip
-                cursor={{ fill: `${tokens.accent}1f` }}
-                contentStyle={{
-                  background: tokens.surfaceRaised,
-                  border: `1px solid ${tokens.grid}`,
-                  borderRadius: 10,
-                  fontSize: 12,
-                  boxShadow: "0 12px 32px rgba(0,0,0,0.12)",
-                  padding: "10px 14px",
-                }}
-                labelStyle={{
-                  color: tokens.textPrimary,
-                  fontWeight: 600,
-                  marginBottom: 4,
-                }}
-                itemStyle={{ color: tokens.textSecondary }}
-                formatter={(value, name) => [
-                  formatBRL(typeof value === "number" ? value : Number(value)),
-                  String(name),
-                ]}
-                labelFormatter={(_, payload) =>
-                  payload?.[0]?.payload?.funcaoCompleta ?? ""
-                }
-              />
-              <Legend
-                wrapperStyle={{
-                  fontSize: 12,
-                  color: tokens.textSecondary,
-                  paddingTop: 12,
-                }}
-                iconType="square"
-                iconSize={10}
-              />
-              <Bar
-                dataKey="dotacao"
-                name="Dotação atualizada"
-                fill={tokens.neutral}
-                fillOpacity={0.75}
-                radius={[0, 4, 4, 0]}
-              />
-              <Bar
-                dataKey="empenhado"
-                name="Empenhado"
-                fill={tokens.accent}
-                radius={[0, 4, 4, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="space-y-3">
+            {top10.map((d) => {
+              const dotacaoPct = Math.min((d.dotacao / maxExecucao) * 100, 100);
+              const empenhadoPct = Math.min((d.empenhado / maxExecucao) * 100, 100);
+              const liquidadoPct = Math.min((d.liquidado / maxExecucao) * 100, 100);
+              const pctExecucao =
+                d.dotacao > 0 ? (d.empenhado / d.dotacao) * 100 : null;
+              const pctTone =
+                pctExecucao == null
+                  ? "text-text-muted"
+                  : pctExecucao > 100
+                    ? "text-danger-500"
+                    : pctExecucao >= 90
+                      ? "text-warning-500"
+                      : pctExecucao >= 60
+                        ? "text-success-500"
+                        : "text-text-secondary";
+
+              return (
+                <div
+                  key={d.funcaoCompleta}
+                  className="grid gap-2 rounded-lg border border-transparent px-2 py-1.5 transition-colors hover:border-border hover:bg-surface-overlay/35 sm:grid-cols-[10rem_1fr_8.5rem] sm:items-center sm:gap-4"
+                  title={`${d.funcaoCompleta}\nDotação: ${formatBRL(d.dotacao)}\nEmpenhado: ${formatBRL(d.empenhado)}\nLiquidado: ${formatBRL(d.liquidado)}`}
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-[13px] font-medium text-text-primary">
+                      {d.funcaoCompleta}
+                    </p>
+                    <p className={`mt-0.5 font-mono text-[10.5px] ${pctTone}`}>
+                      {pctExecucao != null ? `${pctExecucao.toFixed(1)}% exec.` : "—"}
+                    </p>
+                  </div>
+
+                  <div className="relative h-8 overflow-hidden rounded-lg border border-border bg-surface-overlay/45">
+                    <div
+                      className="absolute inset-y-1 left-0 rounded-r-md"
+                      style={{
+                        width: `${dotacaoPct}%`,
+                        backgroundColor: tokens.planned,
+                        opacity: 0.2,
+                      }}
+                      aria-hidden
+                    />
+                    <div
+                      className="absolute inset-y-1.5 left-0 rounded-r-md"
+                      style={{
+                        width: `${empenhadoPct}%`,
+                        backgroundColor: tokens.expense,
+                      }}
+                      aria-hidden
+                    />
+                    <div
+                      className="absolute bottom-1 left-0 h-1 rounded-full"
+                      style={{
+                        width: `${liquidadoPct}%`,
+                        backgroundColor: tokens.liquidated,
+                      }}
+                      aria-hidden
+                    />
+                  </div>
+
+                  <div className="font-mono text-xs tabular-nums text-data-expense sm:text-right">
+                    {formatCompact(d.empenhado)}
+                    <p className="mt-0.5 text-[10.5px] text-data-liquidated">
+                      liq. {formatCompact(d.liquidado)}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </section>
 
@@ -457,11 +466,13 @@ export default function Orcamento() {
                 const pctTone =
                   pct == null
                     ? "text-text-muted"
-                    : pct >= 90
-                      ? "text-success-500"
-                      : pct >= 60
-                        ? "text-accent-ink"
-                        : "text-text-secondary";
+                    : pct > 100
+                      ? "text-danger-500"
+                      : pct >= 90
+                        ? "text-warning-500"
+                        : pct >= 60
+                          ? "text-success-500"
+                          : "text-text-secondary";
                 return (
                   <tr key={d.funcao}>
                     <td className="text-text-primary">{d.funcao}</td>
@@ -471,10 +482,10 @@ export default function Orcamento() {
                     <td className="tbl-num">
                       {formatBRL(d.dotacao_atualizada)}
                     </td>
-                    <td className="tbl-num text-accent-ink">
+                    <td className="tbl-num text-data-expense">
                       {formatBRL(d.empenhado)}
                     </td>
-                    <td className="tbl-num text-text-secondary">
+                    <td className="tbl-num text-data-liquidated">
                       {formatBRL(d.liquidado)}
                     </td>
                     <td className={`tbl-num ${pctTone}`}>
