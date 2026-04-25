@@ -99,6 +99,7 @@
   html {
     scroll-behavior: smooth;
     color-scheme: light;
+    overflow-x: hidden;
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
@@ -129,6 +130,8 @@
     background-size: auto, auto, auto;
     background-attachment: fixed;
     min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
   }
 
   :root[data-theme="dark"] body {
@@ -309,7 +312,7 @@
   /* Select com chevron próprio; cor do chevron muda por tema. */
   .field-select {
     @apply bg-surface-raised border border-border rounded-lg
-           pl-3 pr-9 py-1.5 font-mono text-sm text-text-primary
+           min-h-9 pl-3 pr-9 py-1.5 font-mono text-sm text-text-primary
            transition-colors focus:outline-none focus:border-accent-500/60
            focus:ring-2 focus:ring-accent-500/20;
     appearance: none;
@@ -350,6 +353,7 @@
   /* Botão de paginação */
   .btn-paginate {
     @apply inline-flex items-center justify-center gap-1.5 px-3 py-1.5
+           min-h-10
            rounded-lg bg-surface-raised border border-border
            text-sm text-text-secondary transition-all
            hover:text-text-primary hover:border-accent-500/40
@@ -362,6 +366,7 @@
   /* Tabelas */
   .tbl {
     @apply w-full text-sm;
+    min-width: 44rem;
   }
   .tbl thead tr {
     @apply text-left text-text-muted text-[10.5px] uppercase
@@ -369,14 +374,14 @@
            bg-surface-overlay/60;
   }
   .tbl thead th {
-    @apply px-5 py-3 font-medium;
+    @apply px-3 py-3 font-medium sm:px-5;
   }
   .tbl tbody tr {
     @apply border-b border-border/70 last:border-b-0
            transition-colors hover:bg-surface-overlay/80;
   }
   .tbl tbody td {
-    @apply px-5 py-3 align-middle;
+    @apply px-3 py-3 align-middle sm:px-5;
   }
   .tbl-num {
     @apply font-mono tabular-nums text-right;

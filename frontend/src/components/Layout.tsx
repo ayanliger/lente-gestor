@@ -212,7 +212,7 @@ export default function Layout() {
   const isDark = theme === "dark";
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex min-h-dvh flex-col overflow-x-hidden lg:h-screen lg:flex-row lg:overflow-hidden">
       <a
         href="#conteudo-principal"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-accent-500 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-accent-contrast"
@@ -221,7 +221,7 @@ export default function Layout() {
       </a>
       {/* Sidebar */}
       <aside
-        className="w-64 shrink-0 bg-surface-raised/95 border-r border-border flex flex-col relative shadow-[12px_0_40px_rgba(15,23,42,0.05)]"
+        className="sticky top-0 z-40 flex w-full shrink-0 flex-col border-b border-border bg-surface-raised/95 shadow-[0_12px_36px_rgba(15,23,42,0.06)] backdrop-blur lg:static lg:z-auto lg:h-screen lg:w-64 lg:border-b-0 lg:border-r lg:shadow-[12px_0_40px_rgba(15,23,42,0.05)]"
         aria-label="Navegação principal"
       >
         {/* acento ambiente — aura cívica muito sutil no canto superior */}
@@ -234,44 +234,65 @@ export default function Layout() {
           aria-hidden
         />
 
-        <div className="relative p-6 border-b border-border">
-          <div className="flex items-baseline gap-2">
-            <span className="font-display text-3xl leading-none text-text-primary">
-              Lente
-            </span>
-            <span
-              className="h-1.5 w-1.5 rounded-full bg-text-primary"
-              aria-hidden
-            />
+        <div className="relative border-b border-border p-4 sm:p-5 lg:p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="flex items-baseline gap-2">
+                <span className="font-display text-3xl leading-none text-text-primary">
+                  Lente
+                </span>
+                <span
+                  className="h-1.5 w-1.5 rounded-full bg-text-primary"
+                  aria-hidden
+                />
+              </div>
+              <p className="mt-2 text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted sm:text-[11px] sm:tracking-[0.2em]">
+                Gestor municipal integrado
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={toggle}
+              aria-label={isDark ? "Mudar para tema claro" : "Mudar para tema escuro"}
+              aria-pressed={isDark}
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-border bg-surface text-text-muted transition-colors hover:border-accent-500/40 hover:text-text-primary lg:hidden"
+            >
+              {isDark ? (
+                <IconMoon className="h-4 w-4 text-accent-500" />
+              ) : (
+                <IconSun className="h-4 w-4 text-accent-500" />
+              )}
+            </button>
           </div>
-          <p className="text-[11px] text-text-muted mt-2 uppercase tracking-[0.2em] font-mono">
-            Gestor municipal integrado
-          </p>
         </div>
 
-        <nav className="relative flex-1 p-3 overflow-y-auto">
+        <nav className="relative flex gap-3 overflow-x-auto p-3 lg:block lg:flex-1 lg:overflow-y-auto">
           {navGroups.map((group, groupIdx) => {
             const isSecondary = group.tone === "secondary";
             return (
               <div
                 key={group.heading}
-                className={groupIdx > 0 ? "mt-6 pt-5 border-t border-border" : ""}
+                className={
+                  groupIdx > 0
+                    ? "shrink-0 border-l border-border pl-3 lg:mt-6 lg:border-l-0 lg:border-t lg:pl-0 lg:pt-5"
+                    : "shrink-0"
+                }
               >
                 <p
-                  className={`px-4 mb-2 text-[10px] font-mono uppercase tracking-[0.22em] ${
+                  className={`mb-2 hidden px-4 text-[10px] font-mono uppercase tracking-[0.22em] lg:block ${
                     isSecondary ? "text-text-muted" : "text-accent-ink"
                   }`}
                 >
                   {group.heading}
                 </p>
-                <ul className="space-y-0.5">
+                <ul className="flex gap-1 lg:block lg:space-y-0.5">
                   {group.links.map(({ to, label, Icon }) => (
                     <li key={to}>
                       <NavLink
                         to={to}
                         end={to === "/"}
                         className={({ isActive }) =>
-                          `group relative flex items-center gap-3 pl-4 pr-3 rounded-lg transition-colors ${
+                          `group relative flex min-h-10 items-center gap-2.5 whitespace-nowrap rounded-lg px-3 transition-colors lg:gap-3 lg:pl-4 ${
                             isSecondary ? "py-2 text-[13px]" : "py-2.5 text-sm"
                           } ${
                             isActive
@@ -283,7 +304,7 @@ export default function Layout() {
                         {({ isActive }) => (
                           <>
                             <span
-                              className={`absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full transition-colors ${
+                              className={`absolute bottom-0 left-3 h-[3px] w-5 rounded-t-full transition-colors lg:bottom-auto lg:left-0 lg:top-1/2 lg:h-5 lg:w-[3px] lg:-translate-y-1/2 lg:rounded-r-full lg:rounded-t-none ${
                                 isActive
                                   ? "bg-accent-500 shadow-[0_0_10px_rgba(75,85,99,0.34)]"
                                   : "bg-transparent group-hover:bg-accent-500/50"
@@ -299,7 +320,7 @@ export default function Layout() {
                                   : "text-text-muted group-hover:text-text-secondary"
                               }`}
                             />
-                            <span className="truncate">{label}</span>
+                            <span className="lg:truncate">{label}</span>
                           </>
                         )}
                       </NavLink>
@@ -311,7 +332,7 @@ export default function Layout() {
           })}
         </nav>
 
-        <div className="relative p-4 border-t border-border space-y-3">
+        <div className="relative hidden border-t border-border p-4 lg:block lg:space-y-3">
           <div>
             <p className="text-[10px] text-text-muted uppercase tracking-[0.2em] font-mono">
               Município-base
@@ -352,7 +373,7 @@ export default function Layout() {
       <main
         id="conteudo-principal"
         tabIndex={-1}
-        className="flex-1 overflow-y-auto p-6 md:p-8 lg:p-10 focus:outline-none"
+        className="min-w-0 flex-1 overflow-y-auto p-4 pt-5 focus:outline-none sm:p-6 md:p-8 lg:p-10"
       >
         <Outlet />
       </main>

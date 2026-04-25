@@ -24,9 +24,14 @@ export default function TableSkeleton({
   });
 
   return (
-    <div aria-busy aria-live="polite" aria-label="Carregando">
+    <div
+      className="overflow-x-auto"
+      aria-busy
+      aria-live="polite"
+      aria-label="Carregando"
+    >
       {/* Header shimmer */}
-      <div className="flex gap-6 border-b border-border bg-surface-overlay/60 px-5 py-3">
+      <div className="flex min-w-[44rem] gap-6 border-b border-border bg-surface-overlay/60 px-5 py-3">
         {columnWidths.map((w, i) => (
           <div key={i} className={`skeleton h-2.5 ${w}`} />
         ))}
@@ -35,7 +40,7 @@ export default function TableSkeleton({
       {Array.from({ length: rows }).map((_, r) => (
         <div
           key={r}
-          className="flex gap-6 px-5 py-4 border-b border-border/50 last:border-b-0"
+          className="flex min-w-[44rem] gap-6 px-5 py-4 border-b border-border/50 last:border-b-0"
           style={{ opacity: 1 - r * 0.08 }}
         >
           {columnWidths.map((w, c) => (

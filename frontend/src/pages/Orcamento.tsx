@@ -70,7 +70,7 @@ function KpiCard({
 }) {
   return (
     <div
-      className="relative overflow-hidden rounded-xl border border-border bg-surface-raised p-5 transition-colors hover:border-accent-500/30"
+      className="relative overflow-hidden rounded-xl border border-border bg-surface-raised p-4 transition-colors hover:border-accent-500/30 sm:p-5"
     >
       {accentColor && (
         <span
@@ -170,7 +170,7 @@ export default function Orcamento() {
   }, [indicadores.data, tokens]);
 
   return (
-    <div className="space-y-8 animate-fade-up">
+    <div className="space-y-6 animate-fade-up sm:space-y-8">
       <PageHeader
         eyebrow="Execução orçamentária"
         title="Orçamento"
@@ -195,7 +195,7 @@ export default function Orcamento() {
           </>
         }
         actions={
-          <div className="flex flex-wrap items-center justify-end gap-3">
+          <div className="flex flex-wrap items-center justify-start gap-3 sm:justify-end">
             <label className="flex items-center gap-2 text-sm">
               <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
                 Exercício
@@ -315,8 +315,8 @@ export default function Orcamento() {
       </div>
 
       {/* Gráfico de execução por função */}
-      <section className="card-accent bg-surface-raised border border-border rounded-xl p-6">
-        <div className="flex items-start justify-between mb-6">
+      <section className="card-accent rounded-xl border border-border bg-surface-raised p-4 sm:p-6">
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="font-display text-xl text-text-primary">
               Execução por função
@@ -438,62 +438,64 @@ export default function Orcamento() {
 
       {/* Tabela detalhada */}
       {(resumo.data ?? []).length > 0 && (
-        <section className="bg-surface-raised border border-border rounded-xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-border">
+        <section className="overflow-hidden rounded-xl border border-border bg-surface-raised">
+          <div className="border-b border-border px-4 py-4 sm:px-6">
             <h2 className="font-display text-lg text-text-primary">
               Detalhamento por função
             </h2>
           </div>
-          <table className="tbl">
-            <thead>
-              <tr>
-                <th>Função</th>
-                <th className="text-right">Dotação inicial</th>
-                <th className="text-right">Dotação atualizada</th>
-                <th className="text-right">Empenhado</th>
-                <th className="text-right">Liquidado</th>
-                <th className="text-right">% Exec.</th>
-              </tr>
-            </thead>
-            <tbody>
-              {resumo.data!.map((d) => {
-                const pct =
-                  d.dotacao_atualizada && d.empenhado
-                    ? (d.empenhado / d.dotacao_atualizada) * 100
-                    : null;
-                const pctTone =
-                  pct == null
-                    ? "text-text-muted"
-                    : pct > 100
-                      ? "text-danger-500"
-                      : pct >= 90
-                        ? "text-warning-500"
-                        : pct >= 60
-                          ? "text-success-500"
-                          : "text-text-secondary";
-                return (
-                  <tr key={d.funcao}>
-                    <td className="text-text-primary">{d.funcao}</td>
-                    <td className="tbl-num text-text-secondary">
-                      {formatBRL(d.dotacao_inicial)}
-                    </td>
-                    <td className="tbl-num">
-                      {formatBRL(d.dotacao_atualizada)}
-                    </td>
-                    <td className="tbl-num text-data-expense">
-                      {formatBRL(d.empenhado)}
-                    </td>
-                    <td className="tbl-num text-data-liquidated">
-                      {formatBRL(d.liquidado)}
-                    </td>
-                    <td className={`tbl-num ${pctTone}`}>
-                      {pct != null ? `${pct.toFixed(1)}%` : "—"}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>Função</th>
+                  <th className="text-right">Dotação inicial</th>
+                  <th className="text-right">Dotação atualizada</th>
+                  <th className="text-right">Empenhado</th>
+                  <th className="text-right">Liquidado</th>
+                  <th className="text-right">% Exec.</th>
+                </tr>
+              </thead>
+              <tbody>
+                {resumo.data!.map((d) => {
+                  const pct =
+                    d.dotacao_atualizada && d.empenhado
+                      ? (d.empenhado / d.dotacao_atualizada) * 100
+                      : null;
+                  const pctTone =
+                    pct == null
+                      ? "text-text-muted"
+                      : pct > 100
+                        ? "text-danger-500"
+                        : pct >= 90
+                          ? "text-warning-500"
+                          : pct >= 60
+                            ? "text-success-500"
+                            : "text-text-secondary";
+                  return (
+                    <tr key={d.funcao}>
+                      <td className="text-text-primary">{d.funcao}</td>
+                      <td className="tbl-num text-text-secondary">
+                        {formatBRL(d.dotacao_inicial)}
+                      </td>
+                      <td className="tbl-num">
+                        {formatBRL(d.dotacao_atualizada)}
+                      </td>
+                      <td className="tbl-num text-data-expense">
+                        {formatBRL(d.empenhado)}
+                      </td>
+                      <td className="tbl-num text-data-liquidated">
+                        {formatBRL(d.liquidado)}
+                      </td>
+                      <td className={`tbl-num ${pctTone}`}>
+                        {pct != null ? `${pct.toFixed(1)}%` : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </section>
       )}
     </div>

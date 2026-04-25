@@ -124,7 +124,7 @@ function KpiCard({
 }) {
   return (
     <div
-      className="relative overflow-hidden rounded-xl border border-border bg-surface-raised p-5 transition-colors hover:border-accent-500/30"
+      className="relative overflow-hidden rounded-xl border border-border bg-surface-raised p-4 transition-colors hover:border-accent-500/30 sm:p-5"
     >
       {accentColor && (
         <span
@@ -466,7 +466,7 @@ export default function Arrecadacao() {
   }, [mesXAno.data]);
 
   return (
-    <div className="space-y-8 animate-fade-up">
+    <div className="space-y-6 animate-fade-up sm:space-y-8">
       <PageHeader
         eyebrow="Receita pública"
         title="Arrecadação"
@@ -549,9 +549,9 @@ export default function Arrecadacao() {
       </div>
 
       {/* Grid 2x2: espécie, top-tributos, série anual, ano × espécie */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
         {/* Donut por espécie */}
-        <section className="card-accent bg-surface-raised border border-border rounded-xl p-6">
+        <section className="card-accent rounded-xl border border-border bg-surface-raised p-4 sm:p-6">
           <h2 className="font-display text-xl text-text-primary">
             Por espécie tributária
           </h2>
@@ -611,7 +611,7 @@ export default function Arrecadacao() {
         </section>
 
         {/* Top 10 tributos */}
-        <section className="card-accent bg-surface-raised border border-border rounded-xl p-6">
+        <section className="card-accent rounded-xl border border-border bg-surface-raised p-4 sm:p-6">
           <h2 className="font-display text-xl text-text-primary">
             Top 10 tributos
           </h2>
@@ -686,7 +686,7 @@ export default function Arrecadacao() {
         </section>
 
         {/* Série anual */}
-        <section className="card-accent bg-surface-raised border border-border rounded-xl p-6">
+        <section className="card-accent rounded-xl border border-border bg-surface-raised p-4 sm:p-6">
           <h2 className="font-display text-xl text-text-primary">
             Arrecadação por exercício
           </h2>
@@ -734,7 +734,7 @@ export default function Arrecadacao() {
         </section>
 
         {/* Ano × espécie (empilhadas) */}
-        <section className="card-accent bg-surface-raised border border-border rounded-xl p-6">
+        <section className="card-accent rounded-xl border border-border bg-surface-raised p-4 sm:p-6">
           <h2 className="font-display text-xl text-text-primary">
             Ano × espécie
           </h2>
@@ -805,8 +805,8 @@ export default function Arrecadacao() {
       </div>
 
       {/* Comparativo mensal + leitura analítica */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <section className="card-accent bg-surface-raised border border-border rounded-xl p-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
+        <section className="card-accent rounded-xl border border-border bg-surface-raised p-4 sm:p-6">
           <h2 className="font-display text-xl text-text-primary">
             Arrecadação mensal — {exercicioSelecionado}
           </h2>
@@ -850,7 +850,7 @@ export default function Arrecadacao() {
             </BarChart>
           </ResponsiveContainer>
         </section>
-        <section className="card-accent bg-surface-raised border border-border rounded-xl p-6">
+        <section className="card-accent rounded-xl border border-border bg-surface-raised p-4 sm:p-6">
           <h2 className="font-display text-xl text-text-primary">
             Leituras rápidas da receita
           </h2>
@@ -966,7 +966,7 @@ export default function Arrecadacao() {
         </section>
       </div>
       {/* Barras mensais empilhadas por ano */}
-      <section className="card-accent bg-surface-raised border border-border rounded-xl p-6">
+      <section className="card-accent rounded-xl border border-border bg-surface-raised p-4 sm:p-6">
         <div className="flex flex-wrap items-end justify-between gap-4 mb-4">
           <div>
             <h2 className="font-display text-xl text-text-primary">
@@ -976,7 +976,7 @@ export default function Arrecadacao() {
               Comparativo mês a mês, uma cor por exercício.
             </p>
           </div>
-          <div className="flex items-center gap-3 text-sm">
+          <div className="flex flex-wrap items-center gap-3 text-sm">
             <label className="flex items-center gap-2">
               <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
                 De
@@ -1068,7 +1068,7 @@ export default function Arrecadacao() {
         </div>
 
         {/* Tabela pivot por receita contábil */}
-        <section className="card-accent bg-surface-raised border border-border rounded-xl p-6 mb-6">
+        <section className="card-accent mb-6 rounded-xl border border-border bg-surface-raised p-4 sm:p-6">
           <h3 className="font-display text-xl text-text-primary">
             Arrecadação discriminada por receita
           </h3>
@@ -1084,7 +1084,7 @@ export default function Arrecadacao() {
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="min-w-[48rem] text-sm">
                 <thead>
                   <tr className="border-b border-border text-left">
                     <th className="py-2 pr-4 font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted font-normal">

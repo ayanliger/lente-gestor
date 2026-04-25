@@ -32,7 +32,7 @@ export default function ComposicaoBar({
   }, [pct, delayMs]);
 
   return (
-    <div className="group grid grid-cols-[minmax(9rem,14rem)_1fr_auto] items-center gap-4 py-2.5">
+    <div className="group grid grid-cols-1 gap-2 py-2.5 sm:grid-cols-[minmax(9rem,14rem)_1fr_auto] sm:items-center sm:gap-4">
       {/* Label */}
       <div className="min-w-0">
         <p className="text-[13px] text-text-secondary truncate group-hover:text-text-primary transition-colors">
@@ -70,7 +70,7 @@ export default function ComposicaoBar({
       </div>
 
       {/* Values */}
-      <div className="flex items-baseline gap-2 font-mono tabular-nums text-right whitespace-nowrap">
+      <div className="flex items-baseline gap-2 font-mono tabular-nums whitespace-nowrap sm:text-right">
         <span className="text-text-primary text-sm font-medium">
           {valorFormatado}
         </span>

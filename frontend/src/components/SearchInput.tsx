@@ -12,7 +12,7 @@ export default function SearchInput({
   ariaLabel = "Buscar",
 }: SearchInputProps) {
   return (
-    <div className="relative w-full max-w-md">
+    <div className="relative w-full sm:max-w-md">
       <svg
         viewBox="0 0 20 20"
         fill="none"

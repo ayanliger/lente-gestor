@@ -112,14 +112,14 @@ function IndicadorCard({ indicador }: { indicador: IndicadorFiscal }) {
 
   return (
     <article
-      className={`group relative overflow-hidden rounded-xl border p-6 space-y-5 transition-colors hover:border-accent-500/40 ${resumo.panel}`}
+      className={`group relative space-y-5 overflow-hidden rounded-xl border p-4 transition-colors hover:border-accent-500/40 sm:p-6 ${resumo.panel}`}
     >
       <span
         className={`absolute inset-x-0 top-0 h-[2px] ${resumo.bar}`}
         aria-hidden
       />
       <header>
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h3 className="font-semibold text-text-primary leading-tight">
               {indicador.descricao}
@@ -188,7 +188,7 @@ export default function IndicadoresLRF() {
   }, [data]);
 
   return (
-    <div className="space-y-8 animate-fade-up">
+    <div className="space-y-6 animate-fade-up sm:space-y-8">
       <PageHeader
         eyebrow="Responsabilidade fiscal"
         title="Indicadores LRF"

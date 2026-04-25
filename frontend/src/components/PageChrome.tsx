@@ -14,7 +14,7 @@ export function PageHeader({
   actions,
 }: PageHeaderProps) {
   return (
-    <header className="relative overflow-hidden rounded-2xl border border-border bg-surface-raised p-6 md:p-7 shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
+    <header className="relative overflow-hidden rounded-2xl border border-border bg-surface-raised p-4 shadow-[0_18px_60px_rgba(15,23,42,0.08)] sm:p-5 md:p-7">
       <div
         className="pointer-events-none absolute inset-0"
         style={{
@@ -23,21 +23,21 @@ export function PageHeader({
         }}
         aria-hidden
       />
-      <div className="relative flex flex-wrap items-end justify-between gap-5">
+      <div className="relative flex flex-wrap items-start justify-between gap-5 sm:items-end">
         <div className="max-w-3xl">
           {eyebrow && (
             <p className="mb-2 text-[11px] font-mono uppercase tracking-[0.28em] text-accent-ink">
               {eyebrow}
             </p>
           )}
-          <h1 className="font-display text-4xl md:text-5xl tracking-tight text-text-primary leading-[1.05]">
+          <h1 className="font-display text-3xl tracking-tight text-text-primary leading-[1.05] sm:text-4xl md:text-5xl">
             {title}
           </h1>
           <p className="mt-3 text-sm leading-6 text-text-secondary">
             {description}
           </p>
         </div>
-        {actions && <div className="shrink-0">{actions}</div>}
+        {actions && <div className="w-full shrink-0 sm:w-auto">{actions}</div>}
       </div>
     </header>
   );
@@ -67,7 +67,7 @@ export function DataSourceStrip({
 }: DataSourceStripProps) {
   return (
     <section
-      className="rounded-xl border border-border bg-surface-raised/90 px-4 py-3"
+      className="rounded-xl border border-border bg-surface-raised/90 px-3.5 py-3 sm:px-4"
       aria-label={label}
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -99,7 +99,7 @@ export function DataSourceStrip({
             );
           })}
         </ul>
-        {note && <p className="text-xs text-text-secondary">{note}</p>}
+        {note && <p className="w-full text-xs text-text-secondary lg:w-auto">{note}</p>}
       </div>
     </section>
   );

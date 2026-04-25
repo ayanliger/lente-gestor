@@ -120,7 +120,7 @@ function HeroKpi({
 }) {
   return (
     <div
-      className="relative rounded-xl p-6 border bg-surface-raised border-border overflow-hidden transition-colors hover:border-accent-500/40"
+      className="relative overflow-hidden rounded-xl border border-border bg-surface-raised p-4 transition-colors hover:border-accent-500/40 sm:p-6"
       style={{
         boxShadow: `inset 0 1px 0 color-mix(in oklab, ${accentColor} 32%, transparent)`,
       }}
@@ -145,7 +145,7 @@ function HeroKpi({
         {label}
       </p>
       <p
-        className={`relative font-mono tabular-nums text-[2.4rem] leading-none font-semibold ${
+        className={`relative font-mono tabular-nums text-3xl leading-none font-semibold sm:text-[2.4rem] ${
           valueTone ?? "text-text-primary"
         }`}
       >
@@ -408,7 +408,7 @@ export default function Dashboard() {
   const dadosMun = municipio.data;
 
   return (
-    <div className="space-y-10 animate-fade-up">
+    <div className="space-y-6 animate-fade-up sm:space-y-10">
       <PageHeader
         eyebrow="Painel Municipal"
         title="Visão Geral"
@@ -432,7 +432,7 @@ export default function Dashboard() {
           </>
         }
         actions={
-          <div className="flex flex-wrap items-center justify-end gap-3">
+          <div className="flex flex-wrap items-center justify-start gap-3 sm:justify-end">
             <label className="flex items-center gap-2 text-sm">
               <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
                 Exercício
@@ -561,8 +561,8 @@ export default function Dashboard() {
       {/* Composição da Despesa + LRF strip em duas colunas no desktop */}
       <section className="grid grid-cols-1 xl:grid-cols-[1.6fr_1fr] gap-5">
         {/* Composição da despesa por função */}
-        <div className="card-accent bg-surface-raised border border-border rounded-xl p-6">
-          <div className="flex items-baseline justify-between mb-4">
+        <div className="card-accent rounded-xl border border-border bg-surface-raised p-4 sm:p-6">
+          <div className="mb-4 flex flex-wrap items-start justify-between gap-3 sm:items-baseline">
             <div>
               <h2 className="font-display text-xl text-text-primary leading-none">
                 Composição da despesa
@@ -616,8 +616,8 @@ export default function Dashboard() {
         </div>
 
         {/* Indicadores LRF resumidos */}
-        <div className="card-accent bg-surface-raised border border-border rounded-xl p-6">
-          <div className="flex items-baseline justify-between mb-4">
+        <div className="card-accent rounded-xl border border-border bg-surface-raised p-4 sm:p-6">
+          <div className="mb-4 flex flex-wrap items-start justify-between gap-3 sm:items-baseline">
             <div>
               <h2 className="font-display text-xl text-text-primary leading-none">
                 Situação fiscal
@@ -686,8 +686,8 @@ export default function Dashboard() {
 
       {/* Alertas */}
       {alertas.length > 0 && (
-        <section className="rounded-xl border border-danger-500/25 bg-danger-500/[0.05] p-6">
-          <div className="flex items-baseline justify-between mb-4">
+        <section className="rounded-xl border border-danger-500/25 bg-danger-500/[0.05] p-4 sm:p-6">
+          <div className="mb-4 flex flex-wrap items-start justify-between gap-3 sm:items-baseline">
             <h2 className="font-display text-xl text-text-primary leading-none flex items-center gap-3">
               <span
                 className="inline-block h-2 w-2 rounded-full bg-danger-500 shadow-[0_0_10px_rgba(184,66,66,0.52)]"
@@ -715,7 +715,7 @@ export default function Dashboard() {
 
       {/* Contratos & aquisições — secundário */}
       <section>
-        <div className="flex items-baseline justify-between mb-3">
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="font-display text-lg text-text-secondary">
             Contratos &amp; aquisições
           </h2>
@@ -724,7 +724,7 @@ export default function Dashboard() {
           </span>
         </div>
         <div className="divider-engraved mb-4" />
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <StatTileLink
             to="/contratos"
             label="Contratos firmados"

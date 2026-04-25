@@ -142,7 +142,7 @@ function PercentualTermometro({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-end justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-[10px] text-text-muted uppercase tracking-[0.18em]">
             {tipoLimite === "MAXIMO" ? "Limite máximo" : "Mínimo constitucional"}
@@ -203,7 +203,7 @@ function PercentualTermometro({
         )}
       </div>
 
-      <div className="flex items-center justify-between text-[11px] text-text-secondary font-mono">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-text-secondary font-mono">
         <span>
           Limite legal:{" "}
           <span className="text-text-primary">
@@ -245,7 +245,7 @@ function MonetaryTermometro({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-end justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-[10px] text-text-muted uppercase tracking-[0.18em]">
             {positivo ? "Superávit / suficiência" : "Déficit / insuficiência"}
@@ -290,7 +290,7 @@ function MonetaryTermometro({
         />
       </div>
 
-      <div className="flex items-center justify-between text-[11px] text-text-secondary font-mono">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-text-secondary font-mono">
         <span>
           Piso legal:{" "}
           <span className="text-text-primary">R$ 0,00</span>
