@@ -1,4 +1,6 @@
 import { useMemo, useRef, useState } from "react";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { type ChatResponse, type FonteCitada, useChat } from "@/api/chat";
 import { DataSourceStrip, PageHeader } from "@/components/PageChrome";
 
@@ -21,32 +23,15 @@ const formatadorHora = new Intl.DateTimeFormat("pt-BR", {
   minute: "2-digit",
 });
 
-/**
- * Divide o texto da resposta em segmentos: trechos de texto puro e
- * chips `[n]`. Retorna tokens consumíveis pelo render.
- */
-function segmentar(texto: string): Array<
-  | { tipo: "texto"; valor: string }
-  | { tipo: "chip"; indice: number }
-> {
-  const segmentos: Array<
-    | { tipo: "texto"; valor: string }
-    | { tipo: "chip"; indice: number }
-  > = [];
-  const regex = /\[(\d{1,2})\]/g;
-  let ultimo = 0;
-  let m: RegExpExecArray | null;
-  while ((m = regex.exec(texto)) !== null) {
-    if (m.index > ultimo) {
-      segmentos.push({ tipo: "texto", valor: texto.slice(ultimo, m.index) });
-    }
-    segmentos.push({ tipo: "chip", indice: Number(m[1]) });
-    ultimo = m.index + m[0].length;
-  }
-  if (ultimo < texto.length) {
-    segmentos.push({ tipo: "texto", valor: texto.slice(ultimo) });
-  }
-  return segmentos;
+function prepararMarkdownComFontes(
+  texto: string,
+  fontesPorIndice: Map<number, FonteCitada>,
+): string {
+  return texto.replace(/\[(\d{1,2})\]/g, (marcador, indice) => {
+    const numero = Number(indice);
+    if (!fontesPorIndice.has(numero)) return marcador;
+    return `[${indice}](#fonte-${indice})`;
+  });
 }
 
 const ROTULO_FONTE: Record<string, string> = {
@@ -222,30 +207,106 @@ function MensagemAssistente({
   const fontesPorIndice = new Map(
     (mensagem.fontes ?? []).map((f) => [f.indice, f]),
   );
-  const segmentos = segmentar(mensagem.texto);
+  const markdown = prepararMarkdownComFontes(mensagem.texto, fontesPorIndice);
 
   return (
     <div className="flex flex-col items-start gap-1">
       <div className="max-w-[85%] bg-surface-raised border border-border rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-text-primary leading-relaxed">
-        <p className="whitespace-pre-wrap">
-          {segmentos.map((s, i) =>
-            s.tipo === "texto" ? (
-              <span key={i}>{s.valor}</span>
-            ) : (() => {
-              const fonte = fontesPorIndice.get(s.indice);
-              if (!fonte) {
-                return <span key={i}>[{s.indice}]</span>;
+        <Markdown
+          remarkPlugins={[remarkGfm]}
+          skipHtml
+          components={{
+            p({ children }) {
+              return <p className="mb-3 last:mb-0">{children}</p>;
+            },
+            strong({ children }) {
+              return <strong className="font-semibold text-text-primary">{children}</strong>;
+            },
+            em({ children }) {
+              return <em className="italic text-text-primary">{children}</em>;
+            },
+            ul({ children }) {
+              return (
+                <ul className="my-3 list-disc space-y-1 pl-5 marker:text-accent-500">
+                  {children}
+                </ul>
+              );
+            },
+            ol({ children }) {
+              return (
+                <ol className="my-3 list-decimal space-y-1 pl-5 marker:text-accent-500">
+                  {children}
+                </ol>
+              );
+            },
+            li({ children }) {
+              return <li className="pl-1">{children}</li>;
+            },
+            blockquote({ children }) {
+              return (
+                <blockquote className="my-3 border-l-2 border-accent-500/50 pl-3 text-text-secondary">
+                  {children}
+                </blockquote>
+              );
+            },
+            a({ href, children }) {
+              const fonteMatch = href?.match(/^#fonte-(\d+)$/);
+              if (fonteMatch) {
+                const fonte = fontesPorIndice.get(Number(fonteMatch[1]));
+                if (fonte) {
+                  return <Chip fonte={fonte} onClick={() => onAbrirFonte(fonte)} />;
+                }
               }
               return (
-                <Chip
-                  key={i}
-                  fonte={fonte}
-                  onClick={() => onAbrirFonte(fonte)}
-                />
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-accent-ink underline decoration-accent-500/40 underline-offset-2 hover:text-accent-500"
+                >
+                  {children}
+                </a>
               );
-            })(),
-          )}
-        </p>
+            },
+            code({ className, children }) {
+              return (
+                <code
+                  className={`rounded bg-surface-overlay px-1.5 py-0.5 font-mono text-[0.9em] text-accent-ink ${
+                    className ?? ""
+                  }`}
+                >
+                  {children}
+                </code>
+              );
+            },
+            pre({ children }) {
+              return (
+                <pre className="my-3 overflow-x-auto rounded-lg border border-border bg-surface-overlay p-3 text-xs">
+                  {children}
+                </pre>
+              );
+            },
+            table({ children }) {
+              return (
+                <div className="my-3 overflow-x-auto rounded-lg border border-border">
+                  <table className="min-w-full text-left text-xs">{children}</table>
+                </div>
+              );
+            },
+            th({ children }) {
+              return (
+                <th className="border-b border-border bg-surface-overlay px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+                  {children}
+                </th>
+              );
+            },
+            td({ children }) {
+              return <td className="border-b border-border/60 px-3 py-2">{children}</td>;
+            },
+          }}
+        >
+          {markdown}
+        </Markdown>
 
         {mensagem.fontes && mensagem.fontes.length > 0 && (
           <div className="mt-4 pt-3 border-t border-border">
