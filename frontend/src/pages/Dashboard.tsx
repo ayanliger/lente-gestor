@@ -34,6 +34,35 @@ function paletaDespesa(t: ChartTokens): string[] {
 }
 
 const BIMESTRES = [1, 2, 3, 4, 5, 6];
+const SEMESTRES = [
+  { valor: 1, periodo: 3, label: "1º semestre" },
+  { valor: 2, periodo: 6, label: "2º semestre" },
+] as const;
+
+type VisaoPeriodo = "anual" | "semestral" | "bimestral";
+
+function periodoConsulta(
+  visao: VisaoPeriodo,
+  bimestre: number | undefined,
+  semestre: 1 | 2,
+): number | undefined {
+  if (visao === "bimestral") return bimestre;
+  if (visao === "semestral") return semestre === 1 ? 3 : 6;
+  return undefined;
+}
+
+function rotuloPeriodo(
+  visao: VisaoPeriodo,
+  bimestre: number | undefined,
+  semestre: 1 | 2,
+): string {
+  if (visao === "anual") return "anual acumulado";
+  if (visao === "semestral") {
+    const periodo = semestre === 1 ? 3 : 6;
+    return `${semestre}º semestre · até B${periodo}`;
+  }
+  return bimestre ? `Bimestre ${bimestre}` : "bimestre mais recente";
+}
 
 function formatCompactBRL(valor: number | null | undefined): string {
   if (valor == null) return "—";
@@ -241,12 +270,24 @@ export default function Dashboard() {
   const exerciciosQuery = useExerciciosOrcamento();
   const exerciciosDisponiveis = exerciciosQuery.data ?? [];
   const [exercicio, setExercicio] = useState<number | undefined>(undefined);
+  const [visaoPeriodo, setVisaoPeriodo] = useState<VisaoPeriodo>("anual");
   const [periodo, setPeriodo] = useState<number | undefined>(undefined);
+  const [semestre, setSemestre] = useState<1 | 2>(2);
 
   const anoSelecionado = exercicio ?? exerciciosDisponiveis[0];
+  const periodoSelecionado = periodoConsulta(
+    visaoPeriodo,
+    periodo,
+    semestre,
+  );
+  const rotuloPeriodoSelecionado = rotuloPeriodo(
+    visaoPeriodo,
+    periodo,
+    semestre,
+  );
 
   // Orçamento é a fonte primária.
-  const resumo = useResumoFuncao(anoSelecionado ?? 0, periodo);
+  const resumo = useResumoFuncao(anoSelecionado ?? 0, periodoSelecionado);
   const indicadores = useIndicadoresFiscais({ exercicio: anoSelecionado });
   const municipio = useDadosMunicipio(anoSelecionado ?? 0);
 
@@ -314,11 +355,6 @@ export default function Dashboard() {
   const loadingOrcamento = resumo.isLoading;
 
   const dadosMun = municipio.data;
-  const periodoLabel = periodo
-    ? `Bimestre ${periodo}`
-    : resumo.data?.length
-      ? "bimestre mais recente"
-      : null;
 
   return (
     <div className="space-y-10 animate-fade-up">
@@ -329,13 +365,16 @@ export default function Dashboard() {
           <>
             Execução orçamentária, indicadores fiscais e contratos de{" "}
             {dadosMun?.nome_municipio ?? "Jequié"} ({dadosMun?.uf ?? "BA"})
-            {periodoLabel ? (
+            {anoSelecionado ? (
               <>
                 <span className="text-text-muted"> · </span>
                 <span className="font-mono text-text-primary">
                   {anoSelecionado ?? "—"}
                 </span>
-                <span className="text-text-muted"> · {periodoLabel}</span>
+                <span className="text-text-muted">
+                  {" "}
+                  · {rotuloPeriodoSelecionado}
+                </span>
               </>
             ) : null}
             .
@@ -352,6 +391,7 @@ export default function Dashboard() {
                 onChange={(e) => {
                   setExercicio(Number(e.target.value));
                   setPeriodo(undefined);
+                  setSemestre(2);
                 }}
                 className="field-select"
                 disabled={exerciciosDisponiveis.length === 0}
@@ -368,32 +408,66 @@ export default function Dashboard() {
             </label>
             <label className="flex items-center gap-2 text-sm">
               <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
-                Bimestre
+                Visão
               </span>
               <select
-                value={periodo ?? ""}
-                onChange={(e) =>
-                  setPeriodo(
-                    e.target.value === "" ? undefined : Number(e.target.value),
-                  )
-                }
+                value={visaoPeriodo}
+                onChange={(e) => setVisaoPeriodo(e.target.value as VisaoPeriodo)}
                 className="field-select"
               >
-                <option value="">Mais recente</option>
-                {BIMESTRES.map((b) => (
-                  <option key={b} value={b}>
-                    B{b}
-                  </option>
-                ))}
+                <option value="anual">Anual</option>
+                <option value="semestral">Semestral</option>
+                <option value="bimestral">Bimestral</option>
               </select>
             </label>
+            {visaoPeriodo === "semestral" && (
+              <label className="flex items-center gap-2 text-sm">
+                <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
+                  Semestre
+                </span>
+                <select
+                  value={semestre}
+                  onChange={(e) => setSemestre(Number(e.target.value) as 1 | 2)}
+                  className="field-select"
+                >
+                  {SEMESTRES.map((s) => (
+                    <option key={s.valor} value={s.valor}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {visaoPeriodo === "bimestral" && (
+              <label className="flex items-center gap-2 text-sm">
+                <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
+                  Bimestre
+                </span>
+                <select
+                  value={periodo ?? ""}
+                  onChange={(e) =>
+                    setPeriodo(
+                      e.target.value === "" ? undefined : Number(e.target.value),
+                    )
+                  }
+                  className="field-select"
+                >
+                  <option value="">Mais recente</option>
+                  {BIMESTRES.map((b) => (
+                    <option key={b} value={b}>
+                      B{b}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
         }
       />
 
       <DataSourceStrip
         items={["RREO", "RGF/LRF", "IBGE", "PNCP"]}
-        note="Resumo operacional: orçamento como camada primária, contratos como camada de risco e contexto."
+        note="Valores do RREO são acumulados até o período selecionado; a visão semestral usa B3/B6 e a anual usa o acumulado mais recente."
       />
 
       {/* Hero KPIs */}
@@ -401,7 +475,7 @@ export default function Dashboard() {
         <HeroKpi
           label="Dotação atualizada"
           value={loadingOrcamento ? "—" : formatCompactBRL(totais.dotacao)}
-          sub="Orçamento aprovado até o bimestre"
+          sub={`Orçamento aprovado · ${rotuloPeriodoSelecionado}`}
           accentColor={tokens.neutral}
         />
         <HeroKpi
@@ -461,7 +535,7 @@ export default function Dashboard() {
               description={
                 <>
                   Não há valores de execução para {anoSelecionado ?? "—"}
-                  {periodo ? ` · B${periodo}` : ""}. Ajuste os filtros ou
+                  {` · ${rotuloPeriodoSelecionado}`}. Ajuste os filtros ou
                   confirme a ingestão do RREO no backend.
                 </>
               }
