@@ -145,6 +145,35 @@ class TestContratacoes:
         r = await client.get("/api/v1/contratacoes/", params={"busca": "ZZUNICO"})
         assert r.json()["total"] == 1
 
+    async def test_ordenar_contratacoes(self, client, db_session):
+        orgao = await _seed_orgao(db_session)
+        await _seed_contratacao(
+            db_session,
+            orgao,
+            pncp_id="sort-contratacao-a",
+            objeto="SORTCONTRATACAO Alpha",
+            valor_estimado=100,
+        )
+        await _seed_contratacao(
+            db_session,
+            orgao,
+            pncp_id="sort-contratacao-b",
+            objeto="SORTCONTRATACAO Beta",
+            valor_estimado=300,
+        )
+        await db_session.flush()
+
+        r = await client.get(
+            "/api/v1/contratacoes/",
+            params={
+                "busca": "SORTCONTRATACAO",
+                "ordenar_por": "valor_estimado",
+                "direcao": "desc",
+            },
+        )
+        valores = [item["valor_estimado"] for item in r.json()["dados"]]
+        assert valores == [300, 100]
+
     async def test_detalhe_com_contratos(self, client, db_session):
         orgao = await _seed_orgao(db_session)
         fornecedor = await _seed_fornecedor(db_session)
@@ -202,6 +231,35 @@ class TestContratos:
         r = await client.get("/api/v1/contratos/vencendo", params={"dias": 90})
         assert r.json()["total"] >= 2
 
+    async def test_ordenar_contratos(self, client, db_session):
+        fornecedor = await _seed_fornecedor(db_session)
+        await _seed_contrato(
+            db_session,
+            fornecedor,
+            pncp_id="sort-contrato-a",
+            objeto="SORTCONTRATO Alpha",
+            valor_inicial=100,
+        )
+        await _seed_contrato(
+            db_session,
+            fornecedor,
+            pncp_id="sort-contrato-b",
+            objeto="SORTCONTRATO Beta",
+            valor_inicial=300,
+        )
+        await db_session.flush()
+
+        r = await client.get(
+            "/api/v1/contratos/",
+            params={
+                "busca": "SORTCONTRATO",
+                "ordenar_por": "valor_inicial",
+                "direcao": "asc",
+            },
+        )
+        valores = [item["valor_inicial"] for item in r.json()["dados"]]
+        assert valores == [100, 300]
+
     async def test_detalhe_contrato_com_relacoes(self, client, db_session):
         orgao = await _seed_orgao(db_session)
         fornecedor = await _seed_fornecedor(db_session)
@@ -218,6 +276,33 @@ class TestContratos:
     async def test_contrato_404(self, client):
         r = await client.get("/api/v1/contratos/00000000-0000-0000-0000-000000000000")
         assert r.status_code == 404
+
+
+# ──────────────────────────────────────────
+# Fornecedores
+# ──────────────────────────────────────────
+
+
+class TestFornecedores:
+    async def test_ordenar_fornecedores(self, client, db_session):
+        db_session.add_all(
+            [
+                Fornecedor(cpf_cnpj="77000000000100", nome="SORTFORN ALFA", tipo="PJ"),
+                Fornecedor(cpf_cnpj="77000000000200", nome="SORTFORN ZETA", tipo="PF"),
+            ]
+        )
+        await db_session.flush()
+
+        r = await client.get(
+            "/api/v1/fornecedores/",
+            params={
+                "busca": "SORTFORN",
+                "ordenar_por": "nome",
+                "direcao": "desc",
+            },
+        )
+        nomes = [item["nome"] for item in r.json()["dados"]]
+        assert nomes == ["SORTFORN ZETA", "SORTFORN ALFA"]
 
 
 # ──────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
   Bar,
   BarChart,
@@ -9,7 +9,6 @@ import {
   PieChart,
   ResponsiveContainer,
   Tooltip,
-  Treemap,
   XAxis,
   YAxis,
 } from "recharts";
@@ -23,29 +22,68 @@ import {
   useResumoArrecadacao,
   useTopTributos,
 } from "@/api/hooks";
+import type {
+  AgregacaoEspecie,
+  PorReceitaContabil,
+  TopTributo,
+} from "@/api/types";
+import {
+  DataSourceStrip,
+  EmptyState,
+  PageHeader,
+} from "@/components/PageChrome";
 // `useArrecadacaoPorBanco` existe mas está oculto enquanto o drill-down
 // estiver desabilitado na ingestão. Para reabilitar, reimporte e
 // reintroduza a seção "Arrecadação por banco recebedor" (git histórico).
 import { formatBRL } from "@/lib/format";
-import { useChartTokens } from "@/lib/theme";
+import { useChartTokens, type ChartTokens } from "@/lib/theme-core";
 
 // Recharts precisa de cores hex resolvidas (SVG <rect fill>). Para séries
-// categóricas (espécie tributária, banco, tributo) derivamos uma escala
-// ordinal com tons de âmbar + neutros, preservando a identidade editorial.
+// categóricas, usamos uma escala BI sóbria e estável, com menos dominância
+// do verde para não confundir "receita" com "status OK".
 function useOrdinalScale(): string[] {
   const tokens = useChartTokens();
   return [
-    tokens.accent,
-    "#b37a0a",
-    "#f5d26e",
-    "#8a5f08",
-    tokens.neutral,
-    "#5c564d",
-    "#9a9386",
-    "#d4cec0",
-    "#3a3630",
-    "#7a7468",
+    tokens.transfer,
+    tokens.expense,
+    tokens.planned,
+    tokens.warning,
+    tokens.liquidated,
+    tokens.contract,
+    tokens.revenue,
+    tokens.danger,
+    tokens.textSecondary,
+    tokens.textMuted,
   ];
+}
+
+function revenueRankingPalette(tokens: ChartTokens): string[] {
+  return [
+    tokens.transfer,
+    tokens.expense,
+    tokens.planned,
+    tokens.warning,
+    tokens.liquidated,
+    tokens.contract,
+    tokens.revenue,
+    tokens.danger,
+    tokens.textSecondary,
+    tokens.textMuted,
+  ];
+}
+
+function corEspecie(especie: string, tokens: ChartTokens): string {
+  const nome = especie.toLowerCase();
+  if (nome.includes("transfer")) return tokens.transfer;
+  if (nome.includes("imposto")) return tokens.warning;
+  if (nome.includes("contribui")) return tokens.liquidated;
+  if (nome.includes("capital")) return tokens.revenue;
+  if (nome.includes("taxa")) return "#9a6a25";
+  if (nome.includes("servi")) return tokens.danger;
+  if (nome.includes("patrimonial")) return tokens.planned;
+  if (nome.includes("intra")) return tokens.expense;
+  if (nome.includes("não tribut")) return tokens.contract;
+  return tokens.textMuted;
 }
 
 const MESES_LABEL = [
@@ -75,27 +113,34 @@ function KpiCard({
   label,
   value,
   sub,
-  accent,
+  accentColor,
+  valueTone,
 }: {
   label: string;
   value: string;
   sub?: string;
-  accent?: boolean;
+  accentColor?: string;
+  valueTone?: string;
 }) {
   return (
     <div
-      className={`card-accent rounded-xl p-5 border transition-colors ${
-        accent
-          ? "bg-accent-500/[0.08] border-accent-500/30 hover:border-accent-500/55"
-          : "bg-surface-raised border-border hover:border-accent-500/30"
-      }`}
+      className="relative overflow-hidden rounded-xl border border-border bg-surface-raised p-4 transition-colors hover:border-accent-500/30 sm:p-5"
     >
+      {accentColor && (
+        <span
+          className="absolute inset-x-0 top-0 h-[2px]"
+          style={{
+            background: `linear-gradient(90deg, transparent 0%, ${accentColor} 50%, transparent 100%)`,
+          }}
+          aria-hidden
+        />
+      )}
       <p className="text-text-muted text-[10px] uppercase tracking-[0.15em] mb-2">
         {label}
       </p>
       <p
         className={`text-2xl font-semibold font-mono tabular-nums ${
-          accent ? "text-accent-ink" : "text-text-primary"
+          valueTone ?? "text-text-primary"
         }`}
       >
         {value}
@@ -110,32 +155,220 @@ function abreviar(texto: string, max: number): string {
   return texto.slice(0, max - 1) + "…";
 }
 
+function formatPct(valor: number | null | undefined): string {
+  if (valor == null || Number.isNaN(valor)) return "—";
+  return `${valor.toFixed(1)}%`;
+}
+
+function limitarPct(valor: number): number {
+  return Math.max(0, Math.min(100, valor));
+}
+
+interface SegmentoBarra {
+  label: string;
+  pct: number;
+  color: string;
+}
+
+function BarraSegmentada({ segmentos }: { segmentos: SegmentoBarra[] }) {
+  const visiveis = segmentos.filter((segmento) => segmento.pct > 0);
+  return (
+    <div className="space-y-2">
+      <div className="flex h-2.5 overflow-hidden rounded-full bg-surface-overlay">
+        {visiveis.map((segmento) => (
+          <div
+            key={segmento.label}
+            title={`${segmento.label}: ${formatPct(segmento.pct)}`}
+            style={{
+              width: `${limitarPct(segmento.pct)}%`,
+              backgroundColor: segmento.color,
+            }}
+          />
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10.5px] text-text-muted">
+        {visiveis.map((segmento) => (
+          <span key={segmento.label} className="inline-flex items-center gap-1.5">
+            <span
+              className="h-2 w-2 rounded-sm"
+              style={{ backgroundColor: segmento.color }}
+            />
+            {segmento.label} {formatPct(segmento.pct)}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const TONS_ANALISE = {
+  accent: "border-accent-500/30 bg-accent-500/[0.07] text-accent-ink",
+  success: "border-success-500/30 bg-success-500/[0.08] text-success-500",
+  warning: "border-warning-500/30 bg-warning-500/[0.08] text-warning-500",
+  danger: "border-danger-500/30 bg-danger-500/[0.08] text-danger-500",
+  neutral: "border-border bg-surface-raised text-text-primary",
+} as const;
+
+type TomAnalise = keyof typeof TONS_ANALISE;
+
+function AnaliseCard({
+  eyebrow,
+  title,
+  value,
+  detail,
+  tone = "neutral",
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  value: string;
+  detail: string;
+  tone?: TomAnalise;
+  children?: ReactNode;
+}) {
+  return (
+    <section className={`rounded-xl border p-4 ${TONS_ANALISE[tone]}`}>
+      <p className="font-mono text-[10px] uppercase tracking-[0.18em] opacity-75">
+        {eyebrow}
+      </p>
+      <div className="mt-2 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold text-text-primary">{title}</h3>
+          <p className="mt-1 font-mono text-2xl tabular-nums">{value}</p>
+        </div>
+      </div>
+      <p className="mt-2 text-xs leading-snug text-text-secondary">{detail}</p>
+      {children && <div className="mt-3">{children}</div>}
+    </section>
+  );
+}
+
+function classificarConcentracao(top3Pct: number): {
+  label: string;
+  tone: TomAnalise;
+} {
+  if (top3Pct >= 60) return { label: "alta", tone: "warning" };
+  if (top3Pct >= 40) return { label: "moderada", tone: "accent" };
+  return { label: "baixa", tone: "success" };
+}
+
+function somaPctTop(tributos: TopTributo[], limite: number, inicio = 0): number {
+  return tributos
+    .slice(inicio, limite)
+    .reduce((acc, tributo) => acc + (tributo.pct ?? 0), 0);
+}
+
+function receitaOrigem(especies: AgregacaoEspecie[]) {
+  const transferencias = especies
+    .filter((item) => item.especie === "Transferências")
+    .reduce((acc, item) => acc + item.valor, 0);
+  const propria = especies
+    .filter((item) =>
+      [
+        "Impostos",
+        "Taxas",
+        "Contribuição de Melhoria",
+        "Contribuições",
+        "Patrimonial",
+        "Serviços",
+        "Agropecuária",
+        "Industrial",
+      ].includes(item.especie),
+    )
+    .reduce((acc, item) => acc + item.valor, 0);
+  const total = especies.reduce((acc, item) => acc + item.valor, 0);
+  const outras = Math.max(total - transferencias - propria, 0);
+  return {
+    propria,
+    transferencias,
+    outras,
+    propriaPct: total > 0 ? (propria / total) * 100 : 0,
+    transferenciasPct: total > 0 ? (transferencias / total) * 100 : 0,
+    outrasPct: total > 0 ? (outras / total) * 100 : 0,
+  };
+}
+
+interface VariacaoReceita {
+  descricao: string;
+  atual: number;
+  anterior: number;
+  delta: number;
+  pct: number | null;
+}
+
+function maioresVariacoesYoY(
+  receitas: PorReceitaContabil[],
+  anoAtual: number,
+): VariacaoReceita[] {
+  const anoAnterior = anoAtual - 1;
+  return receitas
+    .map((receita) => {
+      const atual = receita.por_ano[String(anoAtual)] ?? 0;
+      const anterior = receita.por_ano[String(anoAnterior)] ?? 0;
+      const delta = atual - anterior;
+      return {
+        descricao: receita.descricao_receita || receita.cod_item_receita,
+        atual,
+        anterior,
+        delta,
+        pct: anterior > 0 ? (delta / anterior) * 100 : null,
+      };
+    })
+    .filter((receita) => receita.atual > 0 || receita.anterior > 0)
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+    .slice(0, 3);
+}
+
+function formatVariacaoPct(variacao: VariacaoReceita): string {
+  if (variacao.pct == null) return variacao.atual > 0 ? "novo item" : "—";
+  return `${variacao.pct >= 0 ? "+" : ""}${variacao.pct.toFixed(1)}%`;
+}
+
 export default function Arrecadacao() {
   const anoCorrente = new Date().getFullYear();
-  const [exercicio, setExercicio] = useState(anoCorrente);
+  const [exercicio, setExercicio] = useState<number | undefined>(undefined);
 
   // Intervalo default para a seção histórica: 2020 até o exercício atual.
   const [anoInicio, setAnoInicio] = useState(2020);
-  const [anoFim, setAnoFim] = useState(anoCorrente);
+  const [anoFim, setAnoFim] = useState<number | undefined>(undefined);
 
-  const resumo = useResumoArrecadacao(exercicio);
   const porExercicio = useArrecadacaoPorExercicio();
-  const porMes = useArrecadacaoPorMes(exercicio);
-  const porEspecie = useArrecadacaoPorEspecie(exercicio);
-  const topTributos = useTopTributos(exercicio, 10);
   const anoEspecie = useArrecadacaoAnoEspecie();
-  const porReceitaHist = useArrecadacaoPorReceita(anoInicio, anoFim, 30);
-  const mesXAno = useArrecadacaoMesXAno(anoInicio, anoFim);
 
   const tokens = useChartTokens();
   const escala = useOrdinalScale();
+  const chartPalette = revenueRankingPalette(tokens);
 
   // Exercícios disponíveis extraídos da série anual.
   const exerciciosDisponiveis = useMemo(() => {
     const anos = (porExercicio.data ?? []).map((d) => d.exercicio);
-    if (anos.length === 0) return [exercicio];
-    return Array.from(new Set([...anos, exercicio])).sort((a, b) => b - a);
-  }, [porExercicio.data, exercicio]);
+    if (anos.length === 0) return [anoCorrente];
+    return Array.from(new Set(anos)).sort((a, b) => b - a);
+  }, [porExercicio.data, anoCorrente]);
+
+  const exercicioSelecionado =
+    exercicio ?? exerciciosDisponiveis[0] ?? anoCorrente;
+  const anoFimSelecionado = anoFim ?? exerciciosDisponiveis[0] ?? anoCorrente;
+  const anoMaximoDisponivel = Math.max(
+    anoCorrente,
+    ...exerciciosDisponiveis,
+  );
+
+  const resumo = useResumoArrecadacao(exercicioSelecionado);
+  const porMes = useArrecadacaoPorMes(exercicioSelecionado);
+  const porEspecie = useArrecadacaoPorEspecie(exercicioSelecionado);
+  const topTributos = useTopTributos(exercicioSelecionado, 100);
+  const porReceitaHist = useArrecadacaoPorReceita(
+    anoInicio,
+    anoFimSelecionado,
+    30,
+  );
+  const porReceitaYoY = useArrecadacaoPorReceita(
+    exercicioSelecionado - 1,
+    exercicioSelecionado,
+    100,
+  );
+  const mesXAno = useArrecadacaoMesXAno(anoInicio, anoFimSelecionado);
 
   // Prepara dados de barras empilhadas ano × espécie.
   const barrasEmpilhadas = useMemo(() => {
@@ -165,27 +398,57 @@ export default function Arrecadacao() {
       valor: mapa.get(i + 1) ?? 0,
     }));
   }, [porMes.data]);
-
-  const treemapData = useMemo(
-    () =>
-      (topTributos.data ?? []).map((t) => ({
-        name: abreviar(t.descricao_receita, 32),
-        value: t.valor,
-        descricaoCompleta: t.descricao_receita,
-        cod: t.cod_item_receita,
-        pct: t.pct,
-      })),
+  const top10Tributos = useMemo(
+    () => (topTributos.data ?? []).slice(0, 10),
     [topTributos.data],
+  );
+  const concentracao = useMemo(() => {
+    const tributos = topTributos.data ?? [];
+    const top1Pct = somaPctTop(tributos, 1);
+    const top3Pct = somaPctTop(tributos, 3);
+    const top5Pct = somaPctTop(tributos, 5);
+    return {
+      top1Pct,
+      top3Pct,
+      top5Pct,
+      rating: classificarConcentracao(top3Pct),
+      segmentos: [
+        { label: "1º", pct: top1Pct, color: escala[0] },
+        { label: "2º–3º", pct: somaPctTop(tributos, 3, 1), color: escala[1] },
+        { label: "4º–5º", pct: somaPctTop(tributos, 5, 3), color: escala[2] },
+        { label: "Demais", pct: Math.max(100 - top5Pct, 0), color: escala[5] },
+      ],
+    };
+  }, [topTributos.data, escala]);
+
+  const origem = useMemo(
+    () => receitaOrigem(porEspecie.data ?? []),
+    [porEspecie.data],
+  );
+
+  const realizacao = useMemo(() => {
+    const arrecadado = resumo.data?.total_arrecadado ?? 0;
+    const previsto = resumo.data?.total_previsto ?? null;
+    const pct = resumo.data?.pct_realizacao ?? null;
+    const diferenca = previsto != null ? arrecadado - previsto : null;
+    const tone: TomAnalise =
+      pct == null ? "neutral" : pct >= 100 ? "success" : pct >= 85 ? "warning" : "danger";
+    return { arrecadado, previsto, pct, diferenca, tone };
+  }, [resumo.data]);
+
+  const variacoesYoY = useMemo(
+    () => maioresVariacoesYoY(porReceitaYoY.data ?? [], exercicioSelecionado),
+    [porReceitaYoY.data, exercicioSelecionado],
   );
 
   // Seção histórica: anos cobertos pelo intervalo atual.
   const anosRange = useMemo(() => {
-    const ini = Math.min(anoInicio, anoFim);
-    const fim = Math.max(anoInicio, anoFim);
+    const ini = Math.min(anoInicio, anoFimSelecionado);
+    const fim = Math.max(anoInicio, anoFimSelecionado);
     const out: number[] = [];
     for (let a = ini; a <= fim; a++) out.push(a);
     return out;
-  }, [anoInicio, anoFim]);
+  }, [anoInicio, anoFimSelecionado]);
 
   // Pivot mês × ano: um registro por mês com campos `${ano}` para cada barra.
   const barrasMesXAno = useMemo(() => {
@@ -203,25 +466,24 @@ export default function Arrecadacao() {
   }, [mesXAno.data]);
 
   return (
-    <div className="space-y-8 animate-fade-up">
-      {/* Header + filtros */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="font-display text-4xl tracking-tight text-text-primary">
-            Arrecadação
-          </h1>
-          <p className="text-text-secondary text-sm mt-2">
-            Receitas tributárias municipais · fonte: Portal da Transparência (Município Online)
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
+    <div className="space-y-6 animate-fade-up sm:space-y-8">
+      <PageHeader
+        eyebrow="Receita pública"
+        title="Arrecadação"
+        description={
+          <>
+            Receitas tributárias municipais por exercício, espécie, tributo e
+            mês. A série mensal exclui DCA anual para evitar picos artificiais
+            em dezembro.
+          </>
+        }
+        actions={
           <label className="flex items-center gap-2 text-sm">
             <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
               Exercício
             </span>
             <select
-              value={exercicio}
+              value={exercicioSelecionado}
               onChange={(e) => setExercicio(Number(e.target.value))}
               className="field-select"
             >
@@ -232,8 +494,13 @@ export default function Arrecadacao() {
               ))}
             </select>
           </label>
-        </div>
-      </div>
+        }
+      />
+
+      <DataSourceStrip
+        items={["Município Online", "SICONFI/DCA", "STN"]}
+        note="Valores previstos são colapsados por item e fonte para evitar duplicidade mensal."
+      />
 
       {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -241,7 +508,8 @@ export default function Arrecadacao() {
           label="Total arrecadado"
           value={formatCompact(resumo.data?.total_arrecadado ?? null)}
           sub={`${resumo.data?.n_tributos ?? 0} tributos`}
-          accent
+          accentColor={tokens.revenue}
+          valueTone="text-data-revenue"
         />
         <KpiCard
           label="Previsto (LOA atualizada)"
@@ -251,27 +519,39 @@ export default function Arrecadacao() {
               ? `${resumo.data.pct_realizacao.toFixed(1)}% realizado`
               : ""
           }
+          accentColor={tokens.planned}
         />
         <KpiCard
-          label={`Δ vs. ${exercicio - 1}`}
+          label={`Δ vs. ${exercicioSelecionado - 1}`}
           value={
             resumo.data?.delta_yoy != null
               ? `${resumo.data.delta_yoy >= 0 ? "+" : ""}${resumo.data.delta_yoy.toFixed(1)}%`
               : "—"
           }
           sub="variação ano a ano"
+          accentColor={
+            (resumo.data?.delta_yoy ?? 0) >= 0 ? tokens.revenue : tokens.warning
+          }
+          valueTone={
+            resumo.data?.delta_yoy == null
+              ? "text-text-primary"
+              : resumo.data.delta_yoy >= 0
+                ? "text-data-revenue"
+                : "text-warning-500"
+          }
         />
         <KpiCard
           label="Meses com registros"
           value={String((porMes.data ?? []).filter((m) => m.valor > 0).length)}
-          sub={`de 12 (${exercicio})`}
+          sub={`de 12 (${exercicioSelecionado})`}
+          accentColor={tokens.contract}
         />
       </div>
 
       {/* Grid 2x2: espécie, top-tributos, série anual, ano × espécie */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
         {/* Donut por espécie */}
-        <section className="card-accent bg-surface-raised border border-border rounded-xl p-6">
+        <section className="card-accent rounded-xl border border-border bg-surface-raised p-4 sm:p-6">
           <h2 className="font-display text-xl text-text-primary">
             Por espécie tributária
           </h2>
@@ -281,7 +561,10 @@ export default function Arrecadacao() {
           {porEspecie.isLoading ? (
             <p className="text-text-muted text-sm py-8">Carregando…</p>
           ) : (porEspecie.data ?? []).length === 0 ? (
-            <p className="text-text-muted text-sm py-8">Sem dados para {exercicio}.</p>
+            <EmptyState
+              title="Sem dados por espécie"
+              description={`Não há arrecadação classificada para ${exercicioSelecionado}.`}
+            />
           ) : (
             <ResponsiveContainer width="100%" height={320}>
               <PieChart>
@@ -293,10 +576,10 @@ export default function Arrecadacao() {
                   outerRadius={120}
                   paddingAngle={1}
                 >
-                  {(porEspecie.data ?? []).map((_, idx) => (
+                  {(porEspecie.data ?? []).map((item, idx) => (
                     <Cell
                       key={idx}
-                      fill={escala[idx % escala.length]}
+                      fill={corEspecie(item.especie, tokens)}
                       stroke={tokens.surfaceRaised}
                       strokeWidth={2}
                     />
@@ -328,7 +611,7 @@ export default function Arrecadacao() {
         </section>
 
         {/* Top 10 tributos */}
-        <section className="card-accent bg-surface-raised border border-border rounded-xl p-6">
+        <section className="card-accent rounded-xl border border-border bg-surface-raised p-4 sm:p-6">
           <h2 className="font-display text-xl text-text-primary">
             Top 10 tributos
           </h2>
@@ -337,17 +620,20 @@ export default function Arrecadacao() {
           </p>
           {topTributos.isLoading ? (
             <p className="text-text-muted text-sm py-8">Carregando…</p>
-          ) : (topTributos.data ?? []).length === 0 ? (
-            <p className="text-text-muted text-sm py-8">Sem dados para {exercicio}.</p>
+          ) : top10Tributos.length === 0 ? (
+            <EmptyState
+              title="Sem ranking de tributos"
+              description={`Nenhum item de receita foi encontrado para ${exercicioSelecionado}.`}
+            />
           ) : (
             <ResponsiveContainer width="100%" height={320}>
               <BarChart
-                data={(topTributos.data ?? []).map((t) => ({
+                data={top10Tributos.map((t) => ({
                   ...t,
                   label: abreviar(t.descricao_receita, 30),
                 }))}
                 layout="vertical"
-                margin={{ top: 6, right: 24, left: 120, bottom: 6 }}
+                margin={{ top: 6, right: 24, left: 0, bottom: 6 }}
               >
                 <CartesianGrid
                   strokeDasharray="3 3"
@@ -384,16 +670,23 @@ export default function Arrecadacao() {
                 />
                 <Bar
                   dataKey="valor"
-                  fill={tokens.accent}
+                  fill={chartPalette[0]}
                   radius={[0, 4, 4, 0]}
-                />
+                >
+                  {top10Tributos.map((_, idx) => (
+                    <Cell
+                      key={idx}
+                      fill={chartPalette[idx % chartPalette.length]}
+                    />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           )}
         </section>
 
         {/* Série anual */}
-        <section className="card-accent bg-surface-raised border border-border rounded-xl p-6">
+        <section className="card-accent rounded-xl border border-border bg-surface-raised p-4 sm:p-6">
           <h2 className="font-display text-xl text-text-primary">
             Arrecadação por exercício
           </h2>
@@ -427,14 +720,21 @@ export default function Arrecadacao() {
                   }}
                   formatter={(value: unknown) => [formatBRL(Number(value)), "Arrecadado"]}
                 />
-                <Bar dataKey="valor" fill={tokens.accent} radius={[6, 6, 0, 0]} />
+                <Bar dataKey="valor" fill={chartPalette[0]} radius={[6, 6, 0, 0]}>
+                  {(porExercicio.data ?? []).map((_, idx) => (
+                    <Cell
+                      key={idx}
+                      fill={chartPalette[(idx + 1) % chartPalette.length]}
+                    />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           )}
         </section>
 
         {/* Ano × espécie (empilhadas) */}
-        <section className="card-accent bg-surface-raised border border-border rounded-xl p-6">
+        <section className="card-accent rounded-xl border border-border bg-surface-raised p-4 sm:p-6">
           <h2 className="font-display text-xl text-text-primary">
             Ano × espécie
           </h2>
@@ -446,51 +746,69 @@ export default function Arrecadacao() {
           ) : barrasEmpilhadas.data.length === 0 ? (
             <p className="text-text-muted text-sm py-8">Sem dados.</p>
           ) : (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={barrasEmpilhadas.data}>
-                <CartesianGrid strokeDasharray="3 3" stroke={tokens.grid} vertical={false} />
-                <XAxis
-                  dataKey="exercicio"
-                  stroke={tokens.axis}
-                  tick={{ fill: tokens.tick, fontSize: 12, fontFamily: "JetBrains Mono" }}
-                />
-                <YAxis
-                  stroke={tokens.axis}
-                  tickFormatter={(v) => formatCompact(Number(v)).replace("R$ ", "")}
-                  tick={{ fill: tokens.tick, fontSize: 11 }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: tokens.surfaceRaised,
-                    border: `1px solid ${tokens.grid}`,
-                    borderRadius: 10,
-                    fontSize: 12,
-                  }}
-                  formatter={(value: unknown, name: unknown) => [
-                    formatBRL(Number(value)),
-                    String(name),
-                  ]}
-                />
-                <Legend wrapperStyle={{ fontSize: 11, color: tokens.textSecondary }} />
-                {barrasEmpilhadas.series.map((especie, idx) => (
-                  <Bar
-                    key={especie}
-                    dataKey={especie}
-                    stackId="especies"
-                    fill={escala[idx % escala.length]}
+            <div>
+              <ResponsiveContainer width="100%" height={292}>
+                <BarChart
+                  data={barrasEmpilhadas.data}
+                  margin={{ top: 8, right: 12, left: 0, bottom: 10 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke={tokens.grid} vertical={false} />
+                  <XAxis
+                    dataKey="exercicio"
+                    stroke={tokens.axis}
+                    tick={{ fill: tokens.tick, fontSize: 12, fontFamily: "JetBrains Mono" }}
                   />
+                  <YAxis
+                    stroke={tokens.axis}
+                    tickFormatter={(v) => formatCompact(Number(v)).replace("R$ ", "")}
+                    tick={{ fill: tokens.tick, fontSize: 11 }}
+                  />
+                  <Tooltip
+                    allowEscapeViewBox={{ y: true }}
+                    position={{ y: -36 }}
+                    contentStyle={{
+                      background: tokens.surfaceRaised,
+                      border: `1px solid ${tokens.grid}`,
+                      borderRadius: 10,
+                      fontSize: 12,
+                    }}
+                    wrapperStyle={{ zIndex: 20 }}
+                    formatter={(value: unknown, name: unknown) => [
+                      formatBRL(Number(value)),
+                      String(name),
+                    ]}
+                  />
+                  {barrasEmpilhadas.series.map((especie) => (
+                    <Bar
+                      key={especie}
+                      dataKey={especie}
+                      stackId="especies"
+                      fill={corEspecie(especie, tokens)}
+                    />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-2 text-[11px] text-text-secondary">
+                {barrasEmpilhadas.series.map((especie) => (
+                  <span key={especie} className="inline-flex items-center gap-1.5">
+                    <span
+                      className="h-2 w-2 rounded-sm"
+                      style={{ backgroundColor: corEspecie(especie, tokens) }}
+                    />
+                    {especie}
+                  </span>
                 ))}
-              </BarChart>
-            </ResponsiveContainer>
+              </div>
+            </div>
           )}
         </section>
       </div>
 
-      {/* Comparativo mensal + treemap */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <section className="card-accent bg-surface-raised border border-border rounded-xl p-6">
+      {/* Comparativo mensal + leitura analítica */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
+        <section className="card-accent rounded-xl border border-border bg-surface-raised p-4 sm:p-6">
           <h2 className="font-display text-xl text-text-primary">
-            Arrecadação mensal — {exercicio}
+            Arrecadação mensal — {exercicioSelecionado}
           </h2>
           <p className="text-xs text-text-muted mt-1 mb-4">
             Evolução da arrecadação ao longo do ano.
@@ -519,52 +837,222 @@ export default function Arrecadacao() {
               />
               <Bar
                 dataKey="valor"
-                fill={tokens.accent}
+                fill={chartPalette[0]}
                 radius={[4, 4, 0, 0]}
-              />
+              >
+                {serieMensal.map((_, idx) => (
+                  <Cell
+                    key={idx}
+                    fill={chartPalette[(idx + 2) % chartPalette.length]}
+                  />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </section>
-
-        <section className="card-accent bg-surface-raised border border-border rounded-xl p-6">
+        <section className="card-accent rounded-xl border border-border bg-surface-raised p-4 sm:p-6">
           <h2 className="font-display text-xl text-text-primary">
-            Mapa de tributos
+            Leituras rápidas da receita
           </h2>
           <p className="text-xs text-text-muted mt-1 mb-4">
-            Top-10 por área de contribuição.
+            Quatro ângulos para entender concentração, origem, execução e
+            mudanças recentes.
           </p>
-          {treemapData.length === 0 ? (
-            <p className="text-text-muted text-sm py-8">Sem dados para {exercicio}.</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={260}>
-              <Treemap
-                data={treemapData}
-                dataKey="value"
-                stroke={tokens.surfaceRaised}
-                fill={tokens.accent}
-                aspectRatio={4 / 3}
-              >
-                <Tooltip
-                  contentStyle={{
-                    background: tokens.surfaceRaised,
-                    border: `1px solid ${tokens.grid}`,
-                    borderRadius: 10,
-                    fontSize: 12,
-                  }}
-                  formatter={(value: unknown, _name: unknown, item: unknown) => {
-                    const payload = (item as { payload?: { descricaoCompleta?: string } })
-                      ?.payload;
-                    return [
-                      formatBRL(Number(value)),
-                      payload?.descricaoCompleta ?? "",
-                    ];
-                  }}
-                />
-              </Treemap>
-            </ResponsiveContainer>
-          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <AnaliseCard
+              eyebrow="Concentração"
+              title="Peso das maiores fontes"
+              value={formatPct(concentracao.top3Pct)}
+              detail={`Top 1: ${formatPct(concentracao.top1Pct)} · Top 5: ${formatPct(concentracao.top5Pct)} · concentração ${concentracao.rating.label}.`}
+              tone={concentracao.rating.tone}
+            >
+              <BarraSegmentada segmentos={concentracao.segmentos} />
+            </AnaliseCard>
+
+            <AnaliseCard
+              eyebrow="Origem"
+              title="Própria vs transferências"
+              value={`${formatPct(origem.propriaPct)} própria`}
+              detail={`Transferências somam ${formatCompact(origem.transferencias)}; receita própria soma ${formatCompact(origem.propria)}.`}
+              tone={origem.propriaPct >= origem.transferenciasPct ? "success" : "warning"}
+            >
+              <BarraSegmentada
+                segmentos={[
+                  { label: "Própria", pct: origem.propriaPct, color: tokens.revenue },
+                  {
+                    label: "Transferências",
+                    pct: origem.transferenciasPct,
+                    color: tokens.transfer,
+                  },
+                  { label: "Outras", pct: origem.outrasPct, color: tokens.planned },
+                ]}
+              />
+            </AnaliseCard>
+
+            <AnaliseCard
+              eyebrow="Execução"
+              title="Realizado vs previsto"
+              value={formatPct(realizacao.pct)}
+              detail={
+                realizacao.previsto
+                  ? `Arrecadado ${formatCompact(realizacao.arrecadado)} de ${formatCompact(realizacao.previsto)}; diferença ${formatBRL(realizacao.diferenca ?? 0)}.`
+                  : "Sem previsão disponível para comparar com a arrecadação."
+              }
+              tone={realizacao.tone}
+            >
+              <BarraSegmentada
+                segmentos={[
+                  {
+                    label: "Realizado",
+                    pct: limitarPct(realizacao.pct ?? 0),
+                    color: tokens.revenue,
+                  },
+                  {
+                    label: "A realizar",
+                    pct: Math.max(100 - limitarPct(realizacao.pct ?? 0), 0),
+                    color: tokens.grid,
+                  },
+                ]}
+              />
+            </AnaliseCard>
+
+            <AnaliseCard
+              eyebrow={`YoY ${exercicioSelecionado - 1}→${exercicioSelecionado}`}
+              title="Maiores variações"
+              value={
+                variacoesYoY[0]
+                  ? formatBRL(variacoesYoY[0].delta)
+                  : "—"
+              }
+              detail={
+                variacoesYoY[0]
+                  ? `Maior variação: ${abreviar(variacoesYoY[0].descricao, 42)} (${formatVariacaoPct(variacoesYoY[0])}).`
+                  : "Sem receitas comparáveis no intervalo."
+              }
+              tone={
+                variacoesYoY[0]?.delta == null
+                  ? "neutral"
+                  : variacoesYoY[0].delta >= 0
+                    ? "success"
+                    : "warning"
+              }
+            >
+              <div className="space-y-2">
+                {variacoesYoY.map((variacao) => (
+                  <div
+                    key={variacao.descricao}
+                    className="flex items-start justify-between gap-3 border-t border-border/50 pt-2 first:border-t-0 first:pt-0"
+                  >
+                    <span className="text-[11px] leading-snug text-text-secondary">
+                      {abreviar(variacao.descricao, 34)}
+                    </span>
+                    <span
+                      className={`shrink-0 text-right font-mono text-[11px] tabular-nums ${
+                        variacao.delta >= 0 ? "text-data-revenue" : "text-warning-500"
+                      }`}
+                    >
+                      {variacao.delta >= 0 ? "+" : ""}
+                      {formatBRL(variacao.delta)}
+                      <br />
+                      <span className="text-text-muted">
+                        {formatVariacaoPct(variacao)}
+                      </span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </AnaliseCard>
+          </div>
         </section>
       </div>
+      {/* Barras mensais empilhadas por ano */}
+      <section className="card-accent rounded-xl border border-border bg-surface-raised p-4 sm:p-6">
+        <div className="flex flex-wrap items-end justify-between gap-4 mb-4">
+          <div>
+            <h2 className="font-display text-xl text-text-primary">
+              Arrecadação mensal por ano
+            </h2>
+            <p className="text-xs text-text-muted mt-1">
+              Comparativo mês a mês, uma cor por exercício.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <label className="flex items-center gap-2">
+              <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
+                De
+              </span>
+              <input
+                type="number"
+                min={2000}
+                max={anoMaximoDisponivel}
+                value={anoInicio}
+                onChange={(e) => setAnoInicio(Number(e.target.value) || 2020)}
+                className="field-input w-24 px-3 py-1.5 text-center font-mono"
+              />
+            </label>
+            <label className="flex items-center gap-2">
+              <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
+                Até
+              </span>
+              <input
+                type="number"
+                min={2000}
+                max={anoMaximoDisponivel}
+                value={anoFimSelecionado}
+                onChange={(e) =>
+                  setAnoFim(Number(e.target.value) || anoMaximoDisponivel)
+                }
+                className="field-input w-24 px-3 py-1.5 text-center font-mono"
+              />
+            </label>
+          </div>
+        </div>
+        {mesXAno.isLoading ? (
+          <p className="text-text-muted text-sm py-8">Carregando…</p>
+        ) : (mesXAno.data ?? []).length === 0 ? (
+          <p className="text-text-muted text-sm py-8">
+            Sem dados no intervalo selecionado.
+          </p>
+        ) : (
+          <ResponsiveContainer width="100%" height={320}>
+            <BarChart data={barrasMesXAno}>
+              <CartesianGrid strokeDasharray="3 3" stroke={tokens.grid} vertical={false} />
+              <XAxis
+                dataKey="mes"
+                stroke={tokens.axis}
+                tick={{ fill: tokens.tick, fontSize: 11, fontFamily: "JetBrains Mono" }}
+              />
+              <YAxis
+                stroke={tokens.axis}
+                tickFormatter={(v) => formatCompact(Number(v)).replace("R$ ", "")}
+                tick={{ fill: tokens.tick, fontSize: 11 }}
+              />
+              <Tooltip
+                contentStyle={{
+                  background: tokens.surfaceRaised,
+                  border: `1px solid ${tokens.grid}`,
+                  borderRadius: 10,
+                  fontSize: 12,
+                }}
+                formatter={(value: unknown, name: unknown) => [
+                  formatBRL(Number(value)),
+                  String(name),
+                ]}
+              />
+              <Legend wrapperStyle={{ fontSize: 11, color: tokens.textSecondary }} />
+              {anosRange.map((ano, idx) => (
+                <Bar
+                  key={ano}
+                  dataKey={String(ano)}
+                  name={String(ano)}
+                  fill={escala[idx % escala.length]}
+                  radius={[3, 3, 0, 0]}
+                />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </section>
 
       {/* ────── Visão histórica plurianual (2º painel do sócio) ────── */}
       <div className="pt-4">
@@ -577,43 +1065,15 @@ export default function Arrecadacao() {
               Arrecadação por receita contábil ao longo dos anos.
             </p>
           </div>
-          <div className="flex items-center gap-3 text-sm">
-            <label className="flex items-center gap-2">
-              <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
-                De
-              </span>
-              <input
-                type="number"
-                min={2000}
-                max={anoCorrente}
-                value={anoInicio}
-                onChange={(e) => setAnoInicio(Number(e.target.value) || 2020)}
-                className="field-select w-24 text-center font-mono"
-              />
-            </label>
-            <label className="flex items-center gap-2">
-              <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
-                Até
-              </span>
-              <input
-                type="number"
-                min={2000}
-                max={anoCorrente}
-                value={anoFim}
-                onChange={(e) => setAnoFim(Number(e.target.value) || anoCorrente)}
-                className="field-select w-24 text-center font-mono"
-              />
-            </label>
-          </div>
         </div>
 
         {/* Tabela pivot por receita contábil */}
-        <section className="card-accent bg-surface-raised border border-border rounded-xl p-6 mb-6">
+        <section className="card-accent mb-6 rounded-xl border border-border bg-surface-raised p-4 sm:p-6">
           <h3 className="font-display text-xl text-text-primary">
             Arrecadação discriminada por receita
           </h3>
           <p className="text-xs text-text-muted mt-1 mb-4">
-            Top-30 receitas no intervalo {Math.min(anoInicio, anoFim)}–{Math.max(anoInicio, anoFim)},
+            Top-30 receitas no intervalo {Math.min(anoInicio, anoFimSelecionado)}–{Math.max(anoInicio, anoFimSelecionado)},
             ordenadas pelo total agregado.
           </p>
           {porReceitaHist.isLoading ? (
@@ -624,7 +1084,7 @@ export default function Arrecadacao() {
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="min-w-[48rem] text-sm">
                 <thead>
                   <tr className="border-b border-border text-left">
                     <th className="py-2 pr-4 font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted font-normal">
@@ -638,7 +1098,7 @@ export default function Arrecadacao() {
                         {ano}
                       </th>
                     ))}
-                    <th className="py-2 pl-3 font-mono text-[10px] uppercase tracking-[0.18em] text-accent-ink font-normal text-right">
+                    <th className="py-2 pl-3 font-mono text-[10px] uppercase tracking-[0.18em] text-data-revenue font-normal text-right">
                       Total
                     </th>
                   </tr>
@@ -666,7 +1126,7 @@ export default function Arrecadacao() {
                           </td>
                         );
                       })}
-                      <td className="py-2 pl-3 text-right font-mono tabular-nums text-accent-ink font-semibold">
+                      <td className="py-2 pl-3 text-right font-mono tabular-nums text-data-revenue font-semibold">
                         {formatCompact(linha.total)}
                       </td>
                     </tr>
@@ -674,61 +1134,6 @@ export default function Arrecadacao() {
                 </tbody>
               </table>
             </div>
-          )}
-        </section>
-
-        {/* Barras mensais empilhadas por ano */}
-        <section className="card-accent bg-surface-raised border border-border rounded-xl p-6">
-          <h3 className="font-display text-xl text-text-primary">
-            Arrecadação mensal por ano
-          </h3>
-          <p className="text-xs text-text-muted mt-1 mb-4">
-            Comparativo mês a mês, uma cor por exercício.
-          </p>
-          {mesXAno.isLoading ? (
-            <p className="text-text-muted text-sm py-8">Carregando…</p>
-          ) : (mesXAno.data ?? []).length === 0 ? (
-            <p className="text-text-muted text-sm py-8">
-              Sem dados no intervalo selecionado.
-            </p>
-          ) : (
-            <ResponsiveContainer width="100%" height={320}>
-              <BarChart data={barrasMesXAno}>
-                <CartesianGrid strokeDasharray="3 3" stroke={tokens.grid} vertical={false} />
-                <XAxis
-                  dataKey="mes"
-                  stroke={tokens.axis}
-                  tick={{ fill: tokens.tick, fontSize: 11, fontFamily: "JetBrains Mono" }}
-                />
-                <YAxis
-                  stroke={tokens.axis}
-                  tickFormatter={(v) => formatCompact(Number(v)).replace("R$ ", "")}
-                  tick={{ fill: tokens.tick, fontSize: 11 }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: tokens.surfaceRaised,
-                    border: `1px solid ${tokens.grid}`,
-                    borderRadius: 10,
-                    fontSize: 12,
-                  }}
-                  formatter={(value: unknown, name: unknown) => [
-                    formatBRL(Number(value)),
-                    String(name),
-                  ]}
-                />
-                <Legend wrapperStyle={{ fontSize: 11, color: tokens.textSecondary }} />
-                {anosRange.map((ano, idx) => (
-                  <Bar
-                    key={ano}
-                    dataKey={String(ano)}
-                    name={String(ano)}
-                    fill={escala[idx % escala.length]}
-                    radius={[3, 3, 0, 0]}
-                  />
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
           )}
         </section>
       </div>

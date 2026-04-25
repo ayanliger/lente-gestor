@@ -1,5 +1,13 @@
 import { useMemo, useRef, useState } from "react";
-import { type ChatResponse, type FonteCitada, useChat } from "@/api/chat";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import {
+  type ChatPayload,
+  type ChatResponse,
+  type FonteCitada,
+  useChat,
+} from "@/api/chat";
+import { DataSourceStrip, PageHeader } from "@/components/PageChrome";
 
 /**
  * Linha de mensagem: pergunta do usuário ou resposta do assistente.
@@ -19,33 +27,31 @@ const formatadorHora = new Intl.DateTimeFormat("pt-BR", {
   hour: "2-digit",
   minute: "2-digit",
 });
+function limitarTextoHistorico(texto: string, limite = 1200): string {
+  const limpo = texto.trim();
+  if (limpo.length <= limite) return limpo;
+  return `${limpo.slice(0, limite - 1).trimEnd()}…`;
+}
 
-/**
- * Divide o texto da resposta em segmentos: trechos de texto puro e
- * chips `[n]`. Retorna tokens consumíveis pelo render.
- */
-function segmentar(texto: string): Array<
-  | { tipo: "texto"; valor: string }
-  | { tipo: "chip"; indice: number }
-> {
-  const segmentos: Array<
-    | { tipo: "texto"; valor: string }
-    | { tipo: "chip"; indice: number }
-  > = [];
-  const regex = /\[(\d{1,2})\]/g;
-  let ultimo = 0;
-  let m: RegExpExecArray | null;
-  while ((m = regex.exec(texto)) !== null) {
-    if (m.index > ultimo) {
-      segmentos.push({ tipo: "texto", valor: texto.slice(ultimo, m.index) });
-    }
-    segmentos.push({ tipo: "chip", indice: Number(m[1]) });
-    ultimo = m.index + m[0].length;
-  }
-  if (ultimo < texto.length) {
-    segmentos.push({ tipo: "texto", valor: texto.slice(ultimo) });
-  }
-  return segmentos;
+function montarHistorico(mensagens: Mensagem[]): ChatPayload["historico"] {
+  return mensagens.slice(-6).map((mensagem) => ({
+    autor: mensagem.autor,
+    texto: limitarTextoHistorico(mensagem.texto),
+    fontes: (mensagem.fontes ?? [])
+      .map((fonte) => fonte.chave_unica)
+      .slice(0, 12),
+  }));
+}
+
+function prepararMarkdownComFontes(
+  texto: string,
+  fontesPorIndice: Map<number, FonteCitada>,
+): string {
+  return texto.replace(/\[(\d{1,2})\]/g, (marcador, indice) => {
+    const numero = Number(indice);
+    if (!fontesPorIndice.has(numero)) return marcador;
+    return `[${indice}](#fonte-${indice})`;
+  });
 }
 
 const ROTULO_FONTE: Record<string, string> = {
@@ -53,6 +59,8 @@ const ROTULO_FONTE: Record<string, string> = {
   INDICADOR_FISCAL: "Indicador fiscal",
   RESUMO_FUNCAO: "Execução por função",
   RESUMO_PCA: "PCA por função",
+  COBERTURA_DADOS: "Cobertura da base",
+  RANKING_DESPESA: "Ranking de despesas",
 };
 
 function rotuloFonte(fonte: string): string {
@@ -76,6 +84,8 @@ function FonteDrawer({
         return "/orcamento";
       case "resumo_pca":
         return "/orcamento";
+      case "ranking_despesa":
+        return "/orcamento";
       default:
         return null;
     }
@@ -89,8 +99,9 @@ function FonteDrawer({
         aria-hidden
       />
       <aside
-        className="w-full max-w-md overflow-y-auto bg-surface-raised border-l border-border p-6 animate-fade-up shadow-2xl"
+        className="w-full overflow-y-auto border-l border-border bg-surface-raised p-4 shadow-2xl animate-fade-up sm:max-w-md sm:p-6"
         role="dialog"
+        aria-modal="true"
         aria-label="Detalhes da fonte"
       >
         <div className="flex items-start justify-between gap-4 mb-4">
@@ -108,7 +119,7 @@ function FonteDrawer({
           <button
             type="button"
             onClick={onClose}
-            className="text-text-muted hover:text-text-primary transition-colors text-xl leading-none"
+            className="rounded-md px-2 py-1 text-text-muted hover:text-text-primary hover:bg-surface-overlay transition-colors text-xl leading-none"
             aria-label="Fechar"
           >
             ×
@@ -121,7 +132,7 @@ function FonteDrawer({
               <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted mb-2">
                 Metadados
               </p>
-              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+              <dl className="grid grid-cols-1 gap-x-3 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
                 {Object.entries(fonte.metadados).map(([k, v]) => (
                   <div key={k} className="contents">
                     <dt className="font-mono text-[11px] text-text-muted">
@@ -178,7 +189,7 @@ function MensagemUsuario({
 }) {
   return (
     <div className="flex flex-col items-end gap-1">
-      <div className="max-w-[80%] bg-accent-500/12 border border-accent-500/40 rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm text-text-primary whitespace-pre-wrap">
+      <div className="max-w-[92%] whitespace-pre-wrap rounded-2xl rounded-tr-sm border border-accent-500/40 bg-accent-500/12 px-4 py-2.5 text-sm text-text-primary sm:max-w-[80%]">
         {texto}
       </div>
       <span className="text-[10px] font-mono text-text-muted mr-2">
@@ -198,7 +209,7 @@ function MensagemAssistente({
   if (mensagem.recusou) {
     return (
       <div className="flex flex-col items-start gap-1">
-        <div className="max-w-[80%] bg-warning-500/[0.06] border border-warning-500/30 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-warning-500">
+        <div className="max-w-[92%] rounded-2xl rounded-tl-sm border border-warning-500/30 bg-warning-500/[0.06] px-4 py-3 text-sm text-warning-500 sm:max-w-[80%]">
           <p className="font-medium">
             Não tenho dados suficientes para responder com confiança.
           </p>
@@ -220,30 +231,106 @@ function MensagemAssistente({
   const fontesPorIndice = new Map(
     (mensagem.fontes ?? []).map((f) => [f.indice, f]),
   );
-  const segmentos = segmentar(mensagem.texto);
+  const markdown = prepararMarkdownComFontes(mensagem.texto, fontesPorIndice);
 
   return (
     <div className="flex flex-col items-start gap-1">
-      <div className="max-w-[85%] bg-surface-raised border border-border rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-text-primary leading-relaxed">
-        <p className="whitespace-pre-wrap">
-          {segmentos.map((s, i) =>
-            s.tipo === "texto" ? (
-              <span key={i}>{s.valor}</span>
-            ) : (() => {
-              const fonte = fontesPorIndice.get(s.indice);
-              if (!fonte) {
-                return <span key={i}>[{s.indice}]</span>;
+      <div className="max-w-[92%] rounded-2xl rounded-tl-sm border border-border bg-surface-raised px-4 py-3 text-sm leading-relaxed text-text-primary sm:max-w-[85%]">
+        <Markdown
+          remarkPlugins={[remarkGfm]}
+          skipHtml
+          components={{
+            p({ children }) {
+              return <p className="mb-3 last:mb-0">{children}</p>;
+            },
+            strong({ children }) {
+              return <strong className="font-semibold text-text-primary">{children}</strong>;
+            },
+            em({ children }) {
+              return <em className="italic text-text-primary">{children}</em>;
+            },
+            ul({ children }) {
+              return (
+                <ul className="my-3 list-disc space-y-1 pl-5 marker:text-accent-500">
+                  {children}
+                </ul>
+              );
+            },
+            ol({ children }) {
+              return (
+                <ol className="my-3 list-decimal space-y-1 pl-5 marker:text-accent-500">
+                  {children}
+                </ol>
+              );
+            },
+            li({ children }) {
+              return <li className="pl-1">{children}</li>;
+            },
+            blockquote({ children }) {
+              return (
+                <blockquote className="my-3 border-l-2 border-accent-500/50 pl-3 text-text-secondary">
+                  {children}
+                </blockquote>
+              );
+            },
+            a({ href, children }) {
+              const fonteMatch = href?.match(/^#fonte-(\d+)$/);
+              if (fonteMatch) {
+                const fonte = fontesPorIndice.get(Number(fonteMatch[1]));
+                if (fonte) {
+                  return <Chip fonte={fonte} onClick={() => onAbrirFonte(fonte)} />;
+                }
               }
               return (
-                <Chip
-                  key={i}
-                  fonte={fonte}
-                  onClick={() => onAbrirFonte(fonte)}
-                />
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-accent-ink underline decoration-accent-500/40 underline-offset-2 hover:text-accent-500"
+                >
+                  {children}
+                </a>
               );
-            })(),
-          )}
-        </p>
+            },
+            code({ className, children }) {
+              return (
+                <code
+                  className={`rounded bg-surface-overlay px-1.5 py-0.5 font-mono text-[0.9em] text-accent-ink ${
+                    className ?? ""
+                  }`}
+                >
+                  {children}
+                </code>
+              );
+            },
+            pre({ children }) {
+              return (
+                <pre className="my-3 overflow-x-auto rounded-lg border border-border bg-surface-overlay p-3 text-xs">
+                  {children}
+                </pre>
+              );
+            },
+            table({ children }) {
+              return (
+                <div className="my-3 overflow-x-auto rounded-lg border border-border">
+                  <table className="min-w-full text-left text-xs">{children}</table>
+                </div>
+              );
+            },
+            th({ children }) {
+              return (
+                <th className="border-b border-border bg-surface-overlay px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+                  {children}
+                </th>
+              );
+            },
+            td({ children }) {
+              return <td className="border-b border-border/60 px-3 py-2">{children}</td>;
+            },
+          }}
+        >
+          {markdown}
+        </Markdown>
 
         {mensagem.fontes && mensagem.fontes.length > 0 && (
           <div className="mt-4 pt-3 border-t border-border">
@@ -315,6 +402,7 @@ export default function Assistente() {
 
     const idUsuario = crypto.randomUUID();
     const idAssistente = crypto.randomUUID();
+    const historico = montarHistorico(mensagens);
 
     setMensagens((prev) => [
       ...prev,
@@ -327,7 +415,7 @@ export default function Assistente() {
     ]);
     setEntrada("");
 
-    chat.mutate(pergunta, {
+    chat.mutate({ pergunta, historico }, {
       onSuccess: (resp: ChatResponse) => {
         setMensagens((prev) => [
           ...prev,
@@ -374,25 +462,34 @@ export default function Assistente() {
   );
 
   return (
-    <div className="h-full flex flex-col animate-fade-up">
-      <header className="pb-6 border-b border-border">
-        <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-accent-ink mb-2">
-          Assistente
-        </p>
-        <h1 className="font-display text-3xl md:text-4xl tracking-tight text-text-primary leading-[1.05]">
-          Pergunte à sua base
-        </h1>
-        <p className="text-text-secondary text-sm mt-3 max-w-2xl">
-          Respostas em linguagem natural sobre orçamento, indicadores fiscais
-          e contratos de Jequié — <span className="text-text-primary">sempre com citação à fonte</span>.
-          Se o dado não está na base, o assistente recusa em vez de inventar.
-        </p>
-      </header>
+    <div className="flex min-h-[calc(100dvh-12rem)] flex-col animate-fade-up lg:h-full">
+      <div className="space-y-4 pb-6">
+        <PageHeader
+          eyebrow="Assistente"
+          title="Pergunte à sua base"
+          description={
+            <>
+              Respostas em linguagem natural sobre orçamento, indicadores
+              fiscais e contratos de Jequié —{" "}
+              <span className="text-text-primary">
+                sempre com citação à fonte
+              </span>
+              . Se o dado não está na base, o assistente recusa em vez de
+              inventar.
+            </>
+          }
+        />
+
+        <DataSourceStrip
+          items={["RAG", "pgvector", "RREO/RGF", "PNCP"]}
+          note="As fontes citadas abrem metadados e apontam para a página de origem quando possível."
+        />
+      </div>
 
       {/* Área de mensagens */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto py-6 space-y-4 min-h-0"
+        className="min-h-0 flex-1 space-y-4 overflow-y-auto py-4 sm:py-6"
       >
         {mensagens.length === 0 && (
           <div className="flex flex-col items-start gap-2">
@@ -429,10 +526,14 @@ export default function Assistente() {
         )}
 
         {chat.isPending && (
-          <div className="flex justify-start">
+          <div className="flex justify-start" role="status" aria-live="polite">
             <div className="bg-surface-raised border border-border rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-text-muted flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-accent-500 animate-pulse" />
-              pensando…
+              <span className="flex items-center gap-1" aria-hidden>
+                <span className="h-1.5 w-1.5 rounded-full bg-accent-500 animate-thinking-dot" />
+                <span className="h-1.5 w-1.5 rounded-full bg-accent-500 animate-thinking-dot [animation-delay:160ms]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-accent-500 animate-thinking-dot [animation-delay:320ms]" />
+              </span>
+              Pensando…
             </div>
           </div>
         )}
@@ -440,7 +541,7 @@ export default function Assistente() {
 
       {/* Input fixo embaixo */}
       <div className="pt-4 border-t border-border">
-        <div className="flex items-stretch gap-3">
+        <div className="flex flex-col items-stretch gap-3 sm:flex-row">
           <textarea
             value={entrada}
             onChange={(e) => setEntrada(e.target.value)}
@@ -450,6 +551,7 @@ export default function Assistente() {
                 enviar();
               }
             }}
+            aria-label="Pergunta para o assistente"
             placeholder="Faça uma pergunta sobre orçamento, LRF, PCA ou contratos…"
             rows={2}
             className="field-input resize-none flex-1"
@@ -458,14 +560,14 @@ export default function Assistente() {
             type="button"
             onClick={enviar}
             disabled={desabilitado}
-            className="shrink-0 w-28 rounded-lg bg-accent-500 text-lente-900 font-semibold text-sm tracking-wide hover:bg-accent-400 disabled:bg-surface-overlay disabled:text-text-muted disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1.5"
+            className="flex h-11 w-full shrink-0 items-center justify-center gap-1.5 rounded-lg bg-accent-500 text-sm font-semibold tracking-wide text-accent-contrast transition-colors hover:bg-accent-600 disabled:cursor-not-allowed disabled:bg-surface-overlay disabled:text-text-muted sm:w-28"
           >
             <span>Enviar</span>
             <span aria-hidden>→</span>
           </button>
         </div>
-        <p className="mt-2 text-[10px] font-mono uppercase tracking-wider text-text-muted">
-          Gemini 3.1 Flash Lite + pgvector · citação obrigatória · Enter envia, Shift+Enter quebra linha · 20 req/min
+        <p className="mt-2 text-[10px] font-mono uppercase leading-relaxed tracking-wider text-text-muted">
+          Gemini 3.1 Pro + pgvector · citação obrigatória · Enter envia, Shift+Enter quebra linha · 20 req/min
         </p>
       </div>
 

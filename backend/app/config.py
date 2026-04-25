@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     # servidos **apenas** via `global`; a 2.5 pro/flash funciona em ambos.
     # Mantemos como config separada pra permitir flexibilidade.
     gcp_location_generate: str = "global"
-    gemini_model: str = "gemini-3.1-flash-lite-preview"
+    gemini_model: str = "gemini-3.1-pro-preview"
     gemini_embedding_model: str = "gemini-embedding-2-preview"
     # Dimensão Matryoshka-truncada: permite HNSW no pgvector (limite de 2000 dims
     # em `vector`). Se mudar, rodar migração nova para ajustar a coluna/índice.

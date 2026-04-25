@@ -98,14 +98,18 @@ class TestDerivarSituacao:
 
 
 class TestCatalogoIndicadores:
-    def test_sete_indicadores_registrados(self):
+    def test_indicadores_registrados(self):
         codigos = {i.codigo for i in INDICADORES}
         esperados = {
             "DESPESA_PESSOAL_PCT_RCL",
             "DESPESA_PESSOAL_PRUDENCIAL",
+            "LIMITE_ALERTA_PESSOAL",
             "DIVIDA_CONSOLIDADA_PCT_RCL",
             "OP_CREDITO_PCT_RCL",
             "GARANTIAS_PCT_RCL",
+            "RESULTADO_PRIMARIO",
+            "RESULTADO_NOMINAL",
+            "SUFICIENCIA_FINANCEIRA_RP",
             "APLIC_MIN_SAUDE_PCT",
             "APLIC_MIN_EDUCACAO_PCT",
         }
@@ -115,11 +119,25 @@ class TestCatalogoIndicadores:
         por_codigo = {i.codigo: i for i in INDICADORES}
         assert por_codigo["DESPESA_PESSOAL_PCT_RCL"].limite_legal == Decimal("54")
         assert por_codigo["DESPESA_PESSOAL_PRUDENCIAL"].limite_legal == Decimal("51.3")
+        assert por_codigo["LIMITE_ALERTA_PESSOAL"].limite_legal == Decimal("48.6")
         assert por_codigo["DIVIDA_CONSOLIDADA_PCT_RCL"].limite_legal == Decimal("120")
         assert por_codigo["OP_CREDITO_PCT_RCL"].limite_legal == Decimal("16")
         assert por_codigo["GARANTIAS_PCT_RCL"].limite_legal == Decimal("22")
+        assert por_codigo["RESULTADO_PRIMARIO"].limite_legal == Decimal("0")
+        assert por_codigo["RESULTADO_NOMINAL"].limite_legal == Decimal("0")
+        assert por_codigo["SUFICIENCIA_FINANCEIRA_RP"].limite_legal == Decimal("0")
         assert por_codigo["APLIC_MIN_SAUDE_PCT"].limite_legal == Decimal("15")
         assert por_codigo["APLIC_MIN_EDUCACAO_PCT"].limite_legal == Decimal("25")
+
+    def test_unidades(self):
+        por_codigo = {i.codigo: i for i in INDICADORES}
+        # MONETARIO: resultados e suficiência RP
+        assert por_codigo["RESULTADO_PRIMARIO"].unidade == "MONETARIO"
+        assert por_codigo["RESULTADO_NOMINAL"].unidade == "MONETARIO"
+        assert por_codigo["SUFICIENCIA_FINANCEIRA_RP"].unidade == "MONETARIO"
+        # PERCENTUAL: demais
+        assert por_codigo["DESPESA_PESSOAL_PCT_RCL"].unidade == "PERCENTUAL"
+        assert por_codigo["LIMITE_ALERTA_PESSOAL"].unidade == "PERCENTUAL"
 
 
 # ──────────────────────────────────────────
@@ -212,12 +230,50 @@ class TestDerivarIndicadores:
             valor=Decimal("22.87"),
             periodo=6,
         )
+        # Resultado Primário: superávit de R$ 10M → deve virar OK (≥ piso 0).
+        await _seed_celula(
+            db_session,
+            orgao.id,
+            tipo_relatorio="RREO",
+            anexo="RREO-Anexo 06",
+            cod_conta="ResultadoPrimarioSemRPPSAcimaDaLinha",
+            coluna="VALOR",
+            conta="Resultado Primário",
+            valor=Decimal("10000000"),
+            periodo=6,
+        )
+        # Resultado Nominal: déficit → deve virar ABAIXO_MINIMO.
+        await _seed_celula(
+            db_session,
+            orgao.id,
+            tipo_relatorio="RREO",
+            anexo="RREO-Anexo 06",
+            cod_conta="ResultadoNominalAbaixoDaLinhaSemRPPS",
+            coluna="VALOR",
+            conta="Resultado Nominal",
+            valor=Decimal("-5000000"),
+            periodo=6,
+        )
+        # Suficiência Art. 42: disponibilidade positiva → OK.
+        await _seed_celula(
+            db_session,
+            orgao.id,
+            tipo_relatorio="RGF",
+            anexo="RGF-Anexo 06",
+            cod_conta="ValorTotalRestosAPagarDemonstrativoSimplificado",
+            coluna=(
+                "DISPONIBILIDADE DE CAIXA LÍQUIDA (APÓS A INSCRIÇÃO EM "
+                "RESTOS A PAGAR NÃO PROCESSADOS DO EXERCÍCIO)"
+            ),
+            conta="Valor Total",
+            valor=Decimal("15000000"),
+        )
         # Educação ausente propositalmente → deve virar SEM_DADO.
 
         stats = await derivar_indicadores_fiscais(exercicio=2024)
 
-        assert stats["total_indicadores"] == 7
-        assert stats["criados"] == 7
+        assert stats["total_indicadores"] == 11
+        assert stats["criados"] == 11
         assert stats["sem_dado"] == 1  # Educação
 
         # Verificar situacao caso a caso
@@ -229,15 +285,24 @@ class TestDerivarIndicadores:
         # Despesa pessoal 47.28 em limite 54 -> OK
         assert por_codigo["DESPESA_PESSOAL_PCT_RCL"].valor == Decimal("47.28")
         assert por_codigo["DESPESA_PESSOAL_PCT_RCL"].situacao == SIT_OK
-        # Prudencial 47.28 em limite 51.3 -> OK (47.28 < 51.3 * 0.9 = 46.17... na verdade
-        # 47.28 > 46.17 portanto ALERTA). 51.3 * 0.9 = 46.17 -> 47.28 >= 46.17 -> ALERTA.
+        # Prudencial 47.28 em limite 51.3 -> ALERTA (47.28 >= 51.3*0.9 = 46.17).
         assert por_codigo["DESPESA_PESSOAL_PRUDENCIAL"].situacao == SIT_ALERTA
+        # Limite de Alerta 47.28 em limite 48.6 -> ALERTA (47.28 >= 48.6*0.9 = 43.74).
+        assert por_codigo["LIMITE_ALERTA_PESSOAL"].situacao == SIT_ALERTA
         # Dívida 37.03 em limite 120 -> OK
         assert por_codigo["DIVIDA_CONSOLIDADA_PCT_RCL"].situacao == SIT_OK
         # Op crédito 0.02 em limite 16 -> OK
         assert por_codigo["OP_CREDITO_PCT_RCL"].situacao == SIT_OK
         # Garantias 0.00 em limite 22 -> OK
         assert por_codigo["GARANTIAS_PCT_RCL"].situacao == SIT_OK
+        # Resultado Primário superávit ≥ 0 -> OK
+        assert por_codigo["RESULTADO_PRIMARIO"].valor == Decimal("10000000")
+        assert por_codigo["RESULTADO_PRIMARIO"].situacao == SIT_OK
+        # Resultado Nominal déficit < 0 -> ABAIXO_MINIMO
+        assert por_codigo["RESULTADO_NOMINAL"].valor == Decimal("-5000000")
+        assert por_codigo["RESULTADO_NOMINAL"].situacao == SIT_ABAIXO_MINIMO
+        # Suficiência RP positiva ≥ 0 -> OK
+        assert por_codigo["SUFICIENCIA_FINANCEIRA_RP"].situacao == SIT_OK
         # Saúde 22.87 >= 15 -> OK
         assert por_codigo["APLIC_MIN_SAUDE_PCT"].valor == Decimal("22.87")
         assert por_codigo["APLIC_MIN_SAUDE_PCT"].situacao == SIT_OK
@@ -269,14 +334,14 @@ class TestDerivarIndicadores:
         )
 
         stats1 = await derivar_indicadores_fiscais(exercicio=2024)
-        assert stats1["criados"] == 7
+        assert stats1["criados"] == len(INDICADORES)
 
         # Atualizar valor e rederivar
         celula.valor = Decimal("55")  # excedido
         await db_session.flush()
 
         stats2 = await derivar_indicadores_fiscais(exercicio=2024)
-        assert stats2["atualizados"] == 7
+        assert stats2["atualizados"] == len(INDICADORES)
         assert stats2["criados"] == 0
 
         result = await db_session.execute(

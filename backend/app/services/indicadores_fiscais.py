@@ -4,21 +4,41 @@ Serviço de derivação dos indicadores fiscais (LRF + mínimos constitucionais)
 Lê células já ingeridas em `execucao_orcamentaria` (RGF e RREO) e popula
 `indicadores_fiscais` com valor, limite legal e situação calculada.
 
-Sete indicadores cobertos:
-- DESPESA_PESSOAL_PCT_RCL (RGF-Anexo 06, limite 54%)
-- DESPESA_PESSOAL_PRUDENCIAL (derivado; mesmo valor, limite 51,3%)
-- DIVIDA_CONSOLIDADA_PCT_RCL (RGF-Anexo 06, limite 120%)
-- OP_CREDITO_PCT_RCL (RGF-Anexo 06, limite 16%)
-- GARANTIAS_PCT_RCL (RGF-Anexo 06, limite 22%)
-- APLIC_MIN_SAUDE_PCT (RREO-Anexo 14, mínimo 15%)
-- APLIC_MIN_EDUCACAO_PCT (RREO-Anexo 08, mínimo 25%)
+Indicadores cobertos (11):
+
+LRF — Despesa com Pessoal (Art. 19-22 + 59 §1º IV):
+- DESPESA_PESSOAL_PCT_RCL        RGF-Anexo 06, limite 54% (Executivo)
+- DESPESA_PESSOAL_PRUDENCIAL     derivado, limite 51,3% (95% do teto)
+- LIMITE_ALERTA_PESSOAL          derivado, limite 48,6% (90% do teto)
+
+LRF — Endividamento:
+- DIVIDA_CONSOLIDADA_PCT_RCL     RGF-Anexo 06, limite 120%
+- OP_CREDITO_PCT_RCL             RGF-Anexo 06, limite 16%
+- GARANTIAS_PCT_RCL              RGF-Anexo 06, limite 22%
+
+LRF — Equilíbrio orçamentário (Art. 4º, 9º e 42):
+- RESULTADO_PRIMARIO             RREO-Anexo 06 (MONETARIO, piso 0)
+- RESULTADO_NOMINAL              RREO-Anexo 06 (MONETARIO, piso 0)
+- SUFICIENCIA_FINANCEIRA_RP      RGF-Anexo 06 (MONETARIO, piso 0 — Art. 42)
+
+Mínimos Constitucionais:
+- APLIC_MIN_SAUDE_PCT            RREO-Anexo 14, mínimo 15% (CF Art. 198)
+- APLIC_MIN_EDUCACAO_PCT         RREO-Anexo 08, mínimo 25% (CF Art. 212)
 
 Situação (ADR 10.3 — persistida, não derivada em consulta):
-- OK: valor < 90% do limite máximo
+- OK: valor < 90% do limite máximo (ou valor ≥ piso mínimo)
 - ALERTA: 90% ≤ valor < 100% do limite máximo
 - EXCEDIDO: valor ≥ limite máximo
-- ABAIXO_MINIMO: só para indicadores de aplicação mínima
+- ABAIXO_MINIMO: piso não atingido
 - SEM_DADO: quando não há linha-fonte em execucao_orcamentaria
+
+Indicadores MONETARIO com limite 0 (Resultado Primário/Nominal e
+Suficiência de RP) usam a heurística simplificada valor ≥ 0 = OK,
+valor < 0 = ABAIXO_MINIMO. Comparação com meta da LDO (caso do
+primário/nominal) não é modelada hoje — o sinal do valor já resume
+se o exercício fechou em superávit ou déficit, que é a leitura
+gerencial mais direta. Art. 42 tem semântica estrita (disponibilidade
+de caixa após inscrição em RP deve ser não-negativa).
 """
 
 from dataclasses import dataclass
@@ -91,6 +111,18 @@ INDICADORES: list[DefinicaoIndicador] = [
         coluna="% SOBRE A RCL AJUSTADA",
     ),
     DefinicaoIndicador(
+        codigo="LIMITE_ALERTA_PESSOAL",
+        descricao="Despesa com pessoal x limite de alerta (% da RCL ajustada)",
+        unidade="PERCENTUAL",
+        # LRF Art. 59 §1º IV: 90% do teto do art. 20 (54% * 0,9 = 48,6%).
+        limite_legal=Decimal("48.6"),
+        tipo_limite="MAXIMO",
+        fonte_relatorio="RGF",
+        anexo="RGF-Anexo 06",
+        cod_conta="DespesaTotalComPessoalDemonstrativoSimplificado",
+        coluna="% SOBRE A RCL AJUSTADA",
+    ),
+    DefinicaoIndicador(
         codigo="DIVIDA_CONSOLIDADA_PCT_RCL",
         descricao="Dívida consolidada líquida (% da RCL ajustada)",
         unidade="PERCENTUAL",
@@ -144,6 +176,49 @@ INDICADORES: list[DefinicaoIndicador] = [
         anexo="RREO-Anexo 08",
         cod_conta="AplicacaoTotalNoMinimoExigidoMDE",
         coluna="% Aplicado Até o Bimestre",
+    ),
+    # Equilíbrio fiscal (Art. 4º/9º LRF) — superávit ≥ 0 = OK, déficit = ABAIXO_MINIMO.
+    # LDO pode fixar meta negativa; a comparação com meta está fora de escopo
+    # no modelo atual (vide docstring do módulo).
+    DefinicaoIndicador(
+        codigo="RESULTADO_PRIMARIO",
+        descricao="Resultado primário (sem RPPS — acima da linha)",
+        unidade="MONETARIO",
+        limite_legal=Decimal("0"),
+        tipo_limite="MINIMO",
+        fonte_relatorio="RREO",
+        anexo="RREO-Anexo 06",
+        cod_conta="ResultadoPrimarioSemRPPSAcimaDaLinha",
+        coluna="VALOR",
+    ),
+    DefinicaoIndicador(
+        codigo="RESULTADO_NOMINAL",
+        descricao="Resultado nominal (sem RPPS — abaixo da linha)",
+        unidade="MONETARIO",
+        limite_legal=Decimal("0"),
+        tipo_limite="MINIMO",
+        fonte_relatorio="RREO",
+        anexo="RREO-Anexo 06",
+        cod_conta="ResultadoNominalAbaixoDaLinhaSemRPPS",
+        coluna="VALOR",
+    ),
+    # Art. 42 LRF — no último quadrimestre do mandato, disponibilidade de
+    # caixa líquida após inscrição em RP não processados não pode ser
+    # negativa. Fora do último ano, segue sendo um bom indicador de
+    # higiene fiscal.
+    DefinicaoIndicador(
+        codigo="SUFICIENCIA_FINANCEIRA_RP",
+        descricao="Suficiência financeira para Restos a Pagar (Art. 42 LRF)",
+        unidade="MONETARIO",
+        limite_legal=Decimal("0"),
+        tipo_limite="MINIMO",
+        fonte_relatorio="RGF",
+        anexo="RGF-Anexo 06",
+        cod_conta="ValorTotalRestosAPagarDemonstrativoSimplificado",
+        coluna=(
+            "DISPONIBILIDADE DE CAIXA LÍQUIDA (APÓS A INSCRIÇÃO EM "
+            "RESTOS A PAGAR NÃO PROCESSADOS DO EXERCÍCIO)"
+        ),
     ),
 ]
 

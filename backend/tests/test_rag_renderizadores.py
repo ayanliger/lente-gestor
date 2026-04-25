@@ -11,11 +11,15 @@ from app.models.orcamento import IndicadorFiscal
 from app.models.rag import FonteDocumento
 from app.services.rag.renderizadores import (
     LinhaResumoFuncao,
+    LinhaResumoNaturezaDespesa,
     LinhaResumoPCA,
+    LinhaResumoReceita,
     renderizar_contrato,
     renderizar_indicador_fiscal,
     renderizar_resumo_funcao,
+    renderizar_resumo_natureza_despesa,
     renderizar_resumo_pca,
+    renderizar_resumo_receita,
 )
 
 
@@ -154,3 +158,94 @@ def test_renderizar_resumo_pca_calcula_desvio():
     assert doc.metadados["pct_execucao"] == 120.0
     assert "120.0%" in doc.conteudo_texto
     assert "Em execução" in doc.conteudo_texto
+
+
+def test_renderizar_resumo_receita_calcula_pct_arrecadacao():
+    linha = LinhaResumoReceita(
+        exercicio=2024,
+        periodo=6,
+        categoria_codigo="ReceitaTributaria",
+        categoria_legivel="Tributária",
+        previsao_inicial=Decimal("50000000"),
+        previsao_atualizada=Decimal("60000000"),
+        arrecadado_no_bimestre=Decimal("10000000"),
+        arrecadado_ate_bimestre=Decimal("45000000"),  # 45M / 60M = 75%
+        saldo=Decimal("15000000"),
+    )
+
+    doc = renderizar_resumo_receita(linha)
+
+    assert doc.fonte == FonteDocumento.RESUMO_RECEITA
+    assert doc.chave_unica == "resumo_receita:2024:6:ReceitaTributaria"
+    assert doc.referencia_id is None  # agregado
+    assert doc.metadados["pct_arrecadacao"] == 75.0
+    assert doc.metadados["categoria_legivel"] == "Tributária"
+    assert "75.0%" in doc.conteudo_texto
+    assert "Tributária" in doc.conteudo_texto
+    assert "bimestre 6" in doc.conteudo_texto
+
+
+def test_renderizar_resumo_receita_sem_previsao_omite_pct():
+    """Previsão zero ou nula não pode gerar divisão por zero."""
+    linha = LinhaResumoReceita(
+        exercicio=2024,
+        periodo=1,
+        categoria_codigo="AlienacaoDeBens",
+        categoria_legivel="Alienação de Bens",
+        previsao_inicial=None,
+        previsao_atualizada=None,
+        arrecadado_no_bimestre=None,
+        arrecadado_ate_bimestre=Decimal("100"),
+        saldo=None,
+    )
+
+    doc = renderizar_resumo_receita(linha)
+
+    assert doc.metadados["pct_arrecadacao"] is None
+    assert "Percentual de realização" not in doc.conteudo_texto
+
+
+def test_renderizar_resumo_natureza_despesa_calcula_pct_execucao():
+    linha = LinhaResumoNaturezaDespesa(
+        exercicio=2024,
+        periodo=6,
+        natureza_codigo="PessoalEEncargosSociais",
+        natureza_legivel="Pessoal e Encargos Sociais",
+        dotacao_inicial=Decimal("400000000"),
+        dotacao_atualizada=Decimal("500000000"),
+        empenhado=Decimal("450000000"),  # 450M / 500M = 90%
+        liquidado=Decimal("440000000"),
+        saldo=Decimal("50000000"),
+    )
+
+    doc = renderizar_resumo_natureza_despesa(linha)
+
+    assert doc.fonte == FonteDocumento.RESUMO_NATUREZA_DESPESA
+    assert (
+        doc.chave_unica
+        == "resumo_natureza:2024:6:PessoalEEncargosSociais"
+    )
+    assert doc.referencia_id is None
+    assert doc.metadados["pct_execucao"] == 90.0
+    assert doc.metadados["natureza_legivel"] == "Pessoal e Encargos Sociais"
+    assert "90.0%" in doc.conteudo_texto
+    assert "Pessoal e Encargos Sociais" in doc.conteudo_texto
+
+
+def test_renderizar_resumo_natureza_despesa_capex_em_titulo():
+    linha = LinhaResumoNaturezaDespesa(
+        exercicio=2025,
+        periodo=3,
+        natureza_codigo="Investimentos",
+        natureza_legivel="Investimentos (CAPEX)",
+        dotacao_inicial=Decimal("30000000"),
+        dotacao_atualizada=Decimal("40000000"),
+        empenhado=Decimal("5000000"),
+        liquidado=Decimal("4000000"),
+        saldo=Decimal("35000000"),
+    )
+
+    doc = renderizar_resumo_natureza_despesa(linha)
+
+    assert "CAPEX" in doc.titulo
+    assert "2025/B3" in doc.titulo

@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import date, timedelta
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
@@ -13,6 +14,23 @@ from app.api.schemas import ContratoDetail, ContratoOut, PaginatedResponse
 from app.models.contratacoes import Contrato
 
 router = APIRouter(prefix="/contratos", tags=["Contratos"])
+
+CampoOrdenacaoContratos = Literal[
+    "numero_contrato",
+    "objeto",
+    "categoria",
+    "valor_inicial",
+    "data_fim_vigencia",
+]
+DirecaoOrdenacao = Literal["asc", "desc"]
+
+CAMPOS_ORDENACAO = {
+    "numero_contrato": Contrato.numero_contrato,
+    "objeto": Contrato.objeto,
+    "categoria": Contrato.categoria,
+    "valor_inicial": Contrato.valor_inicial,
+    "data_fim_vigencia": Contrato.data_fim_vigencia,
+}
 
 
 @router.get("/", response_model=PaginatedResponse[ContratoOut])
@@ -26,6 +44,11 @@ async def listar_contratos(
     busca: str | None = Query(None, description="Buscar no objeto do contrato"),
     pagina: int = Query(1, ge=1),
     tamanho_pagina: int = Query(50, ge=1, le=100),
+    ordenar_por: CampoOrdenacaoContratos = Query(
+        "data_fim_vigencia",
+        description="Coluna usada para ordenação",
+    ),
+    direcao: DirecaoOrdenacao = Query("asc", description="Direção da ordenação"),
     db: AsyncSession = Depends(get_db),
 ):
     """Lista contratos com filtros opcionais."""
@@ -54,10 +77,10 @@ async def listar_contratos(
 
     total = (await db.execute(count_query)).scalar_one()
     offset = (pagina - 1) * tamanho_pagina
+    coluna_ordenacao = CAMPOS_ORDENACAO[ordenar_por]
+    ordenacao = coluna_ordenacao.desc() if direcao == "desc" else coluna_ordenacao.asc()
     result = await db.execute(
-        query.order_by(Contrato.data_fim_vigencia.asc().nullslast())
-        .offset(offset)
-        .limit(tamanho_pagina)
+        query.order_by(ordenacao.nullslast()).offset(offset).limit(tamanho_pagina)
     )
 
     return PaginatedResponse(

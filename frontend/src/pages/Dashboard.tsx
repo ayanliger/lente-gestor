@@ -4,30 +4,68 @@ import {
   useContratos,
   useContratosVencendo,
   useDadosMunicipio,
+  useExerciciosOrcamento,
   useFornecedores,
   useIndicadoresFiscais,
   useResumoFuncao,
 } from "@/api/hooks";
 import type { IndicadorFiscal } from "@/api/types";
 import ComposicaoBar from "@/components/ComposicaoBar";
+import {
+  DataSourceStrip,
+  EmptyState,
+  PageHeader,
+} from "@/components/PageChrome";
 import { formatBRL } from "@/lib/format";
-import { useChartTokens, type ChartTokens } from "@/lib/theme";
+import { useChartTokens, type ChartTokens } from "@/lib/theme-core";
 
-// Paleta para a composição de despesa — derivada dos tokens do tema:
-// âmbar (acento), neutro escuro, semânticos e variações neutras. Todas
-// trocam automaticamente entre light/dark via `useChartTokens`.
+// Paleta para composição de despesa: mais cromática que os KPIs, pois este
+// painel precisa diferenciar várias funções sem depender só de comprimento.
 function paletaDespesa(t: ChartTokens): string[] {
   return [
-    t.accent, // destaque #1 — âmbar
-    t.neutral, // neutro de alto contraste
-    t.success, // verde semântico
-    t.warning, // laranja semântico
-    t.textSecondary, // cinza médio
-    t.textMuted, // cinza suave
+    t.transfer,
+    t.revenue,
+    "#7a4ea3",
+    t.warning,
+    "#1f7a8c",
+    t.danger,
+    t.expense,
+    t.liquidated,
+    t.contract,
+    t.planned,
   ];
 }
 
 const BIMESTRES = [1, 2, 3, 4, 5, 6];
+const SEMESTRES = [
+  { valor: 1, periodo: 3, label: "1º semestre" },
+  { valor: 2, periodo: 6, label: "2º semestre" },
+] as const;
+
+type VisaoPeriodo = "anual" | "semestral" | "bimestral";
+
+function periodoConsulta(
+  visao: VisaoPeriodo,
+  bimestre: number | undefined,
+  semestre: 1 | 2,
+): number | undefined {
+  if (visao === "bimestral") return bimestre;
+  if (visao === "semestral") return semestre === 1 ? 3 : 6;
+  return undefined;
+}
+
+function rotuloPeriodo(
+  visao: VisaoPeriodo,
+  bimestre: number | undefined,
+  semestre: 1 | 2,
+): string {
+  if (visao === "anual") return "anual acumulado";
+  if (visao === "semestral") {
+    const periodo = semestre === 1 ? 3 : 6;
+    return `${semestre}º semestre · até B${periodo}`;
+  }
+  return bimestre ? `Bimestre ${bimestre}` : "bimestre mais recente";
+}
 
 function formatCompactBRL(valor: number | null | undefined): string {
   if (valor == null) return "—";
@@ -35,6 +73,36 @@ function formatCompactBRL(valor: number | null | undefined): string {
   if (valor >= 1_000_000) return `R$ ${(valor / 1_000_000).toFixed(1)} mi`;
   if (valor >= 1_000) return `R$ ${(valor / 1_000).toFixed(1)} mil`;
   return formatBRL(valor);
+}
+function indicadorEhMonetario(ind: IndicadorFiscal): boolean {
+  return ind.unidade === "MONETARIO";
+}
+
+function indicadorUsaPiso(ind: IndicadorFiscal): boolean {
+  return indicadorEhMonetario(ind) || ind.codigo.startsWith("APLIC_MIN");
+}
+
+function formatIndicadorValor(ind: IndicadorFiscal): string {
+  if (ind.valor == null) return "—";
+  if (indicadorEhMonetario(ind)) return formatCompactBRL(ind.valor);
+  return `${ind.valor.toFixed(1)}%`;
+}
+
+function formatIndicadorLimite(ind: IndicadorFiscal): string | null {
+  if (ind.limite_legal == null) return null;
+  const rotulo = indicadorUsaPiso(ind) ? "piso" : "limite";
+  const valor = indicadorEhMonetario(ind)
+    ? formatCompactBRL(ind.limite_legal)
+    : `${ind.limite_legal.toFixed(1)}%`;
+  return `${rotulo} ${valor}`;
+}
+
+function formatIndicadorRazaoLimite(ind: IndicadorFiscal): string | null {
+  if (ind.valor == null || ind.limite_legal == null || ind.limite_legal <= 0) {
+    return null;
+  }
+  const pct = (ind.valor / ind.limite_legal) * 100;
+  return `${pct.toFixed(0)}% do ${indicadorUsaPiso(ind) ? "mínimo" : "teto"}`;
 }
 
 function HeroKpi({
@@ -52,28 +120,39 @@ function HeroKpi({
 }) {
   return (
     <div
-      className="relative rounded-xl p-6 border bg-surface-raised border-border overflow-hidden transition-colors hover:border-accent-500/40"
+      className="relative overflow-hidden rounded-xl border border-border bg-surface-raised p-4 transition-colors hover:border-accent-500/40 sm:p-6"
+      style={{
+        boxShadow: `inset 0 1px 0 color-mix(in oklab, ${accentColor} 32%, transparent)`,
+      }}
     >
-      {/* barra superior colorida identificando a métrica */}
       <span
-        className="absolute inset-x-0 top-0 h-[2px]"
+        className="pointer-events-none absolute inset-x-0 top-0 h-20 opacity-[0.35]"
         style={{
-          background: `linear-gradient(90deg, transparent 0%, ${accentColor} 50%, transparent 100%)`,
+          background: `linear-gradient(180deg, color-mix(in oklab, ${accentColor} 12%, transparent) 0%, transparent 78%)`,
         }}
         aria-hidden
       />
-      <p className="text-text-muted text-[10px] uppercase tracking-[0.18em] mb-3">
+      {/* barra superior colorida identificando a métrica */}
+      <span
+        className="absolute inset-x-0 top-0 h-[3px]"
+        style={{
+          background: `linear-gradient(90deg, transparent 0%, ${accentColor} 50%, transparent 100%)`,
+          boxShadow: `0 0 16px color-mix(in oklab, ${accentColor} 50%, transparent)`,
+        }}
+        aria-hidden
+      />
+      <p className="relative text-text-muted text-[10px] uppercase tracking-[0.18em] mb-3">
         {label}
       </p>
       <p
-        className={`font-mono tabular-nums text-[2.4rem] leading-none font-semibold ${
+        className={`relative font-mono tabular-nums text-3xl leading-none font-semibold sm:text-[2.4rem] ${
           valueTone ?? "text-text-primary"
         }`}
       >
         {value}
       </p>
       {sub && (
-        <p className="text-xs text-text-secondary mt-3 leading-snug">
+        <p className="relative text-xs text-text-secondary mt-3 leading-snug">
           {sub}
         </p>
       )}
@@ -85,10 +164,12 @@ function AlertRow({
   tone,
   title,
   detail,
+  to,
 }: {
   tone: "danger" | "warning";
   title: string;
   detail: string;
+  to?: string;
 }) {
   const classes =
     tone === "danger"
@@ -98,21 +179,43 @@ function AlertRow({
     tone === "danger" ? "bg-danger-500" : "bg-warning-500";
   const titleColor =
     tone === "danger" ? "text-danger-500" : "text-warning-500";
-
-  return (
-    <div
-      className={`flex items-start gap-3 rounded-lg border px-4 py-3 ${classes}`}
-    >
+  const content = (
+    <>
       <span
         className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${dot}`}
         aria-hidden
       />
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className={`text-sm font-medium ${titleColor}`}>{title}</p>
         <p className="text-[12.5px] text-text-secondary mt-0.5 leading-snug">
           {detail}
         </p>
       </div>
+    </>
+  );
+
+  if (to) {
+    return (
+      <Link
+        to={to}
+        className={`group flex items-start gap-3 rounded-lg border px-4 py-3 transition-colors hover:border-accent-500/40 hover:bg-surface-overlay focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/50 ${classes}`}
+      >
+        {content}
+        <span
+          className="mt-0.5 text-sm text-text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-accent-ink"
+          aria-hidden
+        >
+          →
+        </span>
+      </Link>
+    );
+  }
+
+  return (
+    <div
+      className={`flex items-start gap-3 rounded-lg border px-4 py-3 ${classes}`}
+    >
+      {content}
     </div>
   );
 }
@@ -122,6 +225,7 @@ interface AlertaItem {
   title: string;
   detail: string;
   key: string;
+  to?: string;
 }
 
 function derivarAlertas(
@@ -134,21 +238,21 @@ function derivarAlertas(
       lista.push({
         tone: "danger",
         title: `${ind.descricao}: limite ultrapassado`,
-        detail: `Valor apurado ${ind.valor?.toFixed(2) ?? "—"}% contra limite de ${ind.limite_legal?.toFixed(2) ?? "—"}%.`,
+        detail: `Valor apurado ${formatIndicadorValor(ind)} contra ${formatIndicadorLimite(ind) ?? "limite —"}.`,
         key: `excedido-${ind.id}`,
       });
     } else if (ind.situacao === "ABAIXO_MINIMO") {
       lista.push({
         tone: "danger",
         title: `${ind.descricao}: abaixo do mínimo constitucional`,
-        detail: `Aplicação em ${ind.valor?.toFixed(2) ?? "—"}% (mínimo ${ind.limite_legal?.toFixed(2) ?? "—"}%).`,
+        detail: `Valor apurado ${formatIndicadorValor(ind)} (${formatIndicadorLimite(ind) ?? "piso —"}).`,
         key: `abaixo-${ind.id}`,
       });
     } else if (ind.situacao === "ALERTA") {
       lista.push({
         tone: "warning",
         title: `${ind.descricao}: próximo do limite`,
-        detail: `Valor ${ind.valor?.toFixed(2) ?? "—"}% — monitorar para evitar extrapolação.`,
+        detail: `Valor ${formatIndicadorValor(ind)} — monitorar para evitar extrapolação.`,
         key: `alerta-${ind.id}`,
       });
     }
@@ -159,6 +263,7 @@ function derivarAlertas(
       title: `${vencendo} contrato(s) vencendo em 90 dias`,
       detail: "Avalie prorrogação, substituição ou encerramento antes do fim da vigência.",
       key: "vencendo",
+      to: "/contratos?vencendo=90",
     });
   }
   return lista;
@@ -169,22 +274,33 @@ function StatTileLink({
   label,
   value,
   hint,
+  accentColor,
+  valueClass = "text-text-primary",
 }: {
   to: string;
   label: string;
   value: string;
   hint: string;
+  accentColor: string;
+  valueClass?: string;
 }) {
   return (
     <Link
       to={to}
-      className="group flex flex-col justify-between gap-3 rounded-lg border border-border bg-surface-raised px-4 py-4 transition-colors hover:border-accent-500/40 hover:bg-surface-overlay"
+      className="group relative flex flex-col justify-between gap-3 overflow-hidden rounded-lg border border-border bg-surface-raised px-4 py-4 transition-colors hover:border-accent-500/40 hover:bg-surface-overlay"
     >
+      <span
+        className="absolute inset-x-0 top-0 h-[2px]"
+        style={{
+          background: `linear-gradient(90deg, transparent 0%, ${accentColor} 50%, transparent 100%)`,
+        }}
+        aria-hidden
+      />
       <div>
         <p className="text-text-muted text-[10px] uppercase tracking-[0.18em]">
           {label}
         </p>
-        <p className="mt-2 font-mono tabular-nums text-2xl text-text-primary">
+        <p className={`mt-2 font-mono tabular-nums text-2xl ${valueClass}`}>
           {value}
         </p>
       </div>
@@ -202,13 +318,29 @@ function StatTileLink({
 }
 
 export default function Dashboard() {
-  const [exercicio, setExercicio] = useState(2024);
+  const exerciciosQuery = useExerciciosOrcamento();
+  const exerciciosDisponiveis = exerciciosQuery.data ?? [];
+  const [exercicio, setExercicio] = useState<number | undefined>(undefined);
+  const [visaoPeriodo, setVisaoPeriodo] = useState<VisaoPeriodo>("anual");
   const [periodo, setPeriodo] = useState<number | undefined>(undefined);
+  const [semestre, setSemestre] = useState<1 | 2>(2);
+
+  const anoSelecionado = exercicio ?? exerciciosDisponiveis[0];
+  const periodoSelecionado = periodoConsulta(
+    visaoPeriodo,
+    periodo,
+    semestre,
+  );
+  const rotuloPeriodoSelecionado = rotuloPeriodo(
+    visaoPeriodo,
+    periodo,
+    semestre,
+  );
 
   // Orçamento é a fonte primária.
-  const resumo = useResumoFuncao(exercicio, periodo);
-  const indicadores = useIndicadoresFiscais({ exercicio });
-  const municipio = useDadosMunicipio(exercicio);
+  const resumo = useResumoFuncao(anoSelecionado ?? 0, periodoSelecionado);
+  const indicadores = useIndicadoresFiscais({ exercicio: anoSelecionado });
+  const municipio = useDadosMunicipio(anoSelecionado ?? 0);
 
   // Contratos entram como painel secundário.
   const contratos = useContratos({ tamanho_pagina: 1 });
@@ -233,29 +365,14 @@ export default function Dashboard() {
       0,
     );
 
-    // Top 6 por empenhado + "Outros" agregado.
     const ordenadas = [...dados]
       .filter((d) => (d.empenhado ?? 0) > 0)
       .sort((a, b) => (b.empenhado ?? 0) - (a.empenhado ?? 0));
-    const top = ordenadas.slice(0, 6);
-    const outros = ordenadas.slice(6);
-    const totalOutros = outros.reduce(
-      (acc, d) => acc + (d.empenhado ?? 0),
-      0,
-    );
-
-    const composicao = top.map((d, i) => ({
+    const composicao = ordenadas.map((d, i) => ({
       label: d.funcao,
       valor: d.empenhado ?? 0,
       color: paleta[i % paleta.length],
     }));
-    if (totalOutros > 0) {
-      composicao.push({
-        label: `Outros (${outros.length})`,
-        valor: totalOutros,
-        color: tokens.textMuted,
-      });
-    }
 
     return {
       totais: {
@@ -267,7 +384,7 @@ export default function Dashboard() {
       },
       composicao,
     };
-  }, [resumo.data, paleta, tokens]);
+  }, [resumo.data, paleta]);
 
   const alertas = useMemo(
     () => derivarAlertas(indicadores.data, vencendo.data?.total ?? 0),
@@ -289,90 +406,129 @@ export default function Dashboard() {
   const loadingOrcamento = resumo.isLoading;
 
   const dadosMun = municipio.data;
-  const periodoLabel = periodo
-    ? `Bimestre ${periodo}`
-    : resumo.data?.length
-      ? "bimestre mais recente"
-      : null;
 
   return (
-    <div className="space-y-10 animate-fade-up">
-      {/* Header + filtros */}
-      <header className="flex flex-wrap items-end justify-between gap-6">
-        <div>
-          <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-accent-ink mb-2">
-            Painel Municipal
-          </p>
-          <h1 className="font-display text-4xl md:text-5xl tracking-tight text-text-primary leading-[1.05]">
-            Visão Geral
-          </h1>
-          <p className="text-text-secondary text-sm mt-3 max-w-2xl">
+    <div className="space-y-6 animate-fade-up sm:space-y-10">
+      <PageHeader
+        eyebrow="Painel Municipal"
+        title="Visão Geral"
+        description={
+          <>
             Execução orçamentária, indicadores fiscais e contratos de{" "}
             {dadosMun?.nome_municipio ?? "Jequié"} ({dadosMun?.uf ?? "BA"})
-            {periodoLabel ? (
+            {anoSelecionado ? (
               <>
                 <span className="text-text-muted"> · </span>
                 <span className="font-mono text-text-primary">
-                  {exercicio}
+                  {anoSelecionado ?? "—"}
                 </span>
-                <span className="text-text-muted"> · {periodoLabel}</span>
+                <span className="text-text-muted">
+                  {" "}
+                  · {rotuloPeriodoSelecionado}
+                </span>
               </>
             ) : null}
             .
-          </p>
-        </div>
+          </>
+        }
+        actions={
+          <div className="flex flex-wrap items-center justify-start gap-3 sm:justify-end">
+            <label className="flex items-center gap-2 text-sm">
+              <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
+                Exercício
+              </span>
+              <select
+                value={anoSelecionado ?? ""}
+                onChange={(e) => {
+                  setExercicio(Number(e.target.value));
+                  setPeriodo(undefined);
+                  setSemestre(2);
+                }}
+                className="field-select"
+                disabled={exerciciosDisponiveis.length === 0}
+              >
+                {exerciciosDisponiveis.length === 0 && (
+                  <option value="">—</option>
+                )}
+                {exerciciosDisponiveis.map((ano) => (
+                  <option key={ano} value={ano}>
+                    {ano}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
+                Visão
+              </span>
+              <select
+                value={visaoPeriodo}
+                onChange={(e) => setVisaoPeriodo(e.target.value as VisaoPeriodo)}
+                className="field-select"
+              >
+                <option value="anual">Anual</option>
+                <option value="semestral">Semestral</option>
+                <option value="bimestral">Bimestral</option>
+              </select>
+            </label>
+            {visaoPeriodo === "semestral" && (
+              <label className="flex items-center gap-2 text-sm">
+                <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
+                  Semestre
+                </span>
+                <select
+                  value={semestre}
+                  onChange={(e) => setSemestre(Number(e.target.value) as 1 | 2)}
+                  className="field-select"
+                >
+                  {SEMESTRES.map((s) => (
+                    <option key={s.valor} value={s.valor}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {visaoPeriodo === "bimestral" && (
+              <label className="flex items-center gap-2 text-sm">
+                <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
+                  Bimestre
+                </span>
+                <select
+                  value={periodo ?? ""}
+                  onChange={(e) =>
+                    setPeriodo(
+                      e.target.value === "" ? undefined : Number(e.target.value),
+                    )
+                  }
+                  className="field-select"
+                >
+                  <option value="">Mais recente</option>
+                  {BIMESTRES.map((b) => (
+                    <option key={b} value={b}>
+                      B{b}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
+        }
+      />
 
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-sm">
-            <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
-              Exercício
-            </span>
-            <select
-              value={exercicio}
-              onChange={(e) => {
-                setExercicio(Number(e.target.value));
-                setPeriodo(undefined);
-              }}
-              className="field-select"
-            >
-              {[2024, 2023].map((ano) => (
-                <option key={ano} value={ano}>
-                  {ano}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-text-muted">
-              Bimestre
-            </span>
-            <select
-              value={periodo ?? ""}
-              onChange={(e) =>
-                setPeriodo(
-                  e.target.value === "" ? undefined : Number(e.target.value),
-                )
-              }
-              className="field-select"
-            >
-              <option value="">Mais recente</option>
-              {BIMESTRES.map((b) => (
-                <option key={b} value={b}>
-                  B{b}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </header>
+      <DataSourceStrip
+        items={["RREO", "RGF/LRF", "IBGE", "PNCP"]}
+        note="Valores do RREO são acumulados até o período selecionado; a visão semestral usa B3/B6 e a anual usa o acumulado mais recente."
+      />
 
       {/* Hero KPIs */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <HeroKpi
           label="Dotação atualizada"
           value={loadingOrcamento ? "—" : formatCompactBRL(totais.dotacao)}
-          sub="Orçamento aprovado até o bimestre"
-          accentColor={tokens.neutral}
+          sub={`Orçamento aprovado · ${rotuloPeriodoSelecionado}`}
+          accentColor={tokens.transfer}
+          valueTone="text-data-transfer"
         />
         <HeroKpi
           label="Empenhado"
@@ -382,8 +538,8 @@ export default function Dashboard() {
               ? "—"
               : `Liquidado: ${formatCompactBRL(totais.liquidado)}`
           }
-          accentColor={tokens.accent}
-          valueTone="text-accent-ink"
+          accentColor={tokens.warning}
+          valueTone="text-warning-500"
         />
         <HeroKpi
           label="Execução orçamentária"
@@ -405,14 +561,14 @@ export default function Dashboard() {
       {/* Composição da Despesa + LRF strip em duas colunas no desktop */}
       <section className="grid grid-cols-1 xl:grid-cols-[1.6fr_1fr] gap-5">
         {/* Composição da despesa por função */}
-        <div className="card-accent bg-surface-raised border border-border rounded-xl p-6">
-          <div className="flex items-baseline justify-between mb-4">
+        <div className="card-accent rounded-xl border border-border bg-surface-raised p-4 sm:p-6">
+          <div className="mb-4 flex flex-wrap items-start justify-between gap-3 sm:items-baseline">
             <div>
               <h2 className="font-display text-xl text-text-primary leading-none">
                 Composição da despesa
               </h2>
               <p className="text-xs text-text-muted mt-1.5">
-                Empenhado por função de governo · top 6 + agregado
+                Empenhado por função de governo · funções oficiais
               </p>
             </div>
             <Link
@@ -426,10 +582,16 @@ export default function Dashboard() {
           {loadingOrcamento ? (
             <p className="text-text-muted text-sm py-8">Carregando…</p>
           ) : composicao.length === 0 ? (
-            <p className="text-text-muted text-sm py-8">
-              Sem execução registrada para {exercicio}
-              {periodo ? ` · B${periodo}` : ""}.
-            </p>
+            <EmptyState
+              title="Sem execução registrada"
+              description={
+                <>
+                  Não há valores de execução para {anoSelecionado ?? "—"}
+                  {` · ${rotuloPeriodoSelecionado}`}. Ajuste os filtros ou
+                  confirme a ingestão do RREO no backend.
+                </>
+              }
+            />
           ) : (
             <div className="divide-y divide-border/40">
               {composicao.map((linha, i) => {
@@ -454,8 +616,8 @@ export default function Dashboard() {
         </div>
 
         {/* Indicadores LRF resumidos */}
-        <div className="card-accent bg-surface-raised border border-border rounded-xl p-6">
-          <div className="flex items-baseline justify-between mb-4">
+        <div className="card-accent rounded-xl border border-border bg-surface-raised p-4 sm:p-6">
+          <div className="mb-4 flex flex-wrap items-start justify-between gap-3 sm:items-baseline">
             <div>
               <h2 className="font-display text-xl text-text-primary leading-none">
                 Situação fiscal
@@ -475,9 +637,10 @@ export default function Dashboard() {
           {indicadores.isLoading ? (
             <p className="text-text-muted text-sm py-8">Carregando…</p>
           ) : (indicadores.data ?? []).length === 0 ? (
-            <p className="text-text-muted text-sm py-8">
-              Sem indicadores derivados para {exercicio}.
-            </p>
+            <EmptyState
+              title="Sem indicadores derivados"
+              description={`Nenhum indicador fiscal foi encontrado para ${anoSelecionado ?? "—"}. Quando a ingestão RGF/RREO estiver disponível, os limites aparecem aqui.`}
+            />
           ) : (
             <ul className="space-y-2.5">
               {indicadores.data!.map((ind) => {
@@ -490,9 +653,8 @@ export default function Dashboard() {
                         ? { bg: "bg-danger-500/10", border: "border-danger-500/30", text: "text-danger-500" }
                         : { bg: "bg-surface-overlay", border: "border-border", text: "text-text-muted" };
                 const pctLimite =
-                  ind.valor != null && ind.limite_legal && ind.limite_legal > 0
-                    ? (ind.valor / ind.limite_legal) * 100
-                    : null;
+                  formatIndicadorRazaoLimite(ind);
+                const limite = formatIndicadorLimite(ind);
                 return (
                   <li
                     key={ind.id}
@@ -505,15 +667,13 @@ export default function Dashboard() {
                       <span
                         className={`font-mono tabular-nums text-sm font-semibold shrink-0 ${tone.text}`}
                       >
-                        {ind.valor != null ? `${ind.valor.toFixed(1)}%` : "—"}
+                        {formatIndicadorValor(ind)}
                       </span>
                     </div>
-                    {ind.limite_legal != null && (
+                    {limite != null && (
                       <p className="text-[10.5px] text-text-muted mt-1 font-mono">
-                        limite {ind.limite_legal.toFixed(1)}%
-                        {pctLimite != null
-                          ? ` · ${pctLimite.toFixed(0)}% do teto`
-                          : ""}
+                        {limite}
+                        {pctLimite != null ? ` · ${pctLimite}` : ""}
                       </p>
                     )}
                   </li>
@@ -526,11 +686,11 @@ export default function Dashboard() {
 
       {/* Alertas */}
       {alertas.length > 0 && (
-        <section className="rounded-xl border border-danger-500/25 bg-danger-500/[0.05] p-6">
-          <div className="flex items-baseline justify-between mb-4">
+        <section className="rounded-xl border border-danger-500/25 bg-danger-500/[0.05] p-4 sm:p-6">
+          <div className="mb-4 flex flex-wrap items-start justify-between gap-3 sm:items-baseline">
             <h2 className="font-display text-xl text-text-primary leading-none flex items-center gap-3">
               <span
-                className="inline-block h-2 w-2 rounded-full bg-danger-500 shadow-[0_0_10px_rgba(220,38,38,0.6)]"
+                className="inline-block h-2 w-2 rounded-full bg-danger-500 shadow-[0_0_10px_rgba(184,66,66,0.52)]"
                 aria-hidden
               />
               Alertas
@@ -546,6 +706,7 @@ export default function Dashboard() {
                 tone={a.tone}
                 title={a.title}
                 detail={a.detail}
+                to={a.to}
               />
             ))}
           </div>
@@ -554,7 +715,7 @@ export default function Dashboard() {
 
       {/* Contratos & aquisições — secundário */}
       <section>
-        <div className="flex items-baseline justify-between mb-3">
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="font-display text-lg text-text-secondary">
             Contratos &amp; aquisições
           </h2>
@@ -563,12 +724,13 @@ export default function Dashboard() {
           </span>
         </div>
         <div className="divider-engraved mb-4" />
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <StatTileLink
             to="/contratos"
             label="Contratos firmados"
             value={contratos.data ? contratos.data.total.toLocaleString("pt-BR") : "—"}
             hint="abrir lista"
+            accentColor={tokens.contract}
           />
           <StatTileLink
             to="/fornecedores"
@@ -579,14 +741,17 @@ export default function Dashboard() {
                 : "—"
             }
             hint="abrir cadastro"
+            accentColor={tokens.planned}
           />
           <StatTileLink
-            to="/contratos"
+            to="/contratos?vencendo=90"
             label="Vencendo em 90 dias"
             value={
               vencendo.data ? vencendo.data.total.toLocaleString("pt-BR") : "—"
             }
             hint="revisar vigências"
+            accentColor={tokens.warning}
+            valueClass={vencendo.data?.total ? "text-warning-500" : "text-text-primary"}
           />
         </div>
       </section>

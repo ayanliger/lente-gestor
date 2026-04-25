@@ -49,6 +49,7 @@ async def buscar(
     fontes: Iterable[FonteDocumento] | None = None,
     limiar: float | None = None,
     fallback_minimo: int | None = None,
+    aplicar_limiar: bool = True,
 ) -> list[DocumentoRelevante]:
     """Busca top-K documentos mais similares à pergunta.
 
@@ -67,6 +68,9 @@ async def buscar(
         limiar: similaridade mínima ∈ [0,1]. `None` = usa settings.
         fallback_minimo: mínimo de docs a retornar mesmo sob limiar.
             `None` = usa settings.
+        aplicar_limiar: quando `False`, retorna os `k` candidatos ordenados
+            por similaridade sem descartar por limiar. Útil para perguntas
+            amplas em que breadth importa mais que precisão top-1.
     """
     settings = get_settings()
     limiar_efetivo = (
@@ -109,12 +113,16 @@ async def buscar(
             )
         )
 
-    acima_do_limiar = [d for d in todos if d.score >= limiar_efetivo]
-    if len(acima_do_limiar) >= fallback:
-        relevantes = acima_do_limiar
+    if not aplicar_limiar:
+        relevantes = todos
+        acima_do_limiar = [d for d in todos if d.score >= limiar_efetivo]
     else:
-        # Garante o piso mínimo usando os melhores disponíveis no total.
-        relevantes = todos[:fallback]
+        acima_do_limiar = [d for d in todos if d.score >= limiar_efetivo]
+        if len(acima_do_limiar) >= fallback:
+            relevantes = acima_do_limiar
+        else:
+            # Garante o piso mínimo usando os melhores disponíveis no total.
+            relevantes = todos[:fallback]
 
     logger.info(
         "rag.recuperacao",
@@ -124,9 +132,47 @@ async def buscar(
         qtd_retornados=len(relevantes),
         limiar=limiar_efetivo,
         fallback_minimo=fallback,
+        aplicar_limiar=aplicar_limiar,
         usou_fallback=len(acima_do_limiar) < fallback and len(todos) > 0,
     )
     return relevantes
 
 
-__all__ = ["DocumentoRelevante", "buscar"]
+async def buscar_por_chaves(
+    chaves: Iterable[str],
+    *,
+    db: AsyncSession,
+    score: float = 1.0,
+) -> list[DocumentoRelevante]:
+    """Busca documentos por `chave_unica`, preservando a ordem pedida."""
+    chaves_unicas = list(dict.fromkeys(chaves))
+    if not chaves_unicas:
+        return []
+
+    result = await db.execute(
+        select(DocumentoRag).where(DocumentoRag.chave_unica.in_(chaves_unicas))
+    )
+    por_chave = {doc.chave_unica: doc for doc in result.scalars().all()}
+
+    docs: list[DocumentoRelevante] = []
+    for chave in chaves_unicas:
+        doc = por_chave.get(chave)
+        if doc is None:
+            continue
+        docs.append(
+            DocumentoRelevante(
+                doc_id=doc.id,
+                fonte=doc.fonte,
+                referencia_tipo=doc.referencia_tipo,
+                referencia_id=doc.referencia_id,
+                chave_unica=doc.chave_unica,
+                titulo=doc.titulo,
+                conteudo_texto=doc.conteudo_texto,
+                metadados=dict(doc.metadados or {}),
+                score=score,
+            )
+        )
+    return docs
+
+
+__all__ = ["DocumentoRelevante", "buscar", "buscar_por_chaves"]

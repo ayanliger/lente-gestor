@@ -29,8 +29,14 @@ _ALIASES = {
     "indicador_fiscal": FonteDocumento.INDICADOR_FISCAL,
     "indicador": FonteDocumento.INDICADOR_FISCAL,
     "resumo_funcao": FonteDocumento.RESUMO_FUNCAO,
+    "funcao": FonteDocumento.RESUMO_FUNCAO,
     "resumo_pca": FonteDocumento.RESUMO_PCA,
     "pca": FonteDocumento.RESUMO_PCA,
+    "resumo_receita": FonteDocumento.RESUMO_RECEITA,
+    "receita": FonteDocumento.RESUMO_RECEITA,
+    "resumo_natureza_despesa": FonteDocumento.RESUMO_NATUREZA_DESPESA,
+    "natureza": FonteDocumento.RESUMO_NATUREZA_DESPESA,
+    "natureza_despesa": FonteDocumento.RESUMO_NATUREZA_DESPESA,
 }
 
 
@@ -57,7 +63,8 @@ def main() -> None:
         default=None,
         help=(
             "Subconjunto a reindexar. Opções: contrato, indicador_fiscal, "
-            "resumo_funcao, resumo_pca. Padrão: todas."
+            "resumo_funcao, resumo_pca, resumo_receita, "
+            "resumo_natureza_despesa. Padrão: todas."
         ),
     )
     parser.add_argument(

@@ -30,6 +30,12 @@ um dos documentos fornecidos e citada no formato [n], onde n é o número do \
 documento (1-based) conforme listado no contexto. Exemplo: "A despesa com \
 pessoal atingiu 47,28% da RCL em Q2/2024 [3]."
 
+1A. Os documentos fornecidos são um RECORTE recuperado para a pergunta, não \
+necessariamente a base completa. Nunca conclua que um dado está ausente da \
+base inteira apenas porque não apareceu nos documentos recuperados. Só faça \
+afirmações sobre cobertura, dados disponíveis ou lacunas quando houver um \
+documento de cobertura/inventário sustentando essa conclusão.
+
 2. SÍNTESE É BEM-VINDA. Perguntas amplas ("panorama", "visão geral", \
 "resumo", "como está o X") não precisam de um documento-resumo: você \
 combina os documentos específicos disponíveis (ex: somando empenhado de \
@@ -37,6 +43,11 @@ múltiplos RESUMO_FUNCAO, listando os principais contratos, agregando \
 indicadores). Cite cada documento usado no formato [n]. É perfeitamente \
 aceitável responder "com base nos dados disponíveis de X, Y e Z, o \
 panorama é ..." apontando o escopo coberto.
+
+2A. Para perguntas sobre "maiores gastos/despesas", quando houver um \
+documento de ranking estruturado de despesas, use-o como fonte principal. \
+Deixe explícito se o ranking é por função de governo ou por natureza \
+econômica, porque são eixos analíticos diferentes.
 
 3. Recuse com a palavra exata {MARCADOR_RECUSA} SOMENTE quando **nenhum** \
 dos documentos fornecidos trouxer dado pertinente à pergunta — não quando \
@@ -80,7 +91,12 @@ def build_system_prompt(data_referencia: date | None = None) -> str:
     return f"{cabecalho}\n\n{SYSTEM_PROMPT}"
 
 
-def montar_prompt_usuario(pergunta: str, docs: list[DocumentoRelevante]) -> str:
+def montar_prompt_usuario(
+    pergunta: str,
+    docs: list[DocumentoRelevante],
+    *,
+    historico: str = "",
+) -> str:
     """Monta o prompt do turno do usuário: pergunta + lista numerada de docs."""
     if not docs:
         contexto = "(nenhum documento relevante foi encontrado para esta pergunta)"
@@ -89,10 +105,14 @@ def montar_prompt_usuario(pergunta: str, docs: list[DocumentoRelevante]) -> str:
         for i, d in enumerate(docs, start=1):
             partes.append(f"[{i}] {d.titulo}\n{d.conteudo_texto}")
         contexto = "\n\n".join(partes)
+    bloco_historico = ""
+    if historico.strip():
+        bloco_historico = f"CONTEXTO RECENTE DA CONVERSA:\n{historico.strip()}\n\n"
 
     return (
+        f"{bloco_historico}"
         f"PERGUNTA DO GESTOR:\n{pergunta}\n\n"
-        f"DOCUMENTOS DISPONÍVEIS:\n{contexto}\n\n"
+        f"DOCUMENTOS RECUPERADOS PARA ESTA PERGUNTA:\n{contexto}\n\n"
         f"Responda seguindo as regras definidas no system prompt. "
         f"Lembre-se: se os documentos não respaldam uma resposta, devolva "
         f"apenas {MARCADOR_RECUSA}."

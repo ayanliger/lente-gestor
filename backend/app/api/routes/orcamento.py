@@ -12,13 +12,39 @@ from app.api.schemas import (
     ResumoFuncaoOut,
 )
 from app.models.orcamento import ExecucaoOrcamentaria, IndicadorFiscal
+from app.services.orcamento_funcoes import FUNCOES_GOVERNO
 
 router = APIRouter(prefix="/orcamento", tags=["Orçamento"])
 
 
-# ──────────────────────────────────────────
+# ───────────────────────────────────────────
+# Lista de exercícios disponíveis
+# ───────────────────────────────────────────
+
+
+@router.get("/exercicios", response_model=list[int])
+async def listar_exercicios_disponiveis(
+    tipo_relatorio: str | None = Query(
+        None, description="Filtrar por tipo (RREO ou RGF)."
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Exercícios distintos presentes em `execucao_orcamentaria`, em ordem decrescente.
+
+    Usado pelos seletores do frontend para descobrir dinamicamente os anos
+    ingeridos sem exigir deploy a cada backfill.
+    """
+    query = select(ExecucaoOrcamentaria.exercicio).distinct()
+    if tipo_relatorio:
+        query = query.where(ExecucaoOrcamentaria.tipo_relatorio == tipo_relatorio)
+    query = query.order_by(ExecucaoOrcamentaria.exercicio.desc())
+    result = await db.execute(query)
+    return [row[0] for row in result.all() if row[0] is not None]
+
+
+# ───────────────────────────────────────────
 # Execução orçamentária (células brutas)
-# ──────────────────────────────────────────
+# ───────────────────────────────────────────
 
 
 @router.get("/execucao", response_model=PaginatedResponse[ExecucaoOrcamentariaOut])
@@ -108,7 +134,8 @@ async def resumo_por_funcao(
     Agrega execução por função (RREO-Anexo 02) com pivot nas principais
     colunas: dotação inicial/atualizada, empenhado, liquidado, saldo.
 
-    Ordena por valor empenhado descendente. Exclui linhas-totalizadoras.
+    Ordena por valor empenhado descendente. Exclui linhas-totalizadoras e
+    subfunções para não somar níveis hierárquicos diferentes.
     """
     # Descobrir período mais recente se não informado
     if periodo is None:
@@ -146,6 +173,7 @@ async def resumo_por_funcao(
             # Excluir linhas-totalizadoras conhecidas
             ExecucaoOrcamentaria.conta.notilike("DESPESAS%"),
             ExecucaoOrcamentaria.conta != "TOTAL (III) = (I + II)",
+            ExecucaoOrcamentaria.conta.in_(FUNCOES_GOVERNO),
         )
         .group_by(ExecucaoOrcamentaria.conta)
         .order_by(pivot_col(_COL_EMPENHADO).desc().nullslast())
@@ -157,8 +185,14 @@ async def resumo_por_funcao(
     return [
         ResumoFuncaoOut(
             funcao=r.funcao,
-            dotacao_inicial=float(r.dotacao_inicial) if r.dotacao_inicial is not None else None,
-            dotacao_atualizada=float(r.dotacao_atualizada) if r.dotacao_atualizada is not None else None,
+            dotacao_inicial=(
+                float(r.dotacao_inicial) if r.dotacao_inicial is not None else None
+            ),
+            dotacao_atualizada=(
+                float(r.dotacao_atualizada)
+                if r.dotacao_atualizada is not None
+                else None
+            ),
             empenhado=float(r.empenhado) if r.empenhado is not None else None,
             liquidado=float(r.liquidado) if r.liquidado is not None else None,
             saldo=float(r.saldo) if r.saldo is not None else None,

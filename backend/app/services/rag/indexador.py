@@ -39,11 +39,15 @@ from app.services.rag.client import (
 from app.services.rag.renderizadores import (
     DocumentoRenderizado,
     LinhaResumoFuncao,
+    LinhaResumoNaturezaDespesa,
     LinhaResumoPCA,
+    LinhaResumoReceita,
     renderizar_contrato,
     renderizar_indicador_fiscal,
     renderizar_resumo_funcao,
+    renderizar_resumo_natureza_despesa,
     renderizar_resumo_pca,
+    renderizar_resumo_receita,
 )
 
 logger = structlog.get_logger()
@@ -56,6 +60,51 @@ _COL_DOT_ATUALIZADA = "DOTAÇÃO ATUALIZADA (a)"
 _COL_EMPENHADO = "DESPESAS EMPENHADAS ATÉ O BIMESTRE (b)"
 _COL_LIQUIDADO = "DESPESAS LIQUIDADAS ATÉ O BIMESTRE (d)"
 _COL_SALDO = "SALDO (c) = (a-b)"
+
+# Constantes do RREO-Anexo 01 — colunas de receita.
+# Letras (a/b/c) seguem a numeração oficial do MDF.
+_COL_RCT_PREVISAO_INICIAL = "PREVISÃO INICIAL"
+_COL_RCT_PREVISAO_ATUALIZADA = "PREVISÃO ATUALIZADA (a)"
+_COL_RCT_NO_BIMESTRE = "No Bimestre (b)"
+_COL_RCT_ATE_BIMESTRE = "Até o Bimestre (c)"
+_COL_RCT_SALDO = "SALDO (a-c)"
+
+# Constantes do RREO-Anexo 01 — colunas de despesa por natureza.
+_COL_DSP_DOT_INICIAL = "DOTAÇÃO INICIAL (d)"
+_COL_DSP_DOT_ATUALIZADA = "DOTAÇÃO ATUALIZADA (e)"
+_COL_DSP_EMPENHADO = "DESPESAS EMPENHADAS ATÉ O BIMESTRE (f)"
+_COL_DSP_LIQUIDADO = "DESPESAS LIQUIDADAS ATÉ O BIMESTRE (h)"
+_COL_DSP_SALDO = "SALDO (g) = (e-f)"
+
+# Categorias relevantes de receita no RREO-Anexo 01. Tupla
+# (cod_conta, rótulo human-friendly). Mantém só as rubricas com valor de
+# consulta gerencial — evita poluir o RAG com cod_contas redundantes.
+_CATEGORIAS_RECEITA: list[tuple[str, str]] = [
+    ("ReceitaTributaria", "Tributária"),
+    ("ReceitaDeContribuicoes", "Contribuições"),
+    ("ReceitaPatrimonial", "Patrimonial"),
+    ("ReceitaDeServicos", "Serviços"),
+    ("TransferenciasCorrentes", "Transferências Correntes"),
+    ("OutrasReceitasCorrentes", "Outras Receitas Correntes"),
+    ("ReceitasDeOperacoesDeCredito", "Operações de Crédito"),
+    ("AlienacaoDeBens", "Alienação de Bens"),
+    ("TransferenciasDeCapital", "Transferências de Capital"),
+    ("ReceitasCorrentes", "Total — Receitas Correntes"),
+    ("ReceitasDeCapital", "Total — Receitas de Capital"),
+    ("SubtotalDasReceitas", "Total Geral"),
+]
+
+# GNDs principais no RREO-Anexo 01. (cod_conta, rótulo human-friendly).
+_NATUREZAS_DESPESA: list[tuple[str, str]] = [
+    ("PessoalEEncargosSociais", "Pessoal e Encargos Sociais"),
+    ("JurosEEncargosDaDivida", "Juros e Encargos da Dívida"),
+    ("OutrasDespesasCorrentes", "Outras Despesas Correntes (Custeio)"),
+    ("Investimentos", "Investimentos (CAPEX)"),
+    ("Inversoes", "Inversões Financeiras"),
+    ("AmortizacaoDaDivida", "Amortização da Dívida"),
+    ("DespesasCorrentes", "Total — Despesas Correntes"),
+    ("DespesasDeCapital", "Total — Despesas de Capital"),
+]
 
 
 # ──────────────────────────────────────────
@@ -190,6 +239,116 @@ async def _coletar_resumo_pca(db: AsyncSession) -> list[DocumentoRenderizado]:
     return docs
 
 
+async def _coletar_resumo_receita(db: AsyncSession) -> list[DocumentoRenderizado]:
+    """Pivoteia RREO-Anexo 01 por (exercício, periodo, cod_conta) para receitas.
+
+    Filtra apenas as categorias declaradas em `_CATEGORIAS_RECEITA` para
+    manter o corpus enxuto e focado nas rubricas relevantes.
+    """
+    def pivot(col: str):
+        return func.max(
+            case((ExecucaoOrcamentaria.coluna == col, ExecucaoOrcamentaria.valor))
+        )
+
+    cod_conta_to_legivel = {cod: leg for cod, leg in _CATEGORIAS_RECEITA}
+
+    query = (
+        select(
+            ExecucaoOrcamentaria.exercicio.label("exercicio"),
+            ExecucaoOrcamentaria.periodo.label("periodo"),
+            ExecucaoOrcamentaria.cod_conta.label("cod_conta"),
+            pivot(_COL_RCT_PREVISAO_INICIAL).label("previsao_inicial"),
+            pivot(_COL_RCT_PREVISAO_ATUALIZADA).label("previsao_atualizada"),
+            pivot(_COL_RCT_NO_BIMESTRE).label("arrecadado_no_bimestre"),
+            pivot(_COL_RCT_ATE_BIMESTRE).label("arrecadado_ate_bimestre"),
+            pivot(_COL_RCT_SALDO).label("saldo"),
+        )
+        .where(
+            ExecucaoOrcamentaria.tipo_relatorio == "RREO",
+            ExecucaoOrcamentaria.anexo == "RREO-Anexo 01",
+            ExecucaoOrcamentaria.cod_conta.in_(list(cod_conta_to_legivel.keys())),
+            ExecucaoOrcamentaria.periodo.isnot(None),
+        )
+        .group_by(
+            ExecucaoOrcamentaria.exercicio,
+            ExecucaoOrcamentaria.periodo,
+            ExecucaoOrcamentaria.cod_conta,
+        )
+    )
+    result = await db.execute(query)
+    docs: list[DocumentoRenderizado] = []
+    for row in result.all():
+        linha = LinhaResumoReceita(
+            exercicio=row.exercicio,
+            periodo=row.periodo,
+            categoria_codigo=row.cod_conta,
+            categoria_legivel=cod_conta_to_legivel[row.cod_conta],
+            previsao_inicial=_decimal(row.previsao_inicial),
+            previsao_atualizada=_decimal(row.previsao_atualizada),
+            arrecadado_no_bimestre=_decimal(row.arrecadado_no_bimestre),
+            arrecadado_ate_bimestre=_decimal(row.arrecadado_ate_bimestre),
+            saldo=_decimal(row.saldo),
+        )
+        docs.append(renderizar_resumo_receita(linha))
+    return docs
+
+
+async def _coletar_resumo_natureza_despesa(
+    db: AsyncSession,
+) -> list[DocumentoRenderizado]:
+    """Pivoteia RREO-Anexo 01 por (exercício, periodo, cod_conta) para despesas.
+
+    Cobre os GNDs principais e os totais por categoria econômica
+    declarados em `_NATUREZAS_DESPESA`.
+    """
+    def pivot(col: str):
+        return func.max(
+            case((ExecucaoOrcamentaria.coluna == col, ExecucaoOrcamentaria.valor))
+        )
+
+    cod_conta_to_legivel = {cod: leg for cod, leg in _NATUREZAS_DESPESA}
+
+    query = (
+        select(
+            ExecucaoOrcamentaria.exercicio.label("exercicio"),
+            ExecucaoOrcamentaria.periodo.label("periodo"),
+            ExecucaoOrcamentaria.cod_conta.label("cod_conta"),
+            pivot(_COL_DSP_DOT_INICIAL).label("dotacao_inicial"),
+            pivot(_COL_DSP_DOT_ATUALIZADA).label("dotacao_atualizada"),
+            pivot(_COL_DSP_EMPENHADO).label("empenhado"),
+            pivot(_COL_DSP_LIQUIDADO).label("liquidado"),
+            pivot(_COL_DSP_SALDO).label("saldo"),
+        )
+        .where(
+            ExecucaoOrcamentaria.tipo_relatorio == "RREO",
+            ExecucaoOrcamentaria.anexo == "RREO-Anexo 01",
+            ExecucaoOrcamentaria.cod_conta.in_(list(cod_conta_to_legivel.keys())),
+            ExecucaoOrcamentaria.periodo.isnot(None),
+        )
+        .group_by(
+            ExecucaoOrcamentaria.exercicio,
+            ExecucaoOrcamentaria.periodo,
+            ExecucaoOrcamentaria.cod_conta,
+        )
+    )
+    result = await db.execute(query)
+    docs: list[DocumentoRenderizado] = []
+    for row in result.all():
+        linha = LinhaResumoNaturezaDespesa(
+            exercicio=row.exercicio,
+            periodo=row.periodo,
+            natureza_codigo=row.cod_conta,
+            natureza_legivel=cod_conta_to_legivel[row.cod_conta],
+            dotacao_inicial=_decimal(row.dotacao_inicial),
+            dotacao_atualizada=_decimal(row.dotacao_atualizada),
+            empenhado=_decimal(row.empenhado),
+            liquidado=_decimal(row.liquidado),
+            saldo=_decimal(row.saldo),
+        )
+        docs.append(renderizar_resumo_natureza_despesa(linha))
+    return docs
+
+
 def _decimal(valor) -> Decimal | None:
     """Converte valores numéricos retornados pelo SQL para Decimal."""
     if valor is None:
@@ -209,6 +368,8 @@ _COLETORES = {
     FonteDocumento.INDICADOR_FISCAL: _coletar_indicadores_fiscais,
     FonteDocumento.RESUMO_FUNCAO: _coletar_resumo_funcao,
     FonteDocumento.RESUMO_PCA: _coletar_resumo_pca,
+    FonteDocumento.RESUMO_RECEITA: _coletar_resumo_receita,
+    FonteDocumento.RESUMO_NATUREZA_DESPESA: _coletar_resumo_natureza_despesa,
 }
 
 
@@ -347,7 +508,11 @@ async def reindexar(
 # Cada script importa essa tabela e chama `reindexar(fontes=...)` ao fim.
 FONTES_POR_SCRIPT: dict[str, list[FonteDocumento]] = {
     "pncp": [FonteDocumento.CONTRATO, FonteDocumento.RESUMO_PCA],
-    "orcamento": [FonteDocumento.RESUMO_FUNCAO],
+    "orcamento": [
+        FonteDocumento.RESUMO_FUNCAO,
+        FonteDocumento.RESUMO_RECEITA,
+        FonteDocumento.RESUMO_NATUREZA_DESPESA,
+    ],
     "rgf": [FonteDocumento.INDICADOR_FISCAL],
 }
 
@@ -357,7 +522,9 @@ __all__ = [
     "FONTES_POR_SCRIPT",
     # Re-export para facilitar testes isolados do mapeamento:
     "LinhaResumoFuncao",
+    "LinhaResumoNaturezaDespesa",
     "LinhaResumoPCA",
+    "LinhaResumoReceita",
 ]
 
 

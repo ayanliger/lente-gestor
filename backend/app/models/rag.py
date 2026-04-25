@@ -38,6 +38,12 @@ class FonteDocumento(StrEnum):
     INDICADOR_FISCAL = "INDICADOR_FISCAL"
     RESUMO_FUNCAO = "RESUMO_FUNCAO"
     RESUMO_PCA = "RESUMO_PCA"
+    # Eixo da receita orçamentária — RREO-Anexo 01, agregado por
+    # (exercício, bimestre, categoria de receita).
+    RESUMO_RECEITA = "RESUMO_RECEITA"
+    # Eixo da despesa por natureza econômica/grupo (Pessoal, Custeio,
+    # Investimentos, etc.) — RREO-Anexo 01.
+    RESUMO_NATUREZA_DESPESA = "RESUMO_NATUREZA_DESPESA"
 
 
 class DocumentoRag(Base):

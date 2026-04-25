@@ -42,6 +42,7 @@ def test_prompt_usuario_numera_documentos():
     prompt = montar_prompt_usuario("Qual o valor?", docs)
 
     assert "PERGUNTA DO GESTOR" in prompt
+    assert "DOCUMENTOS RECUPERADOS PARA ESTA PERGUNTA" in prompt
     assert "Qual o valor?" in prompt
     assert "[1] Contrato A" in prompt
     assert "[2] Contrato B" in prompt
@@ -55,3 +56,15 @@ def test_prompt_usuario_sem_documentos():
     prompt = montar_prompt_usuario("Pergunta sem contexto", [])
     assert "nenhum documento relevante" in prompt
     assert MARCADOR_RECUSA in prompt  # lembrete de recusa no rodapé
+
+
+def test_prompt_usuario_inclui_historico_quando_fornecido():
+    prompt = montar_prompt_usuario(
+        "Essa observação é verdadeira?",
+        [_doc("Cobertura", "Há dados por função de 2020 a 2026.")],
+        historico="usuario: Quais dados faltam?\nassistente: Faltam dados.",
+    )
+
+    assert "CONTEXTO RECENTE DA CONVERSA" in prompt
+    assert "usuario: Quais dados faltam?" in prompt
+    assert "Essa observação é verdadeira?" in prompt
