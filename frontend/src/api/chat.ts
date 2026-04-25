@@ -19,17 +19,27 @@ export interface ChatResponse {
   recusou: boolean;
   latencia_ms: number;
 }
+export interface ChatHistoricoItem {
+  autor: "usuario" | "assistente";
+  texto: string;
+  fontes: string[];
+}
+
+export interface ChatPayload {
+  pergunta: string;
+  historico: ChatHistoricoItem[];
+}
 
 /**
  * Mutation para POST /api/v1/chat/.
  *
- * Stateless: cada chamada é independente. O histórico é mantido no
- * state local da página, não no servidor.
+ * O histórico é enviado de forma compacta pelo cliente e não é persistido no
+ * servidor.
  */
 export function useChat() {
-  return useMutation<ChatResponse, Error, string>({
-    mutationFn: async (pergunta) => {
-      const { data } = await api.post<ChatResponse>("/chat/", { pergunta });
+  return useMutation<ChatResponse, Error, ChatPayload>({
+    mutationFn: async (payload) => {
+      const { data } = await api.post<ChatResponse>("/chat/", payload);
       return data;
     },
   });

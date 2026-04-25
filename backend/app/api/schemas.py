@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import date, datetime
-from typing import Generic, TypeVar
+from typing import Generic, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -357,6 +357,18 @@ class MesAnoArrecadacaoOut(BaseModel):
 # ─────────────────────────────────────
 
 
+class ChatHistoricoItem(BaseModel):
+    """Turno compacto usado para resolver perguntas de acompanhamento."""
+
+    autor: Literal["usuario", "assistente"]
+    texto: str = Field(..., min_length=1, max_length=2000)
+    fontes: list[str] = Field(
+        default_factory=list,
+        max_length=12,
+        description="Chaves únicas das fontes citadas nesse turno.",
+    )
+
+
 class ChatRequest(BaseModel):
     """Pergunta enviada ao assistente RAG."""
 
@@ -365,6 +377,11 @@ class ChatRequest(BaseModel):
         min_length=3,
         max_length=500,
         description="Pergunta do gestor em linguagem natural.",
+    )
+    historico: list[ChatHistoricoItem] = Field(
+        default_factory=list,
+        max_length=6,
+        description="Turnos recentes da conversa, enviados pelo cliente.",
     )
 
 

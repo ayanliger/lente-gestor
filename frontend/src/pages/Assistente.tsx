@@ -1,7 +1,12 @@
 import { useMemo, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { type ChatResponse, type FonteCitada, useChat } from "@/api/chat";
+import {
+  type ChatPayload,
+  type ChatResponse,
+  type FonteCitada,
+  useChat,
+} from "@/api/chat";
 import { DataSourceStrip, PageHeader } from "@/components/PageChrome";
 
 /**
@@ -22,6 +27,21 @@ const formatadorHora = new Intl.DateTimeFormat("pt-BR", {
   hour: "2-digit",
   minute: "2-digit",
 });
+function limitarTextoHistorico(texto: string, limite = 1200): string {
+  const limpo = texto.trim();
+  if (limpo.length <= limite) return limpo;
+  return `${limpo.slice(0, limite - 1).trimEnd()}…`;
+}
+
+function montarHistorico(mensagens: Mensagem[]): ChatPayload["historico"] {
+  return mensagens.slice(-6).map((mensagem) => ({
+    autor: mensagem.autor,
+    texto: limitarTextoHistorico(mensagem.texto),
+    fontes: (mensagem.fontes ?? [])
+      .map((fonte) => fonte.chave_unica)
+      .slice(0, 12),
+  }));
+}
 
 function prepararMarkdownComFontes(
   texto: string,
@@ -39,6 +59,7 @@ const ROTULO_FONTE: Record<string, string> = {
   INDICADOR_FISCAL: "Indicador fiscal",
   RESUMO_FUNCAO: "Execução por função",
   RESUMO_PCA: "PCA por função",
+  COBERTURA_DADOS: "Cobertura da base",
 };
 
 function rotuloFonte(fonte: string): string {
@@ -378,6 +399,7 @@ export default function Assistente() {
 
     const idUsuario = crypto.randomUUID();
     const idAssistente = crypto.randomUUID();
+    const historico = montarHistorico(mensagens);
 
     setMensagens((prev) => [
       ...prev,
@@ -390,7 +412,7 @@ export default function Assistente() {
     ]);
     setEntrada("");
 
-    chat.mutate(pergunta, {
+    chat.mutate({ pergunta, historico }, {
       onSuccess: (resp: ChatResponse) => {
         setMensagens((prev) => [
           ...prev,

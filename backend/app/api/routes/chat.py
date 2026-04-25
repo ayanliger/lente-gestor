@@ -9,7 +9,8 @@ Uma única rota `POST /chat`:
   citações, latência por leg e uso de tokens — base natural do golden set
   evolutivo
 
-O endpoint é stateless: sem histórico/sessão/autenticação no MVP.
+O endpoint continua sem persistência de sessão: o cliente envia um histórico
+compacto opcional em cada turno para resolver perguntas de acompanhamento.
 """
 
 from __future__ import annotations
@@ -63,6 +64,7 @@ async def chat(
         payload.pergunta,
         db=db,
         cliente=cliente,
+        historico=payload.historico,
     )
 
     fontes_out = [
@@ -84,6 +86,7 @@ async def chat(
         "chat.request",
         request_id=request_id,
         pergunta=payload.pergunta,
+        historico_turnos=len(payload.historico),
         docs_recuperados=[
             {
                 "doc_id": str(d.doc_id),
