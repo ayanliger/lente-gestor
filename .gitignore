@@ -54,6 +54,14 @@ data/
 *.sqlite3
 
 # =============================
+# Terraform
+# =============================
+*.tfstate
+*.tfstate.*
+.terraform/
+terraform.tfvars
+
+# =============================
 # Docker
 # =============================
 docker-compose.override.yml
