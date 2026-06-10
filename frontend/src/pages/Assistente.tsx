@@ -452,11 +452,22 @@ export default function Assistente() {
     });
   };
 
+  // Sugestões escolhidas para demonstrar a amplitude da base — cada uma
+  // exercita uma capacidade distinta da camada RAG e mapeia direto para
+  // dados que de fato estão indexados:
+  //   1. Síntese ampla (cobertura + ranking sobre RESUMO_FUNCAO)
+  //   2. Indicador LRF único (DESPESA_PESSOAL_PCT_RCL)
+  //   3. Cruzamento entre dois indicadores constitucionais
+  //      (APLIC_MIN_SAUDE_PCT + APLIC_MIN_EDUCACAO_PCT)
+  //   4. Tool calling com filtro temporal + categoria
+  //   5. Ranking estruturado por função de governo (RREO-Anexo 02)
   const placeholderSugestoes = useMemo(
     () => [
-      "Por que Saúde está acima do orçamento previsto no PCA em 2024?",
-      "Jequié está dentro do limite de despesa com pessoal da LRF?",
+      "Qual o panorama da execução orçamentária de Jequié em 2025?",
+      "Jequié está dentro do limite da LRF para despesa com pessoal?",
+      "O município cumpre os mínimos constitucionais de saúde e educação em 2024?",
       "Quais contratos de tecnologia estão vencendo nos próximos 90 dias?",
+      "Quais são as três maiores funções de governo por valor empenhado em 2025?",
     ],
     [],
   );
@@ -552,7 +563,7 @@ export default function Assistente() {
               }
             }}
             aria-label="Pergunta para o assistente"
-            placeholder="Faça uma pergunta sobre orçamento, LRF, PCA ou contratos…"
+            placeholder="Faça uma pergunta sobre orçamento, LRF, arrecadação ou contratos…"
             rows={2}
             className="field-input resize-none flex-1"
           />

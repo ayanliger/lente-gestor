@@ -16,9 +16,10 @@ cliente explicitamente (injeção), não instanciam de novo.
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import Literal
+from typing import Any, Literal
 
 import structlog
 from google import genai
@@ -187,6 +188,155 @@ class GeminiClient:
             texto=texto_final.strip(),
             pensamentos_sumario=pensamentos.strip(),
             uso=uso,
+        )
+
+    # ──────────────────────────────────────
+    # Geração com function calling
+    # ──────────────────────────────────────
+
+    async def generate_answer_with_tools(
+        self,
+        prompt: str,
+        *,
+        system: str | None = None,
+        tools: list[types.Tool],
+        tool_executors: dict[
+            str, Callable[..., Awaitable[dict[str, Any]]]
+        ],
+        max_iterations: int = 3,
+        temperature: float = 1.0,
+        thinking_budget: int = -1,
+        include_thoughts: bool = True,
+    ) -> RespostaGerador:
+        """Geração com function calling: o modelo pode invocar tools até
+        produzir texto final.
+
+        Loop:
+        1. Envia o `prompt` com `tools` declaradas.
+        2. Se a resposta contém `function_call` parts, executa cada um via
+           `tool_executors` e devolve `function_response` na próxima rodada.
+        3. Repete até o modelo retornar somente texto ou atingir
+           `max_iterations`.
+
+        `tool_executors` recebe os argumentos do `function_call` como
+        kwargs e retorna um dict JSON-serializável que vira o
+        `function_response.response`. Efeitos colaterais (ex: agregar
+        documentos para citação) são responsabilidade do caller via
+        closures.
+        """
+        config = types.GenerateContentConfig(
+            system_instruction=system,
+            temperature=temperature,
+            tools=tools,
+            thinking_config=types.ThinkingConfig(
+                thinking_budget=thinking_budget,
+                include_thoughts=include_thoughts,
+            ),
+        )
+
+        contents: list[types.Content] = [
+            types.Content(role="user", parts=[types.Part(text=prompt)])
+        ]
+
+        uso_total = UsoTokens()
+        pensamentos_total = ""
+        texto_final = ""
+        chamadas_realizadas: list[str] = []
+
+        for iteracao in range(max_iterations + 1):
+            resp = await self._gen_client.aio.models.generate_content(
+                model=self._model_generate,
+                contents=contents,
+                config=config,
+            )
+
+            if resp.usage_metadata:
+                uso_total.prompt += resp.usage_metadata.prompt_token_count or 0
+                uso_total.output += (
+                    resp.usage_metadata.candidates_token_count or 0
+                )
+                uso_total.thinking += (
+                    resp.usage_metadata.thoughts_token_count or 0
+                )
+
+            candidate = (resp.candidates or [None])[0]
+            if candidate is None or not candidate.content:
+                break
+
+            partes = candidate.content.parts or []
+            function_calls: list[types.FunctionCall] = []
+            texto_iter = ""
+            for part in partes:
+                if getattr(part, "function_call", None):
+                    function_calls.append(part.function_call)
+                elif part.text:
+                    if getattr(part, "thought", False):
+                        pensamentos_total += part.text
+                    else:
+                        texto_iter += part.text
+
+            if not function_calls:
+                texto_final = texto_iter
+                break
+
+            # Última iteração permitida: o modelo ainda quis chamar tool,
+            # mas não vamos executar mais — usamos o texto que veio (se
+            # houver) e abortamos.
+            if iteracao >= max_iterations:
+                logger.warning(
+                    "rag.tools.max_iter",
+                    iteracoes=iteracao,
+                    chamadas_realizadas=chamadas_realizadas,
+                    pendentes=[fc.name for fc in function_calls],
+                )
+                texto_final = texto_iter
+                break
+
+            # Anexa a resposta do modelo ao histórico antes de devolver os
+            # function_responses — protocolo padrão do Gemini.
+            contents.append(candidate.content)
+
+            # Executa cada tool e gera a Content com function_response parts.
+            response_parts: list[types.Part] = []
+            for fc in function_calls:
+                chamadas_realizadas.append(fc.name)
+                executor = tool_executors.get(fc.name)
+                if executor is None:
+                    response = {
+                        "erro": (
+                            f"Ferramenta {fc.name!r} indisponível. "
+                            f"Tools válidas: {sorted(tool_executors)}."
+                        )
+                    }
+                else:
+                    try:
+                        kwargs = dict(fc.args or {})
+                        response = await executor(**kwargs)
+                    except Exception as exc:  # noqa: BLE001
+                        logger.exception(
+                            "rag.tools.exec_error",
+                            tool=fc.name,
+                            args=dict(fc.args or {}),
+                        )
+                        response = {
+                            "erro": (
+                                f"Erro ao executar {fc.name!r}: {exc}."
+                            )
+                        }
+                response_parts.append(
+                    types.Part(
+                        function_response=types.FunctionResponse(
+                            name=fc.name,
+                            response=response,
+                        )
+                    )
+                )
+            contents.append(types.Content(role="user", parts=response_parts))
+
+        return RespostaGerador(
+            texto=texto_final.strip(),
+            pensamentos_sumario=pensamentos_total.strip(),
+            uso=uso_total,
         )
 
 

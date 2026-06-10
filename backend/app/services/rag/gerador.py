@@ -17,11 +17,12 @@ import re
 import time
 import unicodedata
 import uuid
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
 import structlog
+from google.genai import types
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.rag import FonteDocumento
@@ -40,12 +41,14 @@ from app.services.rag.ranking import (
     pergunta_pede_ranking_despesas,
 )
 from app.services.rag.recuperacao import DocumentoRelevante, buscar, buscar_por_chaves
+from app.services.rag.tools import ToolRegistry, construir_registry_padrao
 
 logger = structlog.get_logger()
 
 # Regex para capturar citações `[n]` ou `[n, m]` ou `[n][m]` na resposta.
-# Aceita 1-2 dígitos para permitir k até 99 sem surpresa.
-_RE_CITACAO = re.compile(r"\[(\d{1,2})\]")
+# Aceita até 3 dígitos: o piso é prompt_k (8–12 docs RAG); tools podem
+# adicionar até 50 contratos via function calling, então 999 cobre folga.
+_RE_CITACAO = re.compile(r"\[(\d{1,3})\]")
 
 _CANDIDATE_K_PADRAO = 18
 _CANDIDATE_K_AMPLO = 30
@@ -294,8 +297,15 @@ async def responder(
     cliente: GeminiClient,
     k: int = 6,
     historico: Sequence[Any] | None = None,
+    registry: ToolRegistry | None = None,
 ) -> RespostaChat:
-    """Responde a uma pergunta usando o ciclo completo de RAG."""
+    """Responde a uma pergunta usando o ciclo completo de RAG.
+
+    Quando `registry` traz tools, a chamada à LLM passa pelo
+    `generate_answer_with_tools`. As tools podem expandir o conjunto de
+    documentos citáveis em runtime (ex: filtros estruturados de contratos).
+    Passe `registry=ToolRegistry([], {})` para desativar.
+    """
     t_inicio = time.perf_counter()
     historico_recente = _historico_recente(historico)
     modo_cobertura = pergunta_pede_cobertura(pergunta)
@@ -353,8 +363,26 @@ async def responder(
         docs,
         historico=_formatar_historico_prompt(historico_recente),
     )
+    registry_efetivo = registry if registry is not None else construir_registry_padrao()
+    docs_finais: list[DocumentoRelevante] = list(docs)
+
     t_gen_inicio = time.perf_counter()
-    resp = await cliente.generate_answer(prompt_usuario, system=build_system_prompt())
+    if registry_efetivo.declarations:
+        executores = _wrapear_tools(
+            registry=registry_efetivo,
+            db=db,
+            docs_acumulados=docs_finais,
+        )
+        resp = await cliente.generate_answer_with_tools(
+            prompt_usuario,
+            system=build_system_prompt(),
+            tools=[types.Tool(function_declarations=registry_efetivo.declarations)],
+            tool_executors=executores,
+        )
+    else:
+        resp = await cliente.generate_answer(
+            prompt_usuario, system=build_system_prompt()
+        )
     t_gen_fim = time.perf_counter()
     latencia_gen_ms = int((t_gen_fim - t_gen_inicio) * 1000)
 
@@ -365,7 +393,7 @@ async def responder(
     if recusou:
         fontes: list[FonteCitada] = []
     else:
-        fontes = parse_citacoes(texto, docs)
+        fontes = parse_citacoes(texto, docs_finais)
 
     latencia_total_ms = int((time.perf_counter() - t_inicio) * 1000)
 
@@ -378,9 +406,52 @@ async def responder(
         latencia_busca_ms=latencia_busca_ms,
         latencia_gen_ms=latencia_gen_ms,
         uso_tokens=resp.uso,
-        docs_recuperados=docs,
+        docs_recuperados=docs_finais,
         pensamentos_sumario=resp.pensamentos_sumario,
     )
+
+
+_RE_INDICE_CITACAO = re.compile(r"\[(\d{1,3})\]")
+
+
+def _wrapear_tools(
+    *,
+    registry: ToolRegistry,
+    db: AsyncSession,
+    docs_acumulados: list[DocumentoRelevante],
+) -> dict[str, Callable[..., Awaitable[dict[str, Any]]]]:
+    """Decora cada executor com:
+
+    - injeção da `AsyncSession` (não expomos a sessão ao modelo);
+    - renumeração dos índices `[n]` no texto retornado para o offset global,
+      garantindo que citações do modelo apontem para a posição correta em
+      `docs_acumulados` (que começa com os docs de retrieval RAG);
+    - acumulação silenciosa dos `DocumentoRelevante` retornados pela tool no
+      pool de citações.
+    """
+
+    def _decorar(
+        nome: str, executor: Callable[..., Awaitable[Any]]
+    ) -> Callable[..., Awaitable[dict[str, Any]]]:
+        async def wrapper(**kwargs: Any) -> dict[str, Any]:
+            offset = len(docs_acumulados)
+            resultado = await executor(db=db, **kwargs)
+            texto_renumerado = _RE_INDICE_CITACAO.sub(
+                lambda m: f"[{int(m.group(1)) + offset}]",
+                resultado.texto,
+            )
+            docs_acumulados.extend(resultado.docs)
+            return {
+                "texto": texto_renumerado,
+                "qtd_resultados": len(resultado.docs),
+                "indice_inicial": offset + 1,
+                "indice_final": offset + len(resultado.docs),
+            }
+
+        wrapper.__name__ = f"tool_{nome}"
+        return wrapper
+
+    return {nome: _decorar(nome, exe) for nome, exe in registry.executors.items()}
 
 
 __all__ = ["responder", "parse_citacoes", "RespostaChat", "FonteCitada"]
