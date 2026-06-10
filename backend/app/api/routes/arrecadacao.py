@@ -377,7 +377,7 @@ async def resumo(
 
 
 # ────────────────────────────────────────────
-# Visão histórica (plurianual) — 2º painel de BI do sócio
+# Visão histórica (plurianual) - 2º painel de BI
 # ────────────────────────────────────────────
 
 

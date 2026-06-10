@@ -1054,7 +1054,7 @@ export default function Arrecadacao() {
         )}
       </section>
 
-      {/* ────── Visão histórica plurianual (2º painel do sócio) ────── */}
+      {/* ────── Visão histórica plurianual (2º painel de BI) ────── */}
       <div className="pt-4">
         <div className="flex flex-wrap items-end justify-between gap-4 mb-4">
           <div>

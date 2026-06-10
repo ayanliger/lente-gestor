@@ -238,7 +238,7 @@ export function useArrecadacaoPorBanco(exercicio: number, mes?: number) {
 }
 
 // ─────────────────────────────────────
-// Arrecadação — visão histórica plurianual (2º painel do sócio)
+// Arrecadação - visão histórica plurianual (2º painel de BI)
 // ─────────────────────────────────────
 
 export function useArrecadacaoPorReceita(

@@ -118,7 +118,7 @@ Documentadas pela Transparência Brasil (2024):
 
 ### Observações
 
-O acesso direto ao sistema de gestão da prefeitura (via parceria institucional) eliminaria a necessidade de scraping e forneceria dados mais completos e estruturados. O colaborador com acesso à gestão municipal é essencial para viabilizar essa integração.
+O acesso direto ao sistema de gestão da prefeitura eliminaria a necessidade de scraping e forneceria dados mais completos e estruturados.
 
 ---
 

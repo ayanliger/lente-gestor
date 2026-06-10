@@ -646,7 +646,7 @@ Os endpoints do SICONFI e IBGE são lentos para dados grandes mas chamados infre
 
 ## 12. Próximos Passos
 
-1. Revisar este documento com o grupo de cofundadores
+1. Revisar este documento
 2. Criar issues no repositório, uma por item de checklist da Fase 1
 3. Abrir branch `feat/conector-siconfi` e começar pela Fase 1
 4. Após Fase 1 concluída e validada com dados reais de Jequié, seguir com Fase 2
