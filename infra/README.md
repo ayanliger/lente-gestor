@@ -7,6 +7,53 @@ Registry, Service Accounts e APIs habilitadas.
 O frontend (Firebase Hosting) é configurado **fora** do Terraform, via
 `firebase.json` em `frontend/`.
 
+## ⏸️ Estado atual: PAUSADO (2026-06-10)
+
+A infraestrutura foi pausada para cortar custos (créditos esgotados).
+Nenhum recurso foi destruído - todos os dados estão preservados.
+
+O que foi alterado (via `gcloud`, fora do Terraform):
+
+1. **Cloud SQL `lente-db`**: instância parada
+   (`activation-policy=NEVER`). Disco de 10GB PD_SSD e backups
+   automáticos existentes (7 retidos) continuam armazenados, mas nenhum
+   backup novo é criado enquanto parada.
+2. **Cloud Run `lente-api`**: acesso público removido (binding
+   `allUsers` / `roles/run.invoker` deletado). Requests retornam 403.
+   `min-instances` já era 0, então não há cobrança em idle.
+
+O que NÃO foi alterado:
+
+- Cloud Run Jobs (`migrate-db`, `ingest-*`) - só cobram quando executados
+- Artifact Registry `lente` (~330MB, dentro do free tier)
+- Secret Manager (dentro do free tier)
+- Firebase Hosting (free tier; o frontend segue no ar, mas a API
+  retorna 403)
+
+Custo estimado no estado pausado: **~US$2-4/mês** (disco do Cloud SQL
+~US$1,70 + storage dos backups).
+
+### Como retomar
+
+```bash
+# 1. Religar o banco (leva ~1-2 min)
+gcloud sql instances patch lente-db --activation-policy ALWAYS
+
+# 2. Restaurar acesso público à API
+gcloud run services add-iam-policy-binding lente-api \
+    --region us-central1 \
+    --member=allUsers --role=roles/run.invoker
+
+# 3. Verificar
+gcloud sql instances list   # STATUS deve ser RUNNABLE
+curl https://lente-api-751718109209.us-central1.run.app/health
+```
+
+> **Nota:** essas mudanças causam drift em relação ao estado do
+> Terraform. Um `terraform apply` em `infra/` também restaura o acesso
+> público da API (e o estado declarado em geral), servindo como
+> alternativa ao passo 2.
+
 ## Estrutura
 
 ```
