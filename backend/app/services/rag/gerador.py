@@ -371,6 +371,7 @@ async def responder(
         executores = _wrapear_tools(
             registry=registry_efetivo,
             db=db,
+            cliente=cliente,
             docs_acumulados=docs_finais,
         )
         resp = await cliente.generate_answer_with_tools(
@@ -418,24 +419,38 @@ def _wrapear_tools(
     *,
     registry: ToolRegistry,
     db: AsyncSession,
+    cliente: GeminiClient | None = None,
     docs_acumulados: list[DocumentoRelevante],
 ) -> dict[str, Callable[..., Awaitable[dict[str, Any]]]]:
     """Decora cada executor com:
 
     - injeção da `AsyncSession` (não expomos a sessão ao modelo);
+    - injeção opcional do `GeminiClient` para tools que precisam embedar
+      termos (ex: ranking semântico em ``contratos_vencendo``);
     - renumeração dos índices `[n]` no texto retornado para o offset global,
       garantindo que citações do modelo apontem para a posição correta em
       `docs_acumulados` (que começa com os docs de retrieval RAG);
     - acumulação silenciosa dos `DocumentoRelevante` retornados pela tool no
       pool de citações.
+
+    Cada executor declara explicitamente os kwargs que aceita; o wrapper
+    inspeciona a assinatura e injeta apenas o que o executor pediu, para
+    não vazar `cliente` em tools que não precisam dele.
     """
+    import inspect
 
     def _decorar(
         nome: str, executor: Callable[..., Awaitable[Any]]
     ) -> Callable[..., Awaitable[dict[str, Any]]]:
+        sig = inspect.signature(executor)
+        aceita_cliente = "cliente" in sig.parameters
+
         async def wrapper(**kwargs: Any) -> dict[str, Any]:
             offset = len(docs_acumulados)
-            resultado = await executor(db=db, **kwargs)
+            extra: dict[str, Any] = {"db": db}
+            if aceita_cliente:
+                extra["cliente"] = cliente
+            resultado = await executor(**extra, **kwargs)
             texto_renumerado = _RE_INDICE_CITACAO.sub(
                 lambda m: f"[{int(m.group(1)) + offset}]",
                 resultado.texto,

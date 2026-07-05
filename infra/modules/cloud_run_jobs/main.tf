@@ -91,6 +91,8 @@ resource "google_cloud_run_v2_job" "jobs" {
   name     = each.key
   location = var.region
 
+  deletion_protection = false
+
   template {
     template {
       service_account = var.service_account_email

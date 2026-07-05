@@ -31,6 +31,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.contratacoes import Contrato, Fornecedor
+from app.models.rag import DocumentoRag, FonteDocumento
+from app.services.rag.client import GeminiClient
 from app.services.rag.recuperacao import DocumentoRelevante
 
 logger = structlog.get_logger()
@@ -41,6 +43,13 @@ _DIAS_PADRAO = 90
 _DIAS_MAX = 365
 _TAMANHO_MAX = 50
 _TAMANHO_PADRAO = 20
+
+# Limiar de similaridade cosseno para o filtro semântico de categoria. Mais
+# baixo que o limiar do retrieval RAG (0.30) porque categorias têm vetor
+# muito mais curto que perguntas inteiras — 0.40 capta sinônimos
+# ("tecnologia" → "ponto eletrônico", "software", "sistema") sem permitir
+# itens completamente off-topic.
+_LIMIAR_SEMANTICO = 0.40
 
 
 @dataclass(slots=True)
@@ -63,7 +72,9 @@ CONTRATOS_VENCENDO_DECL = types.FunctionDeclaration(
         "a partir de hoje. Use quando a pergunta envolve vencimento, "
         "encerramento ou expiração de contratos em janela temporal "
         "(ex: 'próximos 90 dias', 'que vencem ainda este mês'). "
-        "Filtra opcionalmente por substring no objeto/categoria do contrato."
+        "Filtra opcionalmente por categoria semântica via embeddings: "
+        "termos como 'tecnologia' encontram contratos sobre software, "
+        "ponto eletrônico, etc., mesmo sem a palavra exata no objeto."
     ),
     parameters=types.Schema(
         type=types.Type.OBJECT,
@@ -77,10 +88,12 @@ CONTRATOS_VENCENDO_DECL = types.FunctionDeclaration(
             "categoria_objeto": types.Schema(
                 type=types.Type.STRING,
                 description=(
-                    "Substring opcional para filtrar pelo objeto ou categoria "
-                    "do contrato (ILIKE). Use termos do português comum: "
-                    "'tecnologia', 'limpeza', 'iluminação', 'segurança'. "
-                    "Omita para listar todos os contratos no intervalo."
+                    "Categoria/tema semântico para filtrar os contratos da "
+                    "janela. Termos curtos do português: 'tecnologia', "
+                    "'limpeza', 'iluminação', 'segurança', 'saúde'. O "
+                    "matching usa embeddings (pgvector), então sinônimos e "
+                    "termos relacionados também são encontrados. Omita para "
+                    "listar todos os contratos no intervalo."
                 ),
             ),
         },
@@ -92,36 +105,45 @@ CONTRATOS_VENCENDO_DECL = types.FunctionDeclaration(
 async def executar_contratos_vencendo(
     *,
     db: AsyncSession,
+    cliente: GeminiClient | None = None,
     dias: int | None = None,
     categoria_objeto: str | None = None,
 ) -> ResultadoFerramenta:
-    """Executor de :data:`CONTRATOS_VENCENDO_DECL`."""
+    """Executor de :data:`CONTRATOS_VENCENDO_DECL`.
+
+    Filtra contratos por janela de vigência (sempre estrutural via SQL) e,
+    quando ``categoria_objeto`` for fornecida, faz ranking semântico via
+    pgvector usando o embedding do termo contra os embeddings dos contratos
+    já indexados em ``documentos_rag``. Caso não haja ``cliente`` para
+    embedar o termo, cai num ILIKE literal — mantendo o tool funcional
+    fora do contexto de produção.
+    """
     janela = max(1, min(int(dias or _DIAS_PADRAO), _DIAS_MAX))
     hoje = date.today()
     limite = hoje + timedelta(days=janela)
+    categoria = (categoria_objeto or "").strip() or None
 
-    query = (
-        select(Contrato)
-        .options(selectinload(Contrato.fornecedor))
-        .where(
-            Contrato.data_fim_vigencia.is_not(None),
-            Contrato.data_fim_vigencia >= hoje,
-            Contrato.data_fim_vigencia <= limite,
+    if categoria and cliente is not None:
+        contratos, similaridades = await _ranquear_por_similaridade(
+            db=db,
+            cliente=cliente,
+            categoria=categoria,
+            hoje=hoje,
+            limite=limite,
         )
-        .order_by(Contrato.data_fim_vigencia.asc())
-        .limit(_TAMANHO_MAX)
-    )
-
-    if categoria_objeto:
-        like = f"%{categoria_objeto.strip()}%"
-        query = query.where(
-            Contrato.objeto.ilike(like) | Contrato.categoria.ilike(like)
+        modo_filtro = "semântico"
+    else:
+        contratos = await _filtrar_estrutural(
+            db=db,
+            hoje=hoje,
+            limite=limite,
+            categoria=categoria,
         )
-
-    contratos = (await db.execute(query)).scalars().all()
+        similaridades = {}
+        modo_filtro = "literal" if categoria else "sem-filtro"
 
     if not contratos:
-        sufixo = f" para o filtro {categoria_objeto!r}" if categoria_objeto else ""
+        sufixo = f" para a categoria {categoria!r}" if categoria else ""
         return ResultadoFerramenta(
             texto=(
                 f"Nenhum contrato com vigência terminando nos próximos "
@@ -130,17 +152,27 @@ async def executar_contratos_vencendo(
             docs=[],
         )
 
+    if categoria and modo_filtro == "semântico":
+        sufixo_categoria = (
+            f" filtrando semanticamente por {categoria!r} "
+            f"(limiar {_LIMIAR_SEMANTICO:.2f})"
+        )
+    elif categoria:
+        sufixo_categoria = f" filtrando literalmente por {categoria!r}"
+    else:
+        sufixo_categoria = ""
+
     cabecalho = (
         f"Contratos com vigência terminando até {limite.isoformat()} "
         f"(janela de {janela} dias a partir de {hoje.isoformat()}). "
-        f"{len(contratos)} resultado(s)"
-        f"{f' filtrando por {categoria_objeto!r}' if categoria_objeto else ''}."
+        f"{len(contratos)} resultado(s){sufixo_categoria}."
     )
 
     return _renderizar_resultado_contratos(
         contratos=contratos,
         cabecalho=cabecalho,
         fonte_tool="contratos_vencendo",
+        similaridades=similaridades,
     )
 
 
@@ -294,9 +326,110 @@ def construir_registry_padrao() -> ToolRegistry:
     )
 
 
-# ──────────────────────────────────────────
+# ───────────────────────────────────────────
+# Helpers de filtragem
+# ───────────────────────────────────────────
+
+
+async def _filtrar_estrutural(
+    *,
+    db: AsyncSession,
+    hoje: date,
+    limite: date,
+    categoria: str | None,
+) -> list[Contrato]:
+    """Filtro 100% SQL: janela de vigência + ILIKE opcional.
+
+    Caminho de fallback usado quando não há ``GeminiClient`` disponível
+    para embedar a categoria, ou quando nenhuma categoria foi informada.
+    """
+    query = (
+        select(Contrato)
+        .options(selectinload(Contrato.fornecedor))
+        .where(
+            Contrato.data_fim_vigencia.is_not(None),
+            Contrato.data_fim_vigencia >= hoje,
+            Contrato.data_fim_vigencia <= limite,
+        )
+        .order_by(Contrato.data_fim_vigencia.asc())
+        .limit(_TAMANHO_MAX)
+    )
+    if categoria:
+        like = f"%{categoria}%"
+        query = query.where(
+            Contrato.objeto.ilike(like) | Contrato.categoria.ilike(like)
+        )
+    return list((await db.execute(query)).scalars().all())
+
+
+async def _ranquear_por_similaridade(
+    *,
+    db: AsyncSession,
+    cliente: GeminiClient,
+    categoria: str,
+    hoje: date,
+    limite: date,
+) -> tuple[list[Contrato], dict[uuid.UUID, float]]:
+    """Ranking semântico via pgvector.
+
+    1. Embeda o termo ``categoria`` com o mesmo modelo do RAG
+       (`task_type=RETRIEVAL_QUERY`).
+    2. Faz JOIN contratos ⇔ documentos_rag (fonte CONTRATO) e ordena por
+       distância cosseno.
+    3. Mantém apenas contratos com similaridade ≥ ``_LIMIAR_SEMANTICO``.
+
+    Retorna a lista de contratos e um mapa ``contrato.id -> similaridade``
+    para que a renderização exiba o score na linha.
+    """
+    try:
+        vetor = await cliente.embed_text(
+            categoria, task_type="RETRIEVAL_QUERY"
+        )
+    except Exception:  # noqa: BLE001
+        # Falha no embed (quota, rede): caia para o filtro estrutural com
+        # ILIKE. Logamos para diagnóstico e o caller marca o modo
+        # adequado no cabeçalho da resposta.
+        logger.exception("rag.tools.embed_falhou", categoria=categoria)
+        contratos = await _filtrar_estrutural(
+            db=db, hoje=hoje, limite=limite, categoria=categoria
+        )
+        return contratos, {}
+
+    distancia = DocumentoRag.embedding.cosine_distance(vetor).label("distancia")
+    query = (
+        select(Contrato, distancia)
+        .options(selectinload(Contrato.fornecedor))
+        .join(
+            DocumentoRag,
+            (DocumentoRag.referencia_id == Contrato.id)
+            & (DocumentoRag.fonte == FonteDocumento.CONTRATO.value),
+        )
+        .where(
+            Contrato.data_fim_vigencia.is_not(None),
+            Contrato.data_fim_vigencia >= hoje,
+            Contrato.data_fim_vigencia <= limite,
+        )
+        .order_by(distancia.asc())
+        .limit(_TAMANHO_MAX)
+    )
+
+    rows = (await db.execute(query)).all()
+    contratos: list[Contrato] = []
+    similaridades: dict[uuid.UUID, float] = {}
+    for contrato, dist in rows:
+        score = max(0.0, 1.0 - float(dist))
+        if score < _LIMIAR_SEMANTICO:
+            # Itens vencendo a partir daqui não são suficientemente
+            # relacionados à categoria pedida — paramos.
+            break
+        contratos.append(contrato)
+        similaridades[contrato.id] = score
+    return contratos, similaridades
+
+
+# ───────────────────────────────────────────
 # Helpers de renderização
-# ──────────────────────────────────────────
+# ───────────────────────────────────────────
 
 
 def _renderizar_resultado_contratos(
@@ -304,10 +437,12 @@ def _renderizar_resultado_contratos(
     contratos: list[Contrato],
     cabecalho: str,
     fonte_tool: str,
+    similaridades: dict[uuid.UUID, float] | None = None,
 ) -> ResultadoFerramenta:
     """Monta o bloco numerado + lista de DocumentoRelevante para citação."""
     linhas = [cabecalho]
     docs: list[DocumentoRelevante] = []
+    similaridades = similaridades or {}
 
     for i, c in enumerate(contratos, start=1):
         nome_forn = c.fornecedor.nome if c.fornecedor else "fornecedor não identificado"
@@ -316,6 +451,7 @@ def _renderizar_resultado_contratos(
         valor_txt = _fmt_brl(valor) if valor else "valor não informado"
         objeto = (c.objeto or "").strip().replace("\n", " ") or "—"
         objeto_curto = objeto if len(objeto) <= 220 else objeto[:217] + "..."
+        score = similaridades.get(c.id)
 
         partes = [
             f"[{i}] Contrato {c.numero_contrato or c.pncp_id or c.id}",
@@ -335,6 +471,8 @@ def _renderizar_resultado_contratos(
             partes.append(f"categoria: {c.categoria}")
         if c.situacao:
             partes.append(f"situação: {c.situacao}")
+        if score is not None:
+            partes.append(f"similaridade {score * 100:.0f}%")
         linha = "; ".join(partes) + "."
         linhas.append(linha)
 
@@ -373,8 +511,9 @@ def _renderizar_resultado_contratos(
                     "categoria": c.categoria,
                     "situacao": c.situacao,
                     "fonte_tool": fonte_tool,
+                    "similaridade": score,
                 },
-                score=1.0,
+                score=score if score is not None else 1.0,
             )
         )
 
