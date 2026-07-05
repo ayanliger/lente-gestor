@@ -66,6 +66,8 @@ resource "google_cloud_run_v2_service" "lente_api" {
   location = var.region
   ingress  = "INGRESS_TRAFFIC_ALL"
 
+  deletion_protection = false
+
   template {
     service_account = var.service_account_email
 

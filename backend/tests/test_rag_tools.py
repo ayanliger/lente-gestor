@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import uuid
 from datetime import date, timedelta
 from decimal import Decimal
@@ -10,6 +11,7 @@ import pytest
 from sqlalchemy import text
 
 from app.models.contratacoes import Contrato, Fornecedor
+from app.models.rag import DocumentoRag, FonteDocumento
 from app.services.rag.gerador import _wrapear_tools
 from app.services.rag.recuperacao import DocumentoRelevante
 from app.services.rag.tools import (
@@ -17,6 +19,25 @@ from app.services.rag.tools import (
     executar_buscar_contratos,
     executar_contratos_vencendo,
 )
+
+
+class _FakeGeminiClient:
+    """Cliente que devolve embeddings determinísticos por palavra-chave.
+
+    O vetor da "query" é igualado ao vetor inserido em ``documentos_rag``
+    do contrato que casa com a categoria, garantindo distância cosseno = 0
+    e similaridade = 1.0. Demais contratos têm embeddings ortogonais.
+    """
+
+    def __init__(self, mapa_termo_vetor: dict[str, list[float]]):
+        self._mapa = mapa_termo_vetor
+
+    async def embed_text(self, texto: str, *, task_type: str) -> list[float]:
+        chave = texto.strip().lower()
+        if chave in self._mapa:
+            return self._mapa[chave]
+        # Fallback: vetor zero (similaridade 0.0)
+        return [0.0] * 1536
 
 # ──────────────────────────────────────────
 # Fixtures
@@ -285,3 +306,109 @@ def test_registry_padrao_expoe_tools_esperadas():
     registry = construir_registry_padrao()
     assert sorted(registry.nomes) == ["buscar_contratos", "contratos_vencendo"]
     assert set(registry.executors) == {"buscar_contratos", "contratos_vencendo"}
+
+
+# ───────────────────────────────────────────
+# Ranking semântico (cliente fake)
+# ───────────────────────────────────────────
+
+
+@pytest.fixture
+async def corpus_com_embeddings(db_session, corpus_contratos):
+    """Insere DocumentoRag com vetores fixos para 2 contratos da janela.
+
+    Vetor `vetor_tech` aponta para Contrato CT-2025-001 (TI). Vetor
+    `vetor_distante` (ortogonal) cobre Contrato CT-2025-002 (limpeza).
+    Permite verificar que o ranking semântico só retorna o que estiver
+    próximo do termo embedado.
+    """
+    vetor_tech = [0.0] * 1536
+    vetor_tech[0] = 1.0  # vector na primeira coordenada
+    vetor_distante = [0.0] * 1536
+    vetor_distante[7] = 1.0  # ortogonal ao vetor_tech
+
+    contrato_ti = next(c for c in corpus_contratos if c.numero_contrato == "CT-2025-001")
+    contrato_limpeza = next(
+        c for c in corpus_contratos if c.numero_contrato == "CT-2025-002"
+    )
+
+    docs = [
+        DocumentoRag(
+            fonte=FonteDocumento.CONTRATO.value,
+            referencia_tipo="contrato",
+            referencia_id=contrato_ti.id,
+            chave_unica=f"contrato:{contrato_ti.id}",
+            titulo="Contrato TI",
+            conteudo_texto="Sistema de tecnologia da informação",
+            metadados={},
+            embedding=vetor_tech,
+            modelo_embedding="fake@1536",
+            hash_conteudo=hashlib.sha256(b"ti").hexdigest(),
+        ),
+        DocumentoRag(
+            fonte=FonteDocumento.CONTRATO.value,
+            referencia_tipo="contrato",
+            referencia_id=contrato_limpeza.id,
+            chave_unica=f"contrato:{contrato_limpeza.id}",
+            titulo="Contrato Limpeza",
+            conteudo_texto="Serviços de limpeza e conservação",
+            metadados={},
+            embedding=vetor_distante,
+            modelo_embedding="fake@1536",
+            hash_conteudo=hashlib.sha256(b"limpeza").hexdigest(),
+        ),
+    ]
+    db_session.add_all(docs)
+    await db_session.commit()
+    return {"vetor_tech": vetor_tech, "vetor_distante": vetor_distante}
+
+
+async def test_contratos_vencendo_usa_ranking_semantico_quando_cliente_disponivel(
+    db_session, corpus_com_embeddings
+):
+    """Termo 'tecnologia' embedado deve casar só com o contrato de TI.
+
+    Crucialmente, o objeto do contrato de TI (CT-2025-001) contém a palavra
+    'tecnologia' literalmente, mas o teste é sobre o caminho **semântico**:
+    o vetor da query é igual ao vetor do doc → distance=0 → similarity=1.0
+    → passa o limiar. O contrato de limpeza tem vetor ortogonal →
+    similarity=0 → fica abaixo do limiar e é descartado.
+    """
+    cliente = _FakeGeminiClient(
+        {"tecnologia": corpus_com_embeddings["vetor_tech"]}
+    )
+    resultado = await executar_contratos_vencendo(
+        db=db_session, cliente=cliente, dias=90, categoria_objeto="tecnologia"
+    )
+    numeros = {d.metadados["numero_contrato"] for d in resultado.docs}
+    assert numeros == {"CT-2025-001"}
+    # Cabeçalho indica modo semântico
+    assert "semanticamente" in resultado.texto
+    # Score é ~1.0 já que vetor da query == vetor do doc
+    assert resultado.docs[0].score >= 0.99
+    assert resultado.docs[0].metadados["similaridade"] >= 0.99
+
+
+async def test_contratos_vencendo_semantico_descarta_abaixo_do_limiar(
+    db_session, corpus_com_embeddings
+):
+    """Termo cuja embedding não casa com nenhum doc retorna lista vazia."""
+    cliente = _FakeGeminiClient({})  # ZERO vector for any term
+    resultado = await executar_contratos_vencendo(
+        db=db_session, cliente=cliente, dias=90, categoria_objeto="aeroespacial"
+    )
+    assert resultado.docs == []
+    assert "Nenhum contrato" in resultado.texto
+
+
+async def test_contratos_vencendo_fallback_estrutural_sem_cliente(
+    db_session, corpus_contratos
+):
+    """Sem cliente, mantém o filtro estrutural (ILIKE) original."""
+    resultado = await executar_contratos_vencendo(
+        db=db_session, dias=90, categoria_objeto="tecnologia"
+    )
+    numeros = {d.metadados["numero_contrato"] for d in resultado.docs}
+    # ILIKE encontra apenas o contrato cujo objeto contém a palavra exata.
+    assert numeros == {"CT-2025-001"}
+    assert "literalmente" in resultado.texto
